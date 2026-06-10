@@ -198,23 +198,23 @@ const ExcelHandler = {
 
         // Mapeamento flexível de índices com diversos sinônimos possíveis
         let idxCodigo = cabecalhosNorm.findIndex(c => 
-          c === "código" || c === "codigo" || c === "ref" || c === "referência" || 
+          c === "cód bel klock" || c === "cod bel klock" || c === "código" || c === "codigo" || c === "ref" || c === "referência" || 
           c === "referencia" || c === "id" || c === "cod" || c === "sku" || c === "referencia/codigo"
         );
         if (idxCodigo === -1) {
           idxCodigo = cabecalhosNorm.findIndex(c => 
-            c.includes("código") || c.includes("codigo") || c.includes("ref") || 
+            c.includes("cód bel klock") || c.includes("cod bel klock") || c.includes("código") || c.includes("codigo") || c.includes("ref") || 
             c.includes("referência") || c.includes("referencia") || c.includes("id") || c.includes("sku")
           );
         }
 
         let idxNome = cabecalhosNorm.findIndex(c => 
-          c === "nome" || c === "produto" || c === "peça" || c === "peca" || 
+          c === "produto" || c === "nome" || c === "peça" || c === "peca" || 
           c === "descrição" || c === "descricao" || c === "item" || c === "nome do produto" || c === "nome da peca"
         );
         if (idxNome === -1) {
           idxNome = cabecalhosNorm.findIndex(c => 
-            c.includes("nome") || c.includes("produto") || c.includes("peça") || 
+            c.includes("produto") || c.includes("nome") || c.includes("peça") || 
             c.includes("peca") || c.includes("descrição") || c.includes("descricao") || c.includes("item")
           );
         }
@@ -229,22 +229,22 @@ const ExcelHandler = {
         }
 
         let idxQtd = cabecalhosNorm.findIndex(c => 
-          c === "qtd" || c === "quantidade" || c === "estoque" || c === "unidades" || 
+          c === "quantidade estoque disponível" || c === "quantidade estoque disponivel" || c === "qtd" || c === "quantidade" || c === "estoque" || c === "unidades" || 
           c === "saldo" || c === "unid" || c === "central" || c === "estoque central" || c === "qnt" || c === "quant" || c === "saldo central"
         );
         if (idxQtd === -1) {
           idxQtd = cabecalhosNorm.findIndex(c => 
-            c.includes("qtd") || c.includes("quantidade") || c.includes("estoque") || 
+            c.includes("quantidade estoque disponível") || c.includes("quantidade estoque disponivel") || c.includes("quantidade disponível") || c.includes("quantidade disponivel") || c.includes("qtd") || c.includes("quantidade") || c.includes("estoque") || 
             c.includes("unidades") || c.includes("saldo") || c.includes("central") || c.includes("qnt")
           );
         }
 
         let idxBruto = cabecalhosNorm.findIndex(c => 
-          c === "bruto" || c === "custo bruto" || c === "custo" || c === "compra" || c === "preço de custo" || c === "custo bruto (r$)"
+          c === "preço de custo" || c === "preco de custo" || c === "bruto" || c === "custo bruto" || c === "custo" || c === "compra" || c === "custo bruto (r$)"
         );
         if (idxBruto === -1) {
           idxBruto = cabecalhosNorm.findIndex(c => 
-            c.includes("bruto") || (c.includes("custo") && !c.includes("banho") && !c.includes("líquido") && !c.includes("liquido") && !c.includes("total"))
+            c.includes("preço de custo") || c.includes("preco de custo") || c.includes("bruto") || (c.includes("custo") && !c.includes("banho") && !c.includes("líquido") && !c.includes("liquido") && !c.includes("total"))
           );
         }
 
@@ -273,12 +273,12 @@ const ExcelHandler = {
         }
 
         let idxPrecoVenda = cabecalhosNorm.findIndex(c => 
-          c === "venda" || c === "preço de venda" || c === "preco de venda" || 
+          c === "preço de venda" || c === "preco de venda" || c === "venda" || 
           c === "valor venda" || c === "sugerido" || c === "preco" || c === "preço" || c === "preço de venda (r$)"
         );
         if (idxPrecoVenda === -1) {
           idxPrecoVenda = cabecalhosNorm.findIndex(c => 
-            c.includes("venda") || c.includes("preço") || c.includes("preco") || c.includes("valor")
+            c.includes("preço de venda") || c.includes("preco de venda") || c.includes("venda") || c.includes("preço") || c.includes("preco") || c.includes("valor")
           );
         }
 
@@ -303,39 +303,32 @@ const ExcelHandler = {
           const categoria = categoriaVal ? categoriaVal.toString().trim() : "Outros";
 
           const qtdVal = idxQtd !== -1 ? row[cabecalhosOriginais[idxQtd]] : null;
-          const quantidade = qtdVal ? parseInt(qtdVal.toString().replace(/\D/g, '')) || 0 : 0;
+          const quantidade = qtdVal ? (parseInt(qtdVal.toString().replace(/[^0-9-]/g, '')) || 0) : 0;
 
           const brutoVal = idxBruto !== -1 ? row[cabecalhosOriginais[idxBruto]] : null;
           let custoBruto = brutoVal ? this.limparNumeroExcel(brutoVal) : 0;
 
-          const banhoVal = idxBanho !== -1 ? row[cabecalhosOriginais[idxBanho]] : null;
-          const custoBanho = banhoVal ? this.limparNumeroExcel(banhoVal) : 0;
-
-          const liquidoVal = idxLiquido !== -1 ? row[cabecalhosOriginais[idxLiquido]] : null;
-          const custoLiquido = liquidoVal ? this.limparNumeroExcel(liquidoVal) : 0;
+          // Se a planilha tem Preço de Custo, definimos custoBanho e custoLiquido como 0 conforme requisito 1
+          const custoBanho = 0;
+          const custoLiquido = 0;
 
           const precoVendaVal = idxPrecoVenda !== -1 ? row[cabecalhosOriginais[idxPrecoVenda]] : null;
           const precoVendaTabela = precoVendaVal ? this.limparNumeroExcel(precoVendaVal) : 0;
 
-          const markupVal = idxMarkup !== -1 ? row[cabecalhosOriginais[idxMarkup]] : null;
-          let markup = markupVal ? this.limparNumeroExcel(markupVal) : 0;
-
-          // Ajustes inteligentes de fallbacks se o arquivo for incompleto ou em formato livre
+          // Ajustes inteligentes de fallbacks se o arquivo for incompleto
           if (!nome) {
             nome = "Semijoia " + (codigo || "Importada");
           }
 
-          const custoTotal = custoBruto + custoBanho + custoLiquido;
-
-          if (custoTotal === 0 && precoVendaTabela > 0) {
-            // Se o usuário colocou apenas o preço de venda, deduzimos os custos com base no markup de 3x
-            custoBruto = precoVendaTabela / 3.0;
-            markup = 3.0;
-          } else if (precoVendaTabela > 0 && markup <= 1) {
-            if (custoTotal > 0) {
-              markup = precoVendaTabela / custoTotal;
-            } else {
-              markup = 3.0;
+          // Ajuste do Markup: Como a planilha real fornece diretamente o Preço de Custo e o Preço de Venda,
+          // calcula o markup de forma automática fazendo: markup = precoVenda / custoBruto
+          let markup = 3.0;
+          if (custoBruto > 0 && precoVendaTabela > 0) {
+            markup = precoVendaTabela / custoBruto;
+          } else {
+            const markupVal = idxMarkup !== -1 ? row[cabecalhosOriginais[idxMarkup]] : null;
+            if (markupVal) {
+              markup = this.limparNumeroExcel(markupVal);
             }
           }
           if (markup <= 0) markup = 3.0;
@@ -350,8 +343,9 @@ const ExcelHandler = {
           produtoObjeto.custoBanho = custoBanho;
           produtoObjeto.custoLiquido = custoLiquido;
           produtoObjeto.markup = markup;
+          produtoObjeto.precoVenda = precoVendaCalculado; // Persiste precoVendaCalculado para integridade
 
-          // IMPORTANTE: Alimenta com os cabeçalhos padrão da interface do sistema, adaptando os valores da planilha do usuário
+          // Alimenta com os cabeçalhos padrão da interface do sistema, adaptando os valores da planilha do usuário
           produtoObjeto._valoresDinamicos = {
             "Código": codigo,
             "Nome do Produto": nome,
@@ -431,7 +425,14 @@ const ExcelHandler = {
    */
   limparNumeroExcel: function(valorTexto) {
     if (valorTexto === undefined || valorTexto === null) return 0;
-    let texto = valorTexto.toString().trim().replace("R$", "").replace(/\s/g, "");
+    
+    // Remove aspas simples, aspas duplas, contra-barras, o símbolo R$ e espaços
+    let texto = valorTexto.toString().trim()
+      .replace(/\\/g, "")      // remove contra-barras
+      .replace(/["']/g, "")    // remove aspas simples e duplas
+      .replace("R$", "")       // remove símbolo de moeda
+      .replace(/\s/g, "");     // remove espaços em branco
+      
     if (!texto) return 0;
     
     // Se contém vírgula e ponto (ex: 1.250,50 ou 1,250.50)
