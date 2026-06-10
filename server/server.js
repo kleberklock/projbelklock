@@ -281,6 +281,20 @@ app.delete('/api/produtos/:id', autenticarJWT, autorizarRole(['admin']), async (
   }
 });
 
+// Excluir Todos os Produtos (Admin)
+app.delete('/api/produtos', autenticarJWT, autorizarRole(['admin']), async (req, res) => {
+  try {
+    await prisma.$transaction([
+      prisma.consignado.deleteMany(), // Limpa os consignados relacionados
+      prisma.produto.deleteMany()
+    ]);
+    res.json({ message: 'Todo o estoque e os consignados associados foram excluídos com sucesso!' });
+  } catch (error) {
+    console.error("Erro ao limpar estoque:", error);
+    res.status(500).json({ error: 'Erro ao tentar excluir todos os produtos do estoque.' });
+  }
+});
+
 // ==========================================
 // ROTAS DE GESTÃO DE REVENDEDORAS
 // ==========================================

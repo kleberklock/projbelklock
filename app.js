@@ -558,6 +558,8 @@ const app = {
     document.getElementById("btn-trigger-import-file").addEventListener("click", () => document.getElementById("input-import-excel").click());
     document.getElementById("input-import-excel").addEventListener("change", (e) => this.processarImportacaoExcel(e));
     document.getElementById("btn-limpar-ficticios").addEventListener("click", () => this.zerarDadosDemonstracao());
+    document.getElementById("btn-excluir-todos-produtos").addEventListener("click", () => this.excluirTodosOsProdutos());
+
 
     // Upload do Instagram Feed
     document.getElementById("zone-upload-feed").addEventListener("click", () => document.getElementById("input-upload-feed").click());
@@ -2231,6 +2233,37 @@ const app = {
       this.renderizarRevendedoras();
       this.renderizarDashboard();
       alert("Todos os dados fictícios foram zerados com sucesso! Agora o sistema está limpo e pronto para receber suas informações reais.");
+    }
+  },
+
+  excluirTodosOsProdutos: async function() {
+    const confirmacao1 = confirm("⚠️ ATENÇÃO: Isso excluirá permanentemente todos os produtos cadastrados no estoque central!");
+    if (!confirmacao1) return;
+
+    const confirmacao2 = confirm("🚨 VOCÊ TEM CERTEZA? Esta ação também apagará todos os itens em consignação ativas nas maletas das revendedoras. Essa ação NÃO pode ser desfeita!");
+    if (!confirmacao2) return;
+
+    try {
+      // Se estiver conectado ao servidor local
+      if (this.state.token) {
+        await this.requisitarAPI("/produtos", "DELETE");
+      }
+
+      // Limpa no estado local
+      this.state.produtos = [];
+      this.state.revendedoras.forEach(r => {
+        r.consignado = [];
+      });
+
+      this.salvarDadosNoLocalStorage();
+      this.renderizarEstoque();
+      this.renderizarRevendedoras();
+      this.renderizarDashboard();
+
+      alert("Estoque central e consignações correspondentes excluídos com sucesso!");
+    } catch (error) {
+      console.error(error);
+      alert("Erro ao excluir produtos no servidor: " + error.message);
     }
   },
 
