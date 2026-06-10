@@ -1,0 +1,21 @@
+# Pastas de Dependências (NUNCA enviar ao GitHub/Gemini)
+node_modules/
+server/node_modules/
+
+# Bancos de Dados Locais (Criados dinamicamente no PC)
+*.db
+*.db-journal
+server/dev.db
+server/dev.db-journal
+
+# Credenciais e Variáveis de Ambiente locais (Segurança)
+.env
+server/.env
+
+# Arquivos temporários e do Sistema Operacional
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Configurações locais da IDE (VS Code)
+.vscode/
