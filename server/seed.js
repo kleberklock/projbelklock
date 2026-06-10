@@ -8,7 +8,11 @@ async function main() {
   console.log("Iniciando semeadura de dados (Seed)...");
 
   const emailAdmin = "admin@belklock.com";
-  const senhaPadrao = "admin123";
+  const pinAdmin = "0001";
+  const senhaPadrao = "belklock";
+
+  // Criptografa a senha do administrador
+  const senhaHash = await bcrypt.hash(senhaPadrao, 10);
 
   // Verifica se o admin já existe
   const adminExiste = await prisma.usuario.findUnique({
@@ -16,18 +20,28 @@ async function main() {
   });
 
   if (adminExiste) {
-    console.log(`O usuário administrador [${emailAdmin}] já está cadastrado no banco.`);
+    await prisma.usuario.update({
+      where: { email: emailAdmin },
+      data: {
+        pin: pinAdmin,
+        senhaHash: senhaHash
+      }
+    });
+    console.log("=========================================");
+    console.log("Administrador atualizado com sucesso!");
+    console.log(`E-mail: ${emailAdmin}`);
+    console.log(`PIN: ${pinAdmin}`);
+    console.log(`Senha: ${senhaPadrao}`);
+    console.log("=========================================");
     return;
   }
-
-  // Criptografa a senha do administrador
-  const senhaHash = await bcrypt.hash(senhaPadrao, 10);
 
   // Cria o primeiro usuário administrador
   const novoAdmin = await prisma.usuario.create({
     data: {
       nome: "Bel Klock Admin",
       email: emailAdmin,
+      pin: pinAdmin,
       senhaHash: senhaHash,
       role: "admin",
       whatsapp: "(11) 99999-9999",
@@ -36,8 +50,9 @@ async function main() {
   });
 
   console.log("=========================================");
-  console.log("Administrador criado com sucesso no Azure SQL!");
+  console.log("Administrador criado com sucesso!");
   console.log(`E-mail: ${novoAdmin.email}`);
+  console.log(`PIN: ${pinAdmin}`);
   console.log(`Senha padrão: ${senhaPadrao}`);
   console.log("=========================================");
 }

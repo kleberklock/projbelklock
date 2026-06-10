@@ -580,6 +580,97 @@ app.get('/api/vendas-diretas', autenticarJWT, autorizarRole(['admin']), async (r
 });
 
 // ==========================================
+// ROTAS DE VENDAS DE REVENDEDORAS
+// ==========================================
+
+// Registrar venda (Revendedora registra venda de item da maleta)
+app.post('/api/vendas-revendedora', autenticarJWT, autorizarRole(['revendedora']), async (req, res) => {
+  const { produtoId, quantidade } = req.body;
+  const usuarioId = req.user.id;
+
+  if (!produtoId || !quantidade || quantidade <= 0) {
+    return res.status(400).json({ error: 'Dados incompletos para registrar a venda.' });
+  }
+
+  try {
+    // Busca o item consignado desta revendedora
+    const consignado = await prisma.consignado.findUnique({
+      where: { usuarioId_produtoId: { usuarioId, produtoId } },
+      include: { produto: true, usuario: true }
+    });
+
+    if (!consignado) {
+      return res.status(404).json({ error: 'Este produto não está na sua maleta.' });
+    }
+
+    if (consignado.quantidadeConsignada < quantidade) {
+      return res.status(400).json({ error: `Quantidade insuficiente na maleta. Você tem apenas ${consignado.quantidadeConsignada} unidade(s).` });
+    }
+
+    const comissaoValor = consignado.precoVenda * quantidade * (consignado.usuario.comissao / 100);
+
+    // Deduz da maleta ou remove o item se zerou
+    const novaQtd = consignado.quantidadeConsignada - quantidade;
+    if (novaQtd === 0) {
+      await prisma.consignado.delete({ where: { id: consignado.id } });
+    } else {
+      await prisma.consignado.update({
+        where: { id: consignado.id },
+        data: { quantidadeConsignada: novaQtd }
+      });
+    }
+
+    // Registra a venda
+    const venda = await prisma.vendaRevendedora.create({
+      data: {
+        usuarioId,
+        produtoId,
+        nomeProduto: consignado.produto.nome,
+        codigoProduto: consignado.produto.codigo,
+        quantidade,
+        precoVenda: consignado.precoVenda,
+        comissaoValor
+      }
+    });
+
+    res.status(201).json({
+      venda,
+      resumo: {
+        nomeProduto: consignado.produto.nome,
+        quantidade,
+        totalVenda: consignado.precoVenda * quantidade,
+        comissaoValor,
+        qtdRestanteNaMaleta: novaQtd
+      }
+    });
+  } catch (error) {
+    console.error('Erro ao registrar venda da revendedora:', error);
+    res.status(500).json({ error: 'Erro ao registrar venda.' });
+  }
+});
+
+// Listar vendas da revendedora logada
+app.get('/api/vendas-revendedora', autenticarJWT, async (req, res) => {
+  try {
+    const where = req.user.role === 'admin'
+      ? {}
+      : { usuarioId: req.user.id };
+
+    const vendas = await prisma.vendaRevendedora.findMany({
+      where,
+      orderBy: { data: 'desc' },
+      include: {
+        usuario: { select: { nome: true, whatsapp: true } }
+      }
+    });
+    res.json(vendas);
+  } catch (error) {
+    res.status(500).json({ error: 'Erro ao listar vendas.' });
+  }
+});
+
+
+// ==========================================
 // UPLOADS NO AZURE BLOB STORAGE
 // ==========================================
 

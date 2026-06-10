@@ -17,12 +17,14 @@ const app = {
     subAbaMktAtiva: "feed",
     revendedoraSelecionadaId: null,
     usandoFicticio: true,
-    colunasEstoque: ["Código", "Nome do Produto", "Categoria", "Estoque Central", "Custo Bruto", "Custo Banho", "Custo Oper.", "Markup", "Preço Venda"]
+    colunasEstoque: ["Código", "Nome do Produto", "Categoria", "Estoque Central", "Custo Bruto", "Custo Banho", "Custo Oper.", "Markup", "Preço Venda"],
+    vendasSessao: [] // Vendas registradas pela revendedora nesta sessão
   },
 
   // 2. Inicialização do Aplicativo
   init: function() {
     this.registrarEventosLogin();
+    this.carregarDadosDoLocalStorage(); // Inicializa dados locais (mocks de demonstração se vazio)
     
     // Verifica se há sessão ativa no LocalStorage
     const token = localStorage.getItem("belklock_token");
@@ -110,13 +112,14 @@ const app = {
                             error.message.includes("Você está offline");
       
       if (conexaoFalhou) {
-        if (email === "admin@belklock.com" && senha === "admin123") {
+        if ((email === "admin@belklock.com" || email === "0001") && senha === "belklock") {
           console.warn("Servidor Azure API offline. Iniciando em Modo de Demonstração (Admin local).");
           this.state.token = "mock_admin_token_" + Date.now();
           this.state.usuarioLogado = {
             id: "admin_local",
             nome: "Bel Klock Admin (Local)",
             email: "admin@belklock.com",
+            pin: "0001",
             role: "admin",
             comissao: 0.0
           };
@@ -192,26 +195,43 @@ const app = {
     
     const menuPlanilhas = document.querySelector('.nav-item[data-target="planilhas"]');
     const menuRevendedoras = document.querySelector('.nav-item[data-target="revendedoras"]');
+    const menuMinhaMaleta = document.getElementById("menu-minha-maleta");
+    const menuEstoque = document.querySelector('.nav-item[data-target="estoque"]');
+    const menuMarketing = document.querySelector('.nav-item[data-target="marketing"]');
+    const menuDashboard = document.querySelector('.nav-item[data-target="dashboard"]');
     const btnCadastrarProduto = document.getElementById("btn-open-modal-produto");
     const divHeaderActions = document.querySelector("#dashboard .header-actions");
+    const menuVendasGeral = document.getElementById("menu-vendas-geral");
 
     if (role === "revendedora") {
-      // Oculta itens restritos da Sidebar
+      // Oculta itens restritos da Sidebar para revendedoras
       if (menuPlanilhas) menuPlanilhas.style.display = "none";
       if (menuRevendedoras) menuRevendedoras.style.display = "none";
+      if (menuEstoque) menuEstoque.style.display = "none";
+      if (menuMarketing) menuMarketing.style.display = "none";
+      if (menuDashboard) menuDashboard.style.display = "none";
+      if (menuVendasGeral) menuVendasGeral.style.display = "none";
       if (btnCadastrarProduto) btnCadastrarProduto.style.display = "none";
       if (divHeaderActions) divHeaderActions.style.display = "none";
-      
-      // Se a aba ativa for restrita, redireciona para o dashboard
-      if (this.state.abaAtiva === "planilhas" || this.state.abaAtiva === "revendedoras") {
-        this.state.abaAtiva = "dashboard";
-      }
+      // Exibe menu exclusivo da revendedora
+      if (menuMinhaMaleta) menuMinhaMaleta.style.display = "block";
+      // Redefine aba ativa para minha-maleta
+      this.state.abaAtiva = "minha-maleta";
     } else {
-      // Exibe itens para Admin
+      // Exibe itens para Admin, oculta menu de revendedora
       if (menuPlanilhas) menuPlanilhas.style.display = "block";
       if (menuRevendedoras) menuRevendedoras.style.display = "block";
+      if (menuEstoque) menuEstoque.style.display = "block";
+      if (menuMarketing) menuMarketing.style.display = "block";
+      if (menuDashboard) menuDashboard.style.display = "block";
+      if (menuVendasGeral) menuVendasGeral.style.display = "block";
+      if (menuMinhaMaleta) menuMinhaMaleta.style.display = "none";
       if (btnCadastrarProduto) btnCadastrarProduto.style.display = "inline-flex";
       if (divHeaderActions) divHeaderActions.style.display = "block";
+      // Garante redirecionamento para o dashboard geral se o admin estava na maleta
+      if (this.state.abaAtiva === "minha-maleta") {
+        this.state.abaAtiva = "dashboard";
+      }
     }
   },
 
@@ -224,15 +244,23 @@ const app = {
     
     if (this.state.usuarioLogado.role === 'admin') {
       await this.carregarRevendedorasDaAPI();
+      await this.carregarVendasConsolidadas();
+      this.renderizarAbas();
+      this.renderizarEstoque();
+      this.renderizarRevendedoras();
+      this.renderizarDashboard();
+      this.renderizarMarketing();
     } else {
+      // Revendedora: carrega maleta e navega direto para Minha Maleta
       await this.carregarMaletaPropriaDaAPI();
+      await this.carregarVendasRevendedora();
+      this.aplicarRestricoesPerfil();
+      this.renderizarAbas();
+      this.renderizarMinhaMaleta();
+      // Atualiza boas-vindas com nome
+      const el = document.getElementById("maleta-boas-vindas");
+      if (el) el.innerText = `Olá, ${this.state.usuarioLogado.nome.split(' ')[0]}! 💎`;
     }
-    
-    this.renderizarAbas();
-    this.renderizarEstoque();
-    this.renderizarRevendedoras();
-    this.renderizarDashboard();
-    this.renderizarMarketing();
     
     console.log("BelKlock Semijoias inicializado com sucesso!");
   },
@@ -336,6 +364,350 @@ const app = {
     } catch (error) {
       console.warn("Falha ao obter maleta própria da API:", error.message);
       this.carregarDadosDoLocalStorage();
+    }
+  },
+
+  carregarVendasRevendedora: async function() {
+    const offlineMode = this.state.token && this.state.token.startsWith("mock_");
+    if (offlineMode) {
+      const localVendasKey = `belklock_vendas_${this.state.usuarioLogado.id}`;
+      this.state.vendasSessao = JSON.parse(localStorage.getItem(localVendasKey) || "[]");
+      return;
+    }
+
+    try {
+      const vendas = await this.requisitarAPI("/vendas-revendedora");
+      this.state.vendasSessao = vendas;
+    } catch (error) {
+      console.warn("Falha ao carregar vendas:", error.message);
+      this.state.vendasSessao = [];
+    }
+  },
+
+  // ==========================================
+  // TELA MINHA MALETA (REVENDEDORA)
+  // ==========================================
+
+  renderizarMinhaMaleta: function() {
+    const rev = this.state.revendedoras.find(r => r.id === (this.state.usuarioLogado ? this.state.usuarioLogado.id : null));
+    const comissao = this.state.usuarioLogado ? Number(this.state.usuarioLogado.comissao || 30) : 30;
+    const maleta = rev ? (rev.consignado || []) : [];
+
+    // Calcula totais
+    let totalPecas = 0;
+    let valorTotal = 0;
+    maleta.forEach(item => {
+      totalPecas += Number(item.quantidadeConsignada || 0);
+      valorTotal += Number(item.precoVenda || 0) * Number(item.quantidadeConsignada || 0);
+    });
+    const comissaoProjetada = valorTotal * (comissao / 100);
+
+    // Atualiza cards
+    const elPecas = document.getElementById("maleta-total-pecas");
+    const elValor = document.getElementById("maleta-valor-total");
+    const elComissao = document.getElementById("maleta-comissao-projetada");
+    const elVendas = document.getElementById("maleta-vendas-hoje");
+    if (elPecas) elPecas.innerText = `${totalPecas} pçs`;
+    if (elValor) elValor.innerText = `R$ ${valorTotal.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
+    if (elComissao) elComissao.innerText = `R$ ${comissaoProjetada.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
+    if (elVendas) elVendas.innerText = this.state.vendasSessao.length;
+
+    // Renderiza tabela de peças
+    const tbody = document.getElementById("tbody-minha-maleta");
+    if (!tbody) return;
+    tbody.innerHTML = "";
+
+    if (maleta.length === 0) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="8" style="text-align: center; color: var(--text-secondary); padding: 3rem;">
+            <i class="fa-solid fa-briefcase" style="font-size: 2rem; opacity: 0.3; display: block; margin-bottom: 0.8rem;"></i>
+            Você ainda não tem peças consignadas. Entre em contato com a administradora.
+          </td>
+        </tr>`;
+      return;
+    }
+
+    maleta.forEach(item => {
+      const subtotal = Number(item.precoVenda || 0) * Number(item.quantidadeConsignada || 0);
+      const comissaoItem = subtotal * (comissao / 100);
+      const tr = document.createElement("tr");
+      tr.setAttribute("data-busca", `${item.codigo || ""} ${item.nome || ""}`.toLowerCase());
+      tr.innerHTML = `
+        <td><strong>${item.codigo || "—"}</strong></td>
+        <td>${item.nome || "—"}</td>
+        <td><span class="badge badge-ok" style="font-size:0.75rem;">${item.categoria || "—"}</span></td>
+        <td><span style="font-size: 1.1rem; font-weight: 700; color: var(--gold-primary);">${item.quantidadeConsignada}</span></td>
+        <td>R$ ${Number(item.precoVenda || 0).toFixed(2).replace(".", ",")}</td>
+        <td style="color: var(--text-primary);">R$ ${subtotal.toFixed(2).replace(".", ",")}</td>
+        <td style="color: #81c784; font-weight: 600;">R$ ${comissaoItem.toFixed(2).replace(".", ",")}</td>
+        <td>
+          <button class="btn-qty" style="background: rgba(67,160,71,0.15); border-color: rgba(67,160,71,0.4); color: #81c784; padding: 0.4rem 0.8rem; border-radius: 6px; font-size: 0.8rem; white-space: nowrap;"
+            onclick="app.abrirModalVendaRevProduto('${item.produtoId}', '${(item.nome || "").replace(/'/g, "\\'")}', ${item.precoVenda}, ${item.quantidadeConsignada})">
+            <i class="fa-solid fa-check"></i> Vendi!
+          </button>
+        </td>`;
+      tbody.appendChild(tr);
+    });
+
+    // Renderiza tabela de histórico de vendas
+    this.renderizarHistoricoVendasRev();
+  },
+
+  renderizarHistoricoVendasRev: function() {
+    const tbody = document.getElementById("tbody-vendas-revendedora");
+    if (!tbody) return;
+    tbody.innerHTML = "";
+
+    const vendas = this.state.vendasSessao;
+    if (!vendas || vendas.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--text-secondary);padding:3rem;">Nenhuma venda registrada ainda. Use o botão "Fiz uma Venda!" para começar.</td></tr>`;
+      return;
+    }
+
+    vendas.forEach(v => {
+      const totalVenda = Number(v.precoVenda || 0) * Number(v.quantidade || 0);
+      const data = new Date(v.data).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' });
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td style="color: var(--text-secondary); font-size: 0.85rem;">${data}</td>
+        <td><strong>${v.nomeProduto || "—"}</strong><br><span style="font-size:0.78rem;color:var(--text-secondary);">${v.codigoProduto || ""}</span></td>
+        <td>${v.quantidade} unid.</td>
+        <td>R$ ${Number(v.precoVenda || 0).toFixed(2).replace(".", ",")}</td>
+        <td style="color: var(--gold-primary); font-weight: 700;">R$ ${totalVenda.toFixed(2).replace(".", ",")}</td>
+        <td style="color: #81c784; font-weight: 700;">R$ ${Number(v.comissaoValor || 0).toFixed(2).replace(".", ",")}</td>`;
+      tbody.appendChild(tr);
+    });
+  },
+
+  filtrarMaletaPecas: function() {
+    const busca = (document.getElementById("maleta-busca-peca").value || "").toLowerCase();
+    document.querySelectorAll("#tbody-minha-maleta tr[data-busca]").forEach(tr => {
+      const texto = tr.getAttribute("data-busca") || "";
+      tr.style.display = texto.includes(busca) ? "" : "none";
+    });
+  },
+
+  mudarSubAbaMaleta: function(aba) {
+    document.getElementById("sub-maleta-pecas").style.display = aba === "pecas" ? "block" : "none";
+    document.getElementById("sub-maleta-historico").style.display = aba === "historico" ? "block" : "none";
+    document.getElementById("btn-subtab-maleta-rev").classList.toggle("active", aba === "pecas");
+    document.getElementById("btn-subtab-historico-rev").classList.toggle("active", aba === "historico");
+
+    if (aba === "historico") {
+      this.renderizarHistoricoVendasRev();
+    }
+  },
+
+  // Abre modal de venda a partir do botão da tabela (com produto pré-selecionado)
+  abrirModalVendaRevProduto: function(produtoId, nome, preco, maxQtd) {
+    this._abrirModalVendaRevInterno();
+    const select = document.getElementById("venda-rev-produto");
+    if (select) select.value = produtoId;
+    const qtdInput = document.getElementById("venda-rev-qtd");
+    if (qtdInput) { qtdInput.value = 1; qtdInput.max = maxQtd; }
+    this.atualizarPreviewVendaRev();
+  },
+
+  _abrirModalVendaRevInterno: function() {
+    const rev = this.state.revendedoras.find(r => r.id === (this.state.usuarioLogado ? this.state.usuarioLogado.id : null));
+    const maleta = rev ? (rev.consignado || []) : [];
+    const select = document.getElementById("venda-rev-produto");
+    if (!select) return;
+
+    // Popula o select com as peças da maleta
+    select.innerHTML = "<option value=''>— Selecione uma peça da sua maleta —</option>";
+    maleta.forEach(item => {
+      const opt = document.createElement("option");
+      opt.value = item.produtoId;
+      opt.textContent = `${item.nome} (${item.quantidadeConsignada} unid. — R$ ${Number(item.precoVenda||0).toFixed(2).replace(".",",")})`;
+      opt.setAttribute("data-preco", item.precoVenda);
+      opt.setAttribute("data-max", item.quantidadeConsignada);
+      select.appendChild(opt);
+    });
+
+    // Reseta campos
+    const qtdInput = document.getElementById("venda-rev-qtd");
+    if (qtdInput) { qtdInput.value = 1; qtdInput.max = 99; }
+    const preview = document.getElementById("venda-rev-preview");
+    if (preview) preview.style.display = "none";
+    const aviso = document.getElementById("venda-rev-aviso");
+    if (aviso) aviso.style.display = "none";
+
+    // Mostra percentual de comissão
+    const pct = document.getElementById("prev-venda-comissao-pct");
+    if (pct) pct.innerText = this.state.usuarioLogado ? this.state.usuarioLogado.comissao : 30;
+
+    document.getElementById("modal-venda-rev").classList.add("active");
+  },
+
+  atualizarPreviewVendaRev: function() {
+    const select = document.getElementById("venda-rev-produto");
+    const qtdInput = document.getElementById("venda-rev-qtd");
+    const preview = document.getElementById("venda-rev-preview");
+    const aviso = document.getElementById("venda-rev-aviso");
+    if (!select || !qtdInput || !preview) return;
+
+    const selectedOpt = select.options[select.selectedIndex];
+    if (!selectedOpt || !selectedOpt.value) {
+      preview.style.display = "none";
+      return;
+    }
+
+    const preco = parseFloat(selectedOpt.getAttribute("data-preco") || 0);
+    const max = parseInt(selectedOpt.getAttribute("data-max") || 99);
+    const qtd = parseInt(qtdInput.value) || 1;
+    const comissao = this.state.usuarioLogado ? Number(this.state.usuarioLogado.comissao || 30) : 30;
+
+    qtdInput.max = max;
+
+    if (aviso) {
+      if (qtd > max) {
+        aviso.style.display = "block";
+        document.getElementById("venda-rev-aviso-texto").innerText = `Você só tem ${max} unidade(s) desta peça na maleta.`;
+      } else {
+        aviso.style.display = "none";
+      }
+    }
+
+    const total = preco * Math.min(qtd, max);
+    const comissaoValor = total * (comissao / 100);
+
+    document.getElementById("prev-venda-nome").innerText = selectedOpt.textContent.split(" (")[0];
+    document.getElementById("prev-venda-qtd").innerText = `${Math.min(qtd, max)} unid.`;
+    document.getElementById("prev-venda-preco-unit").innerText = `R$ ${preco.toFixed(2).replace(".", ",")}`;
+    document.getElementById("prev-venda-total").innerText = `R$ ${total.toFixed(2).replace(".", ",")}`;
+    document.getElementById("prev-venda-comissao-valor").innerText = `R$ ${comissaoValor.toFixed(2).replace(".", ",")}`;
+
+    preview.style.display = "block";
+  },
+
+  ajustarQtdVendaRev: function(delta) {
+    const input = document.getElementById("venda-rev-qtd");
+    if (!input) return;
+    let val = parseInt(input.value) || 1;
+    const max = parseInt(input.max) || 99;
+    val = Math.min(Math.max(val + delta, 1), max);
+    input.value = val;
+    this.atualizarPreviewVendaRev();
+  },
+
+  confirmarVendaRevendedora: async function() {
+    const select = document.getElementById("venda-rev-produto");
+    const qtdInput = document.getElementById("venda-rev-qtd");
+    if (!select || !qtdInput) return;
+
+    const produtoId = select.value;
+    const quantidade = parseInt(qtdInput.value) || 0;
+
+    if (!produtoId) {
+      alert("Por favor, selecione uma peça para registrar a venda.");
+      return;
+    }
+    if (quantidade < 1) {
+      alert("A quantidade deve ser pelo menos 1.");
+      return;
+    }
+
+    const btnConfirmar = document.getElementById("btn-confirmar-venda-rev");
+    if (btnConfirmar) {
+      btnConfirmar.disabled = true;
+      btnConfirmar.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Registrando...';
+    }
+
+    const offlineMode = this.state.token && this.state.token.startsWith("mock_");
+
+    try {
+      let resp;
+      if (offlineMode) {
+        // Modo offline / demonstração
+        const rev = this.state.revendedoras.find(r => r.id === this.state.usuarioLogado.id);
+        if (!rev || !rev.consignado) throw new Error("Revendedora não encontrada localmente.");
+
+        const idx = rev.consignado.findIndex(c => c.produtoId === produtoId);
+        if (idx === -1) throw new Error("Este produto não está na sua maleta.");
+
+        const item = rev.consignado[idx];
+        if (item.quantidadeConsignada < quantidade) {
+          throw new Error(`Quantidade insuficiente na maleta. Você tem apenas ${item.quantidadeConsignada} unidade(s).`);
+        }
+
+        const comissaoValor = item.precoVenda * quantidade * ((this.state.usuarioLogado.comissao || 30) / 100);
+        const novaQtd = item.quantidadeConsignada - quantidade;
+
+        if (novaQtd === 0) {
+          rev.consignado.splice(idx, 1);
+        } else {
+          item.quantidadeConsignada = novaQtd;
+        }
+
+        const novaVenda = {
+          id: "mock_venda_" + Date.now(),
+          data: new Date().toISOString(),
+          usuarioId: this.state.usuarioLogado.id,
+          produtoId: produtoId,
+          nomeProduto: item.nome,
+          codigoProduto: item.codigo,
+          quantidade: quantidade,
+          precoVenda: item.precoVenda,
+          comissaoValor: comissaoValor
+        };
+
+        resp = {
+          venda: novaVenda,
+          resumo: {
+            nomeProduto: item.nome,
+            quantidade,
+            totalVenda: item.precoVenda * quantidade,
+            comissaoValor,
+            qtdRestanteNaMaleta: novaQtd
+          }
+        };
+
+        // Salva estado local no LocalStorage
+        this.salvarDadosNoLocalStorage();
+
+        // Adiciona à lista de vendas da sessão no LocalStorage
+        const localVendasKey = `belklock_vendas_${this.state.usuarioLogado.id}`;
+        const vendasLocais = JSON.parse(localStorage.getItem(localVendasKey) || "[]");
+        vendasLocais.unshift(novaVenda);
+        localStorage.setItem(localVendasKey, JSON.stringify(vendasLocais));
+      } else {
+        resp = await this.requisitarAPI("/vendas-revendedora", "POST", { produtoId, quantidade });
+
+        // Atualiza maleta local: reduz a quantidade consignada ou remove item
+        const rev = this.state.revendedoras.find(r => r.id === this.state.usuarioLogado.id);
+        if (rev && rev.consignado) {
+          const idx = rev.consignado.findIndex(c => c.produtoId === produtoId);
+          if (idx !== -1) {
+            if (resp.resumo.qtdRestanteNaMaleta === 0) {
+              rev.consignado.splice(idx, 1);
+            } else {
+              rev.consignado[idx].quantidadeConsignada = resp.resumo.qtdRestanteNaMaleta;
+            }
+          }
+        }
+      }
+
+      // Adiciona à lista de vendas da sessão
+      this.state.vendasSessao.unshift(resp.venda);
+
+      // Fecha modal e renderiza
+      document.getElementById("modal-venda-rev").classList.remove("active");
+      this.renderizarMinhaMaleta();
+
+      // Feedback de sucesso
+      const totalFmt = (resp.resumo.totalVenda || 0).toFixed(2).replace(".", ",");
+      const comissaoFmt = (resp.resumo.comissaoValor || 0).toFixed(2).replace(".", ",");
+      alert(`✅ Venda registrada com sucesso!\n\n💎 Produto: ${resp.resumo.nomeProduto}\n📦 Quantidade: ${resp.resumo.quantidade}\n💰 Total da venda: R$ ${totalFmt}\n🎉 Sua comissão: R$ ${comissaoFmt}`);
+    } catch (error) {
+      console.error(error);
+      alert("Erro ao registrar a venda: " + error.message);
+    } finally {
+      if (btnConfirmar) {
+        btnConfirmar.disabled = false;
+        btnConfirmar.innerHTML = '<i class="fa-solid fa-check"></i> Confirmar Venda';
+      }
     }
   },
 
@@ -533,6 +905,16 @@ const app = {
     this.configurarModal("modal-acerto", "btn-open-modal-acerto", "btn-close-modal-acerto", "btn-cancelar-acerto");
     this.configurarModal("modal-venda-rapida", null, "btn-close-modal-venda-rapida", "btn-cancelar-venda-rapida");
 
+    // Modal de Venda da Revendedora
+    const btnAbrirVendaRev = document.getElementById("btn-open-modal-venda-rev");
+    if (btnAbrirVendaRev) btnAbrirVendaRev.addEventListener("click", () => this._abrirModalVendaRevInterno());
+    const btnFecharVendaRev = document.getElementById("btn-close-modal-venda-rev");
+    if (btnFecharVendaRev) btnFecharVendaRev.addEventListener("click", () => document.getElementById("modal-venda-rev").classList.remove("active"));
+    const btnCancelarVendaRev = document.getElementById("btn-cancelar-venda-rev");
+    if (btnCancelarVendaRev) btnCancelarVendaRev.addEventListener("click", () => document.getElementById("modal-venda-rev").classList.remove("active"));
+    const btnConfirmarVendaRev = document.getElementById("btn-confirmar-venda-rev");
+    if (btnConfirmarVendaRev) btnConfirmarVendaRev.addEventListener("click", () => this.confirmarVendaRevendedora());
+
     // Salvar Produto
     document.getElementById("btn-salvar-produto").addEventListener("click", () => this.salvarNovoProduto());
 
@@ -650,6 +1032,9 @@ const app = {
     if (tabId === "estoque") this.renderizarEstoque();
     if (tabId === "revendedoras") this.renderizarRevendedoras();
     if (tabId === "marketing") this.renderizarMarketing();
+    if (tabId === "vendas-geral") {
+      this.carregarVendasConsolidadas().then(() => this.renderizarVendasConsolidadas());
+    }
   },
 
   renderizarAbas: function() {
@@ -2536,16 +2921,254 @@ const app = {
   },
 
   mudarSubAbaRevendedora: function(aba) {
-    document.querySelectorAll(".sub-aba-rev").forEach(el => el.style.display = "none");
-    document.querySelectorAll("#btn-subtab-maleta, #btn-subtab-historico").forEach(el => el.classList.remove("active"));
+    // Esconde todas as sub-abas da revendedora
+    document.getElementById("sub-aba-rev-maleta").style.display = "none";
+    document.getElementById("sub-aba-rev-historico").style.display = "none";
+    document.getElementById("sub-aba-rev-vendas").style.display = "none";
     
-    if(aba === "maleta") {
+    // Remove classe active de todos os botões
+    document.getElementById("btn-subtab-maleta").classList.remove("active");
+    document.getElementById("btn-subtab-historico").classList.remove("active");
+    document.getElementById("btn-subtab-vendas-rev").classList.remove("active");
+    
+    if (aba === "maleta") {
       document.getElementById("sub-aba-rev-maleta").style.display = "block";
       document.getElementById("btn-subtab-maleta").classList.add("active");
-    } else {
+    } else if (aba === "vendas") {
+      document.getElementById("sub-aba-rev-vendas").style.display = "block";
+      document.getElementById("btn-subtab-vendas-rev").classList.add("active");
+      this.renderizarVendasIndividuaisRevendedora();
+    } else if (aba === "historico") {
       document.getElementById("sub-aba-rev-historico").style.display = "block";
       document.getElementById("btn-subtab-historico").classList.add("active");
     }
+  },
+
+  carregarVendasConsolidadas: async function() {
+    const offlineMode = this.state.token && this.state.token.startsWith("mock_");
+    if (offlineMode) {
+      const vendasConsolidadas = [];
+      
+      this.state.revendedoras.forEach(r => {
+        const localVendasKey = `belklock_vendas_${r.id}`;
+        const localVendas = JSON.parse(localStorage.getItem(localVendasKey) || "[]");
+        localVendas.forEach(v => {
+          vendasConsolidadas.push({
+            id: v.id,
+            data: v.data,
+            tipo: 'revendedora',
+            nomeProduto: v.nomeProduto,
+            codigoProduto: v.codigoProduto,
+            quantidade: v.quantidade,
+            precoVenda: v.precoVenda,
+            total: v.precoVenda * v.quantidade,
+            comissao: v.comissaoValor,
+            vendedor: r.nome,
+            contato: r.whatsapp || '—',
+            cliente: '—',
+            usuarioId: r.id
+          });
+        });
+      });
+      
+      vendasConsolidadas.sort((a, b) => new Date(b.data) - new Date(a.data));
+      this.state.vendasConsolidadas = vendasConsolidadas;
+      this.atualizarSeletorFiltroRevendedoras();
+      return;
+    }
+
+    try {
+      const [vendasDiretas, vendasRevendedoras] = await Promise.all([
+        this.requisitarAPI("/vendas-diretas"),
+        this.requisitarAPI("/vendas-revendedora")
+      ]);
+      
+      this.state.vendasDiretas = vendasDiretas;
+      this.state.vendasRevendedoras = vendasRevendedoras;
+      
+      const vendasConsolidadas = [];
+      
+      vendasDiretas.forEach(v => {
+        vendasConsolidadas.push({
+          id: v.id,
+          data: v.data,
+          tipo: 'direta',
+          nomeProduto: v.nome,
+          codigoProduto: v.codigo,
+          quantidade: 1,
+          precoVenda: v.preco,
+          total: v.preco,
+          comissao: 0,
+          vendedor: 'BelKlock (Direta)',
+          contato: v.whatsappCliente || '—',
+          cliente: v.nomeCliente || '—',
+          usuarioId: null
+        });
+      });
+      
+      vendasRevendedoras.forEach(v => {
+        vendasConsolidadas.push({
+          id: v.id,
+          data: v.data,
+          tipo: 'revendedora',
+          nomeProduto: v.nomeProduto,
+          codigoProduto: v.codigoProduto,
+          quantidade: v.quantidade,
+          precoVenda: v.precoVenda,
+          total: v.precoVenda * v.quantidade,
+          comissao: v.comissaoValor,
+          vendedor: v.usuario ? v.usuario.nome : 'Revendedora',
+          contato: v.usuario && v.usuario.whatsapp ? v.usuario.whatsapp : '—',
+          cliente: '—',
+          usuarioId: v.usuarioId
+        });
+      });
+      
+      vendasConsolidadas.sort((a, b) => new Date(b.data) - new Date(a.data));
+      this.state.vendasConsolidadas = vendasConsolidadas;
+      
+      this.atualizarSeletorFiltroRevendedoras();
+    } catch (error) {
+      console.warn("Falha ao carregar vendas consolidadas:", error.message);
+      this.state.vendasConsolidadas = [];
+    }
+  },
+  
+  atualizarSeletorFiltroRevendedoras: function() {
+    const select = document.getElementById("filtro-vendas-revendedora");
+    if (!select) return;
+    
+    select.innerHTML = "<option value=''>Todas as Revendedoras</option>";
+    
+    this.state.revendedoras.forEach(r => {
+      const opt = document.createElement("option");
+      opt.value = r.id;
+      opt.textContent = r.nome;
+      select.appendChild(opt);
+    });
+  },
+
+  renderizarVendasConsolidadas: function() {
+    const tbody = document.getElementById("tbody-historico-vendas-geral");
+    if (!tbody) return;
+    tbody.innerHTML = "";
+    
+    const buscaVal = (document.getElementById("filtro-vendas-busca").value || "").toLowerCase();
+    const tipoVal = document.getElementById("filtro-vendas-tipo").value;
+    const revendedoraVal = document.getElementById("filtro-vendas-revendedora").value;
+    const periodoVal = document.getElementById("filtro-vendas-periodo").value;
+    
+    let faturamentoTotal = 0;
+    let vendasDiretasTotal = 0;
+    let vendasRevendedorasTotal = 0;
+    let comissoesTotal = 0;
+    
+    const hoje = new Date();
+    
+    const filtradas = this.state.vendasConsolidadas.filter(v => {
+      const matchBusca = v.nomeProduto.toLowerCase().includes(buscaVal) || 
+                          v.codigoProduto.toLowerCase().includes(buscaVal) ||
+                          v.vendedor.toLowerCase().includes(buscaVal);
+                          
+      const matchTipo = !tipoVal || v.tipo === tipoVal;
+      const matchRevendedora = !revendedoraVal || v.usuarioId === revendedoraVal;
+      
+      let matchPeriodo = true;
+      if (periodoVal) {
+        const dataVenda = new Date(v.data);
+        const diffTempo = Math.abs(hoje - dataVenda);
+        const diffDias = Math.ceil(diffTempo / (1000 * 60 * 60 * 24));
+        
+        if (periodoVal === "hoje") {
+          matchPeriodo = dataVenda.toDateString() === hoje.toDateString();
+        } else if (periodoVal === "7dias") {
+          matchPeriodo = diffDias <= 7;
+        } else if (periodoVal === "30dias") {
+          matchPeriodo = diffDias <= 30;
+        } else if (periodoVal === "mes") {
+          matchPeriodo = dataVenda.getMonth() === hoje.getMonth() && dataVenda.getFullYear() === hoje.getFullYear();
+        }
+      }
+      
+      return matchBusca && matchTipo && matchRevendedora && matchPeriodo;
+    });
+    
+    if (filtradas.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: var(--text-secondary); padding: 3rem;">Nenhuma venda encontrada com os filtros selecionados.</td></tr>`;
+    } else {
+      filtradas.forEach(v => {
+        faturamentoTotal += v.total;
+        if (v.tipo === 'direta') {
+          vendasDiretasTotal += v.total;
+        } else {
+          vendasRevendedorasTotal += v.total;
+          comissoesTotal += v.comissao;
+        }
+        
+        const dataStr = new Date(v.data).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' });
+        
+        const badgeStyle = v.tipo === 'direta' 
+          ? 'background: rgba(212, 175, 55, 0.15); border-color: rgba(212, 175, 55, 0.3); color: var(--gold-light);' 
+          : 'background: rgba(100, 181, 246, 0.15); border-color: rgba(100, 181, 246, 0.3); color: #90caf9;';
+        const badgeLabel = v.tipo === 'direta' ? 'Direta (Admin)' : 'Revendedora';
+        
+        const contatoWhatsApp = v.contato !== '—' 
+          ? `<a href="https://api.whatsapp.com/send?phone=55${v.contato.replace(/\D/g, '')}" target="_blank" style="color: #81c784; text-decoration: none;"><i class="fa-brands fa-whatsapp"></i> ${v.contato}</a>`
+          : '—';
+          
+        const clienteInfo = v.tipo === 'direta' 
+          ? `${v.cliente}<br><small style="color:var(--text-secondary);">${contatoWhatsApp}</small>`
+          : `${v.vendedor}<br><small style="color:var(--text-secondary);">${contatoWhatsApp}</small>`;
+          
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td style="color: var(--text-secondary); font-size: 0.85rem;">${dataStr}</td>
+          <td><span class="badge" style="${badgeStyle}">${badgeLabel}</span></td>
+          <td><strong>${v.nomeProduto}</strong><br><span style="font-size:0.78rem;color:var(--text-secondary);">${v.codigoProduto}</span></td>
+          <td>${v.quantidade} pçs</td>
+          <td>R$ ${v.precoVenda.toFixed(2).replace(".", ",")}</td>
+          <td style="color: var(--gold-primary); font-weight: 700;">R$ ${v.total.toFixed(2).replace(".", ",")}</td>
+          <td style="color: #81c784; font-weight: 700;">R$ ${v.comissao.toFixed(2).replace(".", ",")}</td>
+          <td>${clienteInfo}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+    
+    document.getElementById("vendas-geral-total").innerText = `R$ ${faturamentoTotal.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+    document.getElementById("vendas-geral-diretas").innerText = `R$ ${vendasDiretasTotal.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+    document.getElementById("vendas-geral-revendedoras").innerText = `R$ ${vendasRevendedorasTotal.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+    document.getElementById("vendas-geral-comissoes").innerText = `R$ ${comissoesTotal.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+  },
+
+  renderizarVendasIndividuaisRevendedora: function() {
+    const tbody = document.getElementById("tbody-vendas-individuais-revendedora");
+    if (!tbody) return;
+    tbody.innerHTML = "";
+    
+    const revId = this.state.revendedoraSelecionadaId;
+    if (!revId) return;
+    
+    const vendasRev = this.state.vendasConsolidadas.filter(v => v.tipo === 'revendedora' && v.usuarioId === revId);
+    
+    if (vendasRev.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-secondary); padding: 2rem;">Nenhuma venda registrada para esta revendedora.</td></tr>`;
+      return;
+    }
+    
+    vendasRev.forEach(v => {
+      const dataStr = new Date(v.data).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' });
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td style="color: var(--text-secondary); font-size: 0.85rem;">${dataStr}</td>
+        <td><strong>${v.nomeProduto}</strong><br><span style="font-size:0.78rem;color:var(--text-secondary);">${v.codigoProduto}</span></td>
+        <td>${v.quantidade} unid.</td>
+        <td>R$ ${v.precoVenda.toFixed(2).replace(".", ",")}</td>
+        <td style="color: var(--gold-primary); font-weight: 700;">R$ ${v.total.toFixed(2).replace(".", ",")}</td>
+        <td style="color: #81c784; font-weight: 700;">R$ ${v.comissao.toFixed(2).replace(".", ",")}</td>
+      `;
+      tbody.appendChild(tr);
+    });
   }
 
 };

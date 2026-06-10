@@ -18,6 +18,7 @@ model Usuario {
   comissao     Float              @default(30.0) // padrão 30%
   consignados  Consignado[]
   historico    HistoricoAcerto[]
+  vendas       VendaRevendedora[]
   createdAt    DateTime           @default(now())
 }
 
@@ -70,4 +71,17 @@ model VendaDireta {
   preco           Float
   whatsappCliente String?
   nomeCliente     String?
+}
+
+model VendaRevendedora {
+  id           String   @id @default(uuid())
+  data         DateTime @default(now())
+  usuarioId    String
+  produtoId    String
+  nomeProduto  String
+  codigoProduto String
+  quantidade   Int
+  precoVenda   Float
+  comissaoValor Float
+  usuario      Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
 }

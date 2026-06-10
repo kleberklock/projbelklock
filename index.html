@@ -76,11 +76,17 @@
           <li class="nav-item active" data-target="dashboard">
             <button id="btn-tab-dashboard"><i class="fa-solid fa-gem"></i>Painel Geral</button>
           </li>
+          <li class="nav-item" data-target="minha-maleta" id="menu-minha-maleta" style="display:none;">
+            <button id="btn-tab-minha-maleta"><i class="fa-solid fa-briefcase"></i>Minha Maleta</button>
+          </li>
           <li class="nav-item" data-target="estoque">
             <button id="btn-tab-estoque"><i class="fa-solid fa-boxes-stacked"></i>Estoque & Custos</button>
           </li>
           <li class="nav-item" data-target="revendedoras">
             <button id="btn-tab-revendedoras"><i class="fa-solid fa-users-line"></i>Revendedoras</button>
+          </li>
+          <li class="nav-item" data-target="vendas-geral" id="menu-vendas-geral">
+            <button id="btn-tab-vendas-geral"><i class="fa-solid fa-receipt"></i>Histórico de Vendas</button>
           </li>
           <li class="nav-item" data-target="marketing">
             <button id="btn-tab-marketing"><i class="fa-solid fa-wand-magic-sparkles"></i>Divulgação & Mkt</button>
@@ -294,6 +300,131 @@
       </section>
 
       <!-- ==========================================
+           ABA: MINHA MALETA (EXCLUSIVO REVENDEDORAS)
+           ========================================== -->
+      <section id="minha-maleta" class="app-section">
+        <div class="section-header">
+          <div class="section-title">
+            <h1 id="maleta-boas-vindas">Olá, Revendedora!</h1>
+            <p>Aqui está a sua maleta de semijoias e o resumo das suas vendas.</p>
+          </div>
+          <div class="header-actions">
+            <button class="btn-gold" id="btn-open-modal-venda-rev">
+              <i class="fa-solid fa-cash-register"></i> Fiz uma Venda!
+            </button>
+          </div>
+        </div>
+
+        <!-- Cards de Resumo -->
+        <div class="metrics-grid" id="maleta-metrics-grid">
+          <div class="metric-card">
+            <div class="metric-icon"><i class="fa-solid fa-briefcase"></i></div>
+            <div class="metric-info">
+              <h3>Peças na Maleta</h3>
+              <div class="metric-value" id="maleta-total-pecas">0 pçs</div>
+            </div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-icon"><i class="fa-solid fa-money-bill-wave"></i></div>
+            <div class="metric-info">
+              <h3>Valor da Maleta</h3>
+              <div class="metric-value" id="maleta-valor-total">R$ 0,00</div>
+            </div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-icon"><i class="fa-solid fa-percent"></i></div>
+            <div class="metric-info">
+              <h3>Comissão Projetada</h3>
+              <div class="metric-value comissao-destaque" id="maleta-comissao-projetada">R$ 0,00</div>
+            </div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-icon"><i class="fa-solid fa-check-circle"></i></div>
+            <div class="metric-info">
+              <h3>Vendas Registradas</h3>
+              <div class="metric-value vendas-destaque" id="maleta-vendas-hoje">0</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Abas: Maleta Atual | Histórico de Vendas -->
+        <div class="mkt-tabs" style="margin-bottom: 1.5rem;">
+          <button class="mkt-tab-btn active" id="btn-subtab-maleta-rev" onclick="app.mudarSubAbaMaleta('pecas')">
+            <i class="fa-solid fa-gem"></i> Minhas Peças
+          </button>
+          <button class="mkt-tab-btn" id="btn-subtab-historico-rev" onclick="app.mudarSubAbaMaleta('historico')">
+            <i class="fa-solid fa-receipt"></i> Histórico de Vendas
+          </button>
+        </div>
+
+        <!-- Sub-aba: Peças -->
+        <div id="sub-maleta-pecas" class="sub-aba-rev">
+          <div class="dashboard-panel">
+            <div class="panel-header">
+              <h2><i class="fa-solid fa-gem"></i> Peças Consignadas Comigo</h2>
+              <div style="display: flex; gap: 0.8rem; align-items: center;">
+                <input type="text" id="maleta-busca-peca" class="form-control" placeholder="Buscar peça..." style="width: 200px; padding: 0.5rem 0.8rem; font-size: 0.85rem;" oninput="app.filtrarMaletaPecas()">
+              </div>
+            </div>
+            <div class="table-responsive">
+              <table class="premium-table" id="table-minha-maleta">
+                <thead>
+                  <tr>
+                    <th>Código</th>
+                    <th>Peça</th>
+                    <th>Categoria</th>
+                    <th>Qtd. Consig.</th>
+                    <th>Preço de Venda</th>
+                    <th>Subtotal</th>
+                    <th>Sua Comissão</th>
+                    <th>Ação</th>
+                  </tr>
+                </thead>
+                <tbody id="tbody-minha-maleta">
+                  <tr>
+                    <td colspan="8" style="text-align: center; color: var(--text-secondary); padding: 3rem;">
+                      <i class="fa-solid fa-briefcase" style="font-size: 2rem; opacity: 0.3; display: block; margin-bottom: 0.8rem;"></i>
+                      Você ainda não tem peças consignadas. Entre em contato com a administradora.
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sub-aba: Histórico de Vendas -->
+        <div id="sub-maleta-historico" class="sub-aba-rev" style="display:none;">
+          <div class="dashboard-panel">
+            <div class="panel-header">
+              <h2><i class="fa-solid fa-receipt"></i> Minhas Vendas Registradas</h2>
+            </div>
+            <div class="table-responsive">
+              <table class="premium-table" id="table-vendas-revendedora">
+                <thead>
+                  <tr>
+                    <th>Data</th>
+                    <th>Produto</th>
+                    <th>Qtd.</th>
+                    <th>Preço Unit.</th>
+                    <th>Total Venda</th>
+                    <th>Sua Comissão</th>
+                  </tr>
+                </thead>
+                <tbody id="tbody-vendas-revendedora">
+                  <tr>
+                    <td colspan="6" style="text-align: center; color: var(--text-secondary); padding: 3rem;">
+                      Nenhuma venda registrada ainda. Use o botão "Fiz uma Venda!" para começar.
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==========================================
            ABA: GESTÃO DE REVENDEDORAS (CONSIGNADO)
            ========================================== -->
       <section id="revendedoras" class="app-section">
@@ -359,6 +490,7 @@
             <!-- Abas Internas da Revendedora: Maleta Atual vs Histórico -->
             <div class="mkt-tabs" style="margin-bottom: 1.5rem;">
               <button class="mkt-tab-btn active" id="btn-subtab-maleta" onclick="app.mudarSubAbaRevendedora('maleta')"><i class="fa-solid fa-briefcase"></i> Maleta Atual</button>
+              <button class="mkt-tab-btn" id="btn-subtab-vendas-rev" onclick="app.mudarSubAbaRevendedora('vendas')"><i class="fa-solid fa-receipt"></i> Histórico de Vendas</button>
               <button class="mkt-tab-btn" id="btn-subtab-historico" onclick="app.mudarSubAbaRevendedora('historico')"><i class="fa-solid fa-clock-rotate-left"></i> Histórico de Acertos</button>
             </div>
 
@@ -379,6 +511,30 @@
                   <tbody>
                     <tr>
                       <td colspan="5" style="text-align: center; color: var(--text-secondary);">Esta revendedora ainda não levou peças em consignação.</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Conteúdo Sub-Aba: Vendas Efetuadas -->
+            <div id="sub-aba-rev-vendas" class="sub-aba-rev" style="display: none;">
+              <h4 style="font-family: var(--font-title); font-size: 1.15rem; color: var(--gold-light); margin-bottom: 1rem;">Histórico de Vendas Efetuadas</h4>
+              <div class="table-responsive">
+                <table class="premium-table" id="table-vendas-individuais-revendedora">
+                  <thead>
+                    <tr>
+                      <th>Data</th>
+                      <th>Produto</th>
+                      <th>Qtd. Vendida</th>
+                      <th>Preço Unit.</th>
+                      <th>Total Venda</th>
+                      <th>Comissão Gerada</th>
+                    </tr>
+                  </thead>
+                  <tbody id="tbody-vendas-individuais-revendedora">
+                    <tr>
+                      <td colspan="6" style="text-align: center; color: var(--text-secondary); padding: 2rem;">Nenhuma venda registrada para esta revendedora.</td>
                     </tr>
                   </tbody>
                 </table>
@@ -420,6 +576,108 @@
             <i class="fa-solid fa-briefcase" style="font-size: 3rem; color: var(--gold-primary); opacity: 0.3; margin-bottom: 1.5rem;"></i>
             <h3 style="font-family: var(--font-title); color: var(--text-secondary); margin-bottom: 0.5rem;">Gestão de Consignados</h3>
             <p style="color: var(--text-muted); max-width: 400px;">Selecione uma revendedora na barra lateral ou cadastre uma nova para gerenciar as peças consignadas e fazer acertos.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==========================================
+           ABA: HISTÓRICO DE VENDAS CONSOLIDADAS (ADMIN)
+           ========================================== -->
+      <section id="vendas-geral" class="app-section">
+        <div class="section-header">
+          <div class="section-title">
+            <h2>Histórico de Vendas Consolidadas</h2>
+            <p>Monitore e filtre todas as vendas diretas e de revendedoras registradas na plataforma.</p>
+          </div>
+        </div>
+
+        <!-- Indicadores Numéricos Consolidados -->
+        <div class="metrics-grid" style="margin-bottom: 2rem;">
+          <div class="metric-card">
+            <div class="metric-icon"><i class="fa-solid fa-coins"></i></div>
+            <div class="metric-info">
+              <h3>Faturamento Total</h3>
+              <div class="metric-value" id="vendas-geral-total">R$ 0,00</div>
+            </div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-icon"><i class="fa-solid fa-store"></i></div>
+            <div class="metric-info">
+              <h3>Vendas Diretas</h3>
+              <div class="metric-value" id="vendas-geral-diretas" style="color: var(--gold-primary);">R$ 0,00</div>
+            </div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-icon"><i class="fa-solid fa-users"></i></div>
+            <div class="metric-info">
+              <h3>Vendas Revendedoras</h3>
+              <div class="metric-value" id="vendas-geral-revendedoras" style="color: #64b5f6;">R$ 0,00</div>
+            </div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-icon"><i class="fa-solid fa-percent"></i></div>
+            <div class="metric-info">
+              <h3>Comissões Pagas</h3>
+              <div class="metric-value" id="vendas-geral-comissoes" style="color: #81c784;">R$ 0,00</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="dashboard-panel" style="margin-bottom: 2rem;">
+          <div class="form-grid" style="grid-template-columns: 2fr 1fr 1fr 1fr; gap: 1rem; margin-bottom: 0;">
+            <div class="form-group" style="margin-bottom: 0;">
+              <label for="filtro-vendas-busca">Buscar Venda</label>
+              <input type="text" id="filtro-vendas-busca" class="form-control" placeholder="Buscar por produto, código ou vendedor..." oninput="app.renderizarVendasConsolidadas()">
+            </div>
+            <div class="form-group" style="margin-bottom: 0;">
+              <label for="filtro-vendas-tipo">Tipo de Venda</label>
+              <select id="filtro-vendas-tipo" class="form-control" onchange="app.renderizarVendasConsolidadas()">
+                <option value="">Todos os Tipos</option>
+                <option value="direta">Vendas Diretas (Admin)</option>
+                <option value="revendedora">Vendas de Revendedoras</option>
+              </select>
+            </div>
+            <div class="form-group" style="margin-bottom: 0;">
+              <label for="filtro-vendas-revendedora">Revendedora</label>
+              <select id="filtro-vendas-revendedora" class="form-control" onchange="app.renderizarVendasConsolidadas()">
+                <option value="">Todas as Revendedoras</option>
+                <!-- Populado via JS -->
+              </select>
+            </div>
+            <div class="form-group" style="margin-bottom: 0;">
+              <label for="filtro-vendas-periodo">Período</label>
+              <select id="filtro-vendas-periodo" class="form-control" onchange="app.renderizarVendasConsolidadas()">
+                <option value="">Todo o Período</option>
+                <option value="hoje">Hoje</option>
+                <option value="7dias">Últimos 7 dias</option>
+                <option value="30dias">Últimos 30 dias</option>
+                <option value="mes">Este Mês</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="dashboard-panel">
+          <div class="table-responsive">
+            <table class="premium-table" id="table-historico-vendas-geral">
+              <thead>
+                <tr>
+                  <th>Data</th>
+                  <th>Origem/Vendedor</th>
+                  <th>Produto</th>
+                  <th>Qtd.</th>
+                  <th>Preço Unit.</th>
+                  <th>Valor Total</th>
+                  <th>Comissão</th>
+                  <th>Cliente / Contato</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-historico-vendas-geral">
+                <tr>
+                  <td colspan="8" style="text-align: center; color: var(--text-secondary); padding: 3rem;">Nenhuma venda registrada no sistema.</td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
       </section>
@@ -982,6 +1240,72 @@
       <div class="modal-footer">
         <button class="btn-outline-gold" id="btn-cancelar-venda-rapida">Cancelar</button>
         <button class="btn-gold" id="btn-enviar-venda-rapida"><i class="fa-brands fa-whatsapp"></i> Gerar e Enviar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================
+       MODAL: FIZ UMA VENDA! (REVENDEDORA)
+       ========================================== -->
+  <div class="modal-backdrop" id="modal-venda-rev">
+    <div class="modal-card modal-venda-rev-card">
+      <div class="modal-title-row">
+        <h3><i class="fa-solid fa-cash-register logo-venda-rev"></i> Registrar Venda</h3>
+        <button class="btn-close-modal" id="btn-close-modal-venda-rev"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <div class="venda-rev-form-container">
+        <div class="form-group">
+          <label for="venda-rev-produto">Qual peça você vendeu? *</label>
+          <select id="venda-rev-produto" class="form-control" onchange="app.atualizarPreviewVendaRev()">
+            <option value="">— Selecione uma peça da sua maleta —</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="venda-rev-qtd">Quantidade vendida *</label>
+          <div class="acerto-input-wrapper">
+            <button class="btn-input-adjust" onclick="app.ajustarQtdVendaRev(-1)"><i class="fa-solid fa-minus"></i></button>
+            <input type="number" id="venda-rev-qtd" class="form-control input-venda-rev-qtd" value="1" min="1" max="99" oninput="app.atualizarPreviewVendaRev()">
+            <button class="btn-input-adjust" onclick="app.ajustarQtdVendaRev(1)"><i class="fa-solid fa-plus"></i></button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Preview do Cálculo -->
+      <div id="venda-rev-preview" class="venda-rev-preview-box" style="display:none;">
+        <h4 class="venda-rev-preview-title">📊 Resumo da Venda</h4>
+        <div class="pricing-row">
+          <span>Peça</span>
+          <span id="prev-venda-nome" class="venda-rev-preview-nome">—</span>
+        </div>
+        <div class="pricing-row">
+          <span>Quantidade</span>
+          <span id="prev-venda-qtd">1 unid.</span>
+        </div>
+        <div class="pricing-row">
+          <span>Preço por unidade</span>
+          <span id="prev-venda-preco-unit">R$ 0,00</span>
+        </div>
+        <div class="pricing-row total-venda-rev-row">
+          <span>Total da Venda</span>
+          <span id="prev-venda-total">R$ 0,00</span>
+        </div>
+        <div class="pricing-row profit profit-venda-rev-row">
+          <span>💰 Sua Comissão (<span id="prev-venda-comissao-pct">30</span>%)</span>
+          <span id="prev-venda-comissao-valor">R$ 0,00</span>
+        </div>
+      </div>
+
+      <div id="venda-rev-aviso" class="venda-rev-aviso-box" style="display:none;">
+        <i class="fa-solid fa-circle-exclamation"></i> <span id="venda-rev-aviso-texto"></span>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn-outline-gold" id="btn-cancelar-venda-rev">Cancelar</button>
+        <button class="btn-gold" id="btn-confirmar-venda-rev">
+          <i class="fa-solid fa-check"></i> Confirmar Venda
+        </button>
       </div>
     </div>
   </div>
