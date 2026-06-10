@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 120" width="100%" height="100%">
+  <defs>
+    <!-- Gradiente dourado premium -->
+    <linearGradient id="gold-gradient" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#9a721c" />
+      <stop offset="25%" stop-color="#d4af37" />
+      <stop offset="50%" stop-color="#f9e8a2" />
+      <stop offset="75%" stop-color="#d4af37" />
+      <stop offset="100%" stop-color="#aa7c11" />
+    </linearGradient>
+
+    <!-- Gradiente de Prata/Platina Metálico para o anel -->
+    <linearGradient id="silver-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#e0e0e0" />
+      <stop offset="30%" stop-color="#ffffff" />
+      <stop offset="70%" stop-color="#b0b0b0" />
+      <stop offset="100%" stop-color="#f5f5f5" />
+    </linearGradient>
+
+    <!-- Efeito de brilho dourado sutil -->
+    <filter id="gold-glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="1.5" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+
+  <!-- ==========================================
+       ÍCONE: LOGOTIPO CIRCULAR "B-ANEL"
+       ========================================== -->
+  <g transform="translate(10, 0)">
+    <!-- Círculo de fundo preto profundo com borda dourada fina de luxo -->
+    <circle cx="60" cy="60" r="50" fill="#000000" stroke="url(#gold-gradient)" stroke-width="1.5" filter="url(#gold-glow)" />
+
+    <!-- Haste vertical da letra "b" em gradiente dourado metálico -->
+    <rect x="39" y="28" width="8" height="64" rx="3" fill="url(#gold-gradient)" />
+
+    <!-- Aro do anel circular (barriga do "b") em gradiente prata/platina -->
+    <circle cx="68" cy="65" r="23" fill="none" stroke="url(#silver-gradient)" stroke-width="3.5" />
+
+    <!-- Diamante facetado no canto superior direito do anel -->
+    <!-- Coordenadas centradas em x=84.5, y=48.5 -->
+    <g transform="translate(0, 0)">
+      <!-- Corpo principal do diamante (lapidação brilhante) -->
+      <!-- Topo reto, lados inclinados e cone inferior apontando para o anel -->
+      <polygon points="80,43 89,43 93,47 84.5,56 76,47" fill="#ffffff" stroke="#000000" stroke-width="0.5" />
+      
+      <!-- Facetas internas da lapidação em prata sutil -->
+      <line x1="76" y1="47" x2="93" y2="47" stroke="#b0b0b0" stroke-width="0.5" />
+      <line x1="84.5" y1="56" x2="80" y2="47" stroke="#b0b0b0" stroke-width="0.5" />
+      <line x1="84.5" y1="56" x2="89" y2="47" stroke="#b0b0b0" stroke-width="0.5" />
+      <line x1="84.5" y1="56" x2="84.5" y2="43" stroke="#b0b0b0" stroke-width="0.5" />
+      <line x1="80" y1="43" x2="80" y2="47" stroke="#b0b0b0" stroke-width="0.5" />
+      <line x1="89" y1="43" x2="89" y2="47" stroke="#b0b0b0" stroke-width="0.5" />
+    </g>
+
+    <!-- Feixes de brilho do diamante (idênticos aos da imagem de referência) -->
+    <!-- Haste 1: Inclinada para cima e direita -->
+    <line x1="94" y1="39" x2="99" y2="34" stroke="url(#gold-gradient)" stroke-width="1.8" stroke-linecap="round" />
+    <!-- Haste 2: Vertical para cima -->
+    <line x1="87" y1="36" x2="87" y2="29" stroke="url(#gold-gradient)" stroke-width="1.8" stroke-linecap="round" />
+    <!-- Haste 3: Horizontal para a direita -->
+    <line x1="98" y1="46" x2="105" y2="46" stroke="url(#gold-gradient)" stroke-width="1.8" stroke-linecap="round" />
+  </g>
+
+  <!-- ==========================================
+       TIPOGRAFIA DE LUXO AO LADO DO ÍCONE
+       ========================================== -->
+  <g transform="translate(135, 0)">
+    <!-- Título Principal com fonte Playfair serifada em gradiente de ouro -->
+    <text x="0" y="62" font-family="'Playfair Display', 'Didot', 'Georgia', serif" font-size="38" font-weight="700" fill="url(#gold-gradient)" letter-spacing="4" filter="url(#gold-glow)">BELKLOCK</text>
+    <!-- Subtítulo Jakarta moderno em cinza elegante com espaçamento largo -->
+    <text x="3" y="88" font-family="'Plus Jakarta Sans', 'Inter', 'Helvetica', sans-serif" font-size="13" font-weight="500" fill="#a0a0a0" letter-spacing="8">SEMIJOIAS DE LUXO</text>
+  </g>
+</svg>
