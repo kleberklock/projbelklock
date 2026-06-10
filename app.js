@@ -893,12 +893,34 @@ const app = {
     });
   },
 
-  alterarQtdEstoque: function(prodId, delta) {
+  alterarQtdEstoque: async function(prodId, delta) {
     const prod = this.state.produtos.find(p => p.id === prodId);
     if (prod) {
       const novaQtd = Number(prod.quantidade || 0) + delta;
       if (novaQtd >= 0) {
         prod.quantidade = novaQtd;
+        // Atualiza _valoresDinamicos localmente
+        if (prod._valoresDinamicos) {
+          prod._valoresDinamicos["Estoque Central"] = novaQtd;
+        }
+        // Persiste no servidor se autenticado
+        if (this.state.token) {
+          try {
+            await this.requisitarAPI(`/produtos/${prodId}`, "PUT", {
+              codigo: prod.codigo,
+              nome: prod.nome,
+              categoria: prod.categoria,
+              quantidade: novaQtd,
+              custoBruto: prod.custoBruto,
+              custoBanho: prod.custoBanho,
+              custoLiquido: prod.custoLiquido,
+              markup: prod.markup,
+              fotoUrl: prod.fotoUrl
+            });
+          } catch (err) {
+            console.warn("Falha ao persistir quantidade na API:", err.message);
+          }
+        }
         this.salvarDadosNoLocalStorage();
         this.renderizarEstoque();
         this.renderizarDashboard();
@@ -1024,10 +1046,14 @@ const app = {
       this.renderizarDashboard();
       
       document.getElementById("modal-produto").classList.remove("active");
+      
+      // Navega para aba de estoque para o usuário ver o produto que acabou de cadastrar/editar
+      this.navegarParaAba("estoque");
+      
       alert(editId ? "Produto atualizado com sucesso!" : "Produto cadastrado com sucesso!");
     } catch (error) {
       console.error(error);
-      alert("Erro ao salvar produto no banco de dados Azure: " + error.message);
+      alert("Erro ao salvar produto no banco de dados: " + error.message);
     }
   },
 
@@ -1328,6 +1354,10 @@ const app = {
           const prod = this.state.produtos.find(p => p.id === item.produtoId);
           if (prod) {
             prod.quantidade = Number(prod.quantidade || 0) + Number(item.quantidadeConsignada || 0);
+            // Atualiza _valoresDinamicos para refletir na tabela de estoque imediatamente
+            if (prod._valoresDinamicos) {
+              prod._valoresDinamicos["Estoque Central"] = prod.quantidade;
+            }
           }
         });
 
@@ -1506,6 +1536,10 @@ const app = {
 
             // Deduz do estoque central localmente
             prod.quantidade -= qtdConsignar;
+            // Atualiza _valoresDinamicos para refletir na tabela de estoque imediatamente
+            if (prod._valoresDinamicos) {
+              prod._valoresDinamicos["Estoque Central"] = prod.quantidade;
+            }
 
             // Calcula preço de venda
             const custoTotal = Number(prod.custoBruto || 0) + Number(prod.custoBanho || 0) + Number(prod.custoLiquido || 0);
@@ -1793,6 +1827,10 @@ const app = {
         const prodOriginal = this.state.produtos.find(p => p.id === item.produtoId);
         if (prodOriginal) {
           prodOriginal.quantidade = Number(prodOriginal.quantidade || 0) + item.quantidadeDevolvida;
+          // Atualiza _valoresDinamicos para refletir na tabela de estoque imediatamente
+          if (prodOriginal._valoresDinamicos) {
+            prodOriginal._valoresDinamicos["Estoque Central"] = prodOriginal.quantidade;
+          }
         }
       }
     });
