@@ -761,8 +761,11 @@
   <!-- ==========================================
        MODAL: CONSIGNAR PEÇAS (MONTAR KITS)
        ========================================== -->
+  <!-- ==========================================
+       MODAL: CONSIGNAR PEÇAS (MONTAR KITS)
+       ========================================== -->
   <div class="modal-backdrop" id="modal-consignar">
-    <div class="modal-card">
+    <div class="modal-card" style="width: 900px; max-width: 95%;">
       <div class="modal-title-row">
         <h3>Consignar Semijoias</h3>
         <button class="btn-close-modal" id="btn-close-modal-consignar"><i class="fa-solid fa-xmark"></i></button>
@@ -772,21 +775,65 @@
         Selecione e transfira peças do seu <strong>Estoque Central</strong> para a maleta em consignação de: <strong id="consignar-nome-revendedora" style="color: var(--gold-primary);">Revendedora</strong>.
       </p>
 
-      <div class="table-responsive" style="max-height: 40vh;">
-        <table class="premium-table" id="table-selecionar-consignar">
-          <thead>
-            <tr>
-              <th>Código</th>
-              <th>Nome</th>
-              <th>Preço Venda</th>
-              <th>Disponível</th>
-              <th>Consignar Qtd.</th>
-            </tr>
-          </thead>
-          <tbody>
-            <!-- Renderizado via JS -->
-          </tbody>
-        </table>
+      <div class="form-grid" style="grid-template-columns: 2fr 1fr; gap: 1.5rem; align-items: start;">
+        <!-- Lado Esquerdo: Busca e Tabela -->
+        <div>
+          <!-- Barra de Busca e Filtro de Categoria -->
+          <div class="form-grid" style="grid-template-columns: 2fr 1fr; gap: 0.8rem; margin-bottom: 1rem;">
+            <div class="form-group" style="margin-bottom: 0;">
+              <input type="text" id="consignar-busca" class="form-control" placeholder="Buscar por código ou nome..." oninput="app.filtrarTabelaConsignar()">
+            </div>
+            <div class="form-group" style="margin-bottom: 0;">
+              <select id="consignar-filtro-categoria" class="form-control" onchange="app.filtrarTabelaConsignar()">
+                <option value="">Todas as Categorias</option>
+                <option value="Brincos">Brincos</option>
+                <option value="Colares">Colares</option>
+                <option value="Anéis">Anéis</option>
+                <option value="Pulseiras">Pulseiras</option>
+                <option value="Conjuntos">Conjuntos</option>
+                <option value="Outros">Outros</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="table-responsive" style="max-height: 45vh; border: 1px solid rgba(212, 175, 55, 0.15); border-radius: var(--radius-md); background: var(--bg-absolute);">
+            <table class="premium-table" id="table-selecionar-consignar">
+              <thead>
+                <tr>
+                  <th>Código</th>
+                  <th>Nome</th>
+                  <th>Preço Venda</th>
+                  <th>Disponível</th>
+                  <th>Consignar Qtd.</th>
+                </tr>
+              </thead>
+              <tbody>
+                <!-- Renderizado via JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Lado Direito: Resumo do Lote de Consignação -->
+        <div>
+          <div class="pricing-calculator-card" style="position: static; padding: 1.5rem; border-color: rgba(212, 175, 55, 0.45);">
+            <h3 style="font-size: 1.2rem; margin-bottom: 1.2rem; padding-bottom: 0.6rem;">Resumo do Envio</h3>
+            
+            <div class="pricing-row">
+              <span>Peças Selecionadas</span>
+              <span id="consignar-total-pecas" style="color: var(--text-primary); font-weight: 600;">0 pçs</span>
+            </div>
+            
+            <div class="pricing-row total" style="margin: 0.8rem 0; padding: 0.8rem 0; font-size: 1.1rem;">
+              <span>Valor Total Bruto</span>
+              <span id="consignar-valor-total">R$ 0,00</span>
+            </div>
+
+            <div class="pricing-footer-tip" style="margin-top: 1rem; font-size: 0.75rem;">
+              * As peças serão debitadas do Estoque Central e adicionadas à maleta da revendedora.
+            </div>
+          </div>
+        </div>
       </div>
 
       <div class="modal-footer">
@@ -800,7 +847,7 @@
        MODAL: REALIZAR ACERTO (FECHAMENTO DE CONTAS)
        ========================================== -->
   <div class="modal-backdrop" id="modal-acerto">
-    <div class="modal-card" style="width: 800px; max-width: 95%;">
+    <div class="modal-card" style="width: 950px; max-width: 95%;">
       <div class="modal-title-row">
         <h3>Fechamento de Acerto Consignado</h3>
         <button class="btn-close-modal" id="btn-close-modal-acerto"><i class="fa-solid fa-xmark"></i></button>
@@ -810,53 +857,75 @@
         Registrando devoluções e vendas da revendedora <strong id="acerto-nome-revendedora" style="color: var(--gold-primary);">Revendedora</strong>. Os itens devolvidos retornarão automaticamente para o Estoque Central.
       </p>
 
-      <div class="form-grid" style="grid-template-columns: 2fr 1.2fr; gap: 1.5rem;">
-        <!-- Tabela de preenchimento do acerto -->
-        <div class="table-responsive" style="max-height: 50vh;">
-          <table class="premium-table" id="table-preencher-acerto">
-            <thead>
-              <tr>
-                <th>Produto</th>
-                <th>Consignadas</th>
-                <th>Vendidas</th>
-                <th>Devolvidas</th>
-              </tr>
-            </thead>
-            <tbody>
-              <!-- Inserido dinamicamente pelo JS -->
-            </tbody>
-          </table>
+      <div class="form-grid" style="grid-template-columns: 2.2fr 1fr; gap: 1.5rem; align-items: start;">
+        <!-- Lado Esquerdo: Filtros e Tabela de Acerto -->
+        <div>
+          <!-- Barra de Busca Interna e Atalhos em Massa -->
+          <div style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap;">
+            <div class="form-group" style="margin-bottom: 0; flex-grow: 1; max-width: 300px;">
+              <input type="text" id="acerto-busca" class="form-control" placeholder="Buscar peça na maleta..." oninput="app.filtrarTabelaAcerto()">
+            </div>
+            
+            <div style="display: flex; gap: 0.5rem;">
+              <button class="btn-outline-gold" style="font-size: 0.8rem; padding: 0.5rem 0.8rem;" onclick="app.marcarAcertoEmMassa('vender_tudo')">
+                <i class="fa-solid fa-tags"></i> Vender Tudo
+              </button>
+              <button class="btn-outline-gold" style="font-size: 0.8rem; padding: 0.5rem 0.8rem; color: #ef9a9a; border-color: rgba(198, 40, 40, 0.2);" onclick="app.marcarAcertoEmMassa('devolver_tudo')">
+                <i class="fa-solid fa-rotate-left"></i> Devolver Tudo
+              </button>
+            </div>
+          </div>
+
+          <div class="table-responsive" style="max-height: 50vh; border: 1px solid rgba(212, 175, 55, 0.15); border-radius: var(--radius-md); background: var(--bg-absolute);">
+            <table class="premium-table" id="table-preencher-acerto">
+              <thead>
+                <tr>
+                  <th>Produto</th>
+                  <th>Preço Unit.</th>
+                  <th>Consignadas</th>
+                  <th style="width: 140px; text-align: center;">Vendas</th>
+                  <th style="width: 140px; text-align: center;">Devoluções</th>
+                  <th style="text-align: right;">Atalhos</th>
+                </tr>
+              </thead>
+              <tbody>
+                <!-- Inserido dinamicamente pelo JS -->
+              </tbody>
+            </table>
+          </div>
         </div>
 
-        <!-- Calculadora e Resumo Financeiro do Fechamento -->
-        <div class="pricing-calculator-card" style="position: static; padding: 1.5rem;">
-          <h3 style="font-size: 1.25rem;">Balanço do Fechamento</h3>
-          
-          <div class="pricing-row">
-            <span>Total Peças Levadas</span>
-            <span id="acerto-total-peças-levadas">0 pçs</span>
-          </div>
-          <div class="pricing-row">
-            <span>Faturamento Bruto</span>
-            <span id="acerto-total-faturamento-bruto" style="color: var(--gold-primary); font-weight: 700;">R$ 0,00</span>
-          </div>
-          <div class="pricing-row">
-            <span>Comissão (<span id="acerto-comissao-percent">30</span>%)</span>
-            <span id="acerto-comissao-valor" style="color: var(--text-secondary);">R$ 0,00</span>
-          </div>
+        <!-- Lado Direito: Calculadora e Resumo Financeiro do Fechamento -->
+        <div>
+          <div class="pricing-calculator-card" style="position: static; padding: 1.5rem; border-color: rgba(212, 175, 55, 0.45);">
+            <h3 style="font-size: 1.25rem; margin-bottom: 1.2rem; padding-bottom: 0.6rem;">Balanço do Fechamento</h3>
+            
+            <div class="pricing-row">
+              <span>Total Peças Levadas</span>
+              <span id="acerto-total-peças-levadas">0 pçs</span>
+            </div>
+            <div class="pricing-row">
+              <span>Faturamento Bruto</span>
+              <span id="acerto-total-faturamento-bruto" style="color: var(--gold-primary); font-weight: 700;">R$ 0,00</span>
+            </div>
+            <div class="pricing-row">
+              <span>Comissão (<span id="acerto-comissao-percent">30</span>%)</span>
+              <span id="acerto-comissao-valor" style="color: var(--text-secondary);">R$ 0,00</span>
+            </div>
 
-          <div class="pricing-row total" style="margin: 0.8rem 0; padding: 0.8rem 0;">
-            <span>A pagar para BelKlock</span>
-            <span id="acerto-total-liquido-receber">R$ 0,00</span>
-          </div>
+            <div class="pricing-row total" style="margin: 0.8rem 0; padding: 0.8rem 0; font-size: 1.15rem; background: rgba(212, 175, 55, 0.05); padding-left: 0.5rem; padding-right: 0.5rem; border-radius: var(--radius-sm);">
+              <span>A pagar para BelKlock</span>
+              <span id="acerto-total-liquido-receber">R$ 0,00</span>
+            </div>
 
-          <div style="display: flex; flex-direction: column; gap: 0.8rem; margin-top: 1.5rem;">
-            <button class="btn-gold" id="btn-finalizar-acerto-whats" style="font-size: 0.85rem; padding: 0.6rem; justify-content: center;">
-              <i class="fa-brands fa-whatsapp"></i> WhatsApp e Fechar
-            </button>
-            <button class="btn-outline-gold" id="btn-finalizar-acerto-excel" style="font-size: 0.85rem; padding: 0.6rem; justify-content: center;">
-              <i class="fa-solid fa-file-excel"></i> Exportar Acerto Excel
-            </button>
+            <div style="display: flex; flex-direction: column; gap: 0.8rem; margin-top: 1.5rem;">
+              <button class="btn-gold" id="btn-finalizar-acerto-whats" style="font-size: 0.85rem; padding: 0.75rem; justify-content: center;">
+                <i class="fa-brands fa-whatsapp"></i> WhatsApp e Fechar
+              </button>
+              <button class="btn-outline-gold" id="btn-finalizar-acerto-excel" style="font-size: 0.85rem; padding: 0.75rem; justify-content: center;">
+                <i class="fa-solid fa-file-excel"></i> Exportar Acerto Excel
+              </button>
+            </div>
           </div>
         </div>
       </div>

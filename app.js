@@ -612,9 +612,19 @@ const app = {
         this.limparFormRevendedora();
       }
       if (modalId === "modal-consignar") {
+        const buscaInput = document.getElementById("consignar-busca");
+        const filtroCat = document.getElementById("consignar-filtro-categoria");
+        if (buscaInput) buscaInput.value = "";
+        if (filtroCat) filtroCat.value = "";
+        const totPecas = document.getElementById("consignar-total-pecas");
+        const valTotal = document.getElementById("consignar-valor-total");
+        if (totPecas) totPecas.innerText = "0 pçs";
+        if (valTotal) valTotal.innerText = "R$ 0,00";
         this.renderizarTabelaSelecaoConsignado();
       }
       if (modalId === "modal-acerto") {
+        const buscaInput = document.getElementById("acerto-busca");
+        if (buscaInput) buscaInput.value = "";
         this.renderizarTabelaPreencherAcerto();
       }
     };
@@ -1359,17 +1369,86 @@ const app = {
       const precoVenda = custoTotal * Number(p.markup || 1);
 
       const tr = document.createElement("tr");
+      tr.setAttribute("data-categoria", p.categoria);
       tr.innerHTML = `
         <td><strong>${p.codigo || ""}</strong></td>
         <td>${p.nome}</td>
         <td style="color: var(--gold-primary); font-weight: 600;">R$ ${precoVenda.toFixed(2).replace(".", ",")}</td>
         <td>${p.quantidade} pçs</td>
         <td>
-          <input type="number" class="acerto-input input-consign-qty" data-prod-id="${p.id}" value="0" min="0" max="${p.quantidade}" style="width: 75px;">
+          <div class="acerto-input-wrapper">
+            <button class="btn-input-adjust" onclick="app.ajustarQtdInputConsignar(this, -1, ${p.quantidade})"><i class="fa-solid fa-minus"></i></button>
+            <input type="number" class="input-consign-qty" data-prod-id="${p.id}" value="0" min="0" max="${p.quantidade}" oninput="app.validarESincronizarConsignar(this, ${p.quantidade})">
+            <button class="btn-input-adjust" onclick="app.ajustarQtdInputConsignar(this, 1, ${p.quantidade})"><i class="fa-solid fa-plus"></i></button>
+          </div>
         </td>
       `;
       tbody.appendChild(tr);
     });
+  },
+
+  filtrarTabelaConsignar: function() {
+    const busca = document.getElementById("consignar-busca").value.toLowerCase();
+    const categoria = document.getElementById("consignar-filtro-categoria").value;
+    const linhas = document.querySelectorAll("#table-selecionar-consignar tbody tr");
+    
+    linhas.forEach(tr => {
+      const tdCodigo = tr.querySelector("td:nth-child(1)");
+      const tdNome = tr.querySelector("td:nth-child(2)");
+      if (!tdCodigo || !tdNome) return;
+      
+      const codigo = tdCodigo.textContent.toLowerCase();
+      const nome = tdNome.textContent.toLowerCase();
+      const cat = tr.getAttribute("data-categoria") || "";
+      
+      const matchBusca = codigo.includes(busca) || nome.includes(busca);
+      const matchCategoria = !categoria || cat === categoria;
+      
+      if (matchBusca && matchCategoria) {
+        tr.style.display = "";
+      } else {
+        tr.style.display = "none";
+      }
+    });
+  },
+
+  ajustarQtdInputConsignar: function(btn, delta, max) {
+    const input = btn.parentElement.querySelector("input");
+    if (input) {
+      let val = parseInt(input.value) || 0;
+      val = Math.min(Math.max(val + delta, 0), max);
+      input.value = val;
+      this.atualizarResumoConsignacao();
+    }
+  },
+
+  validarESincronizarConsignar: function(input, max) {
+    let val = parseInt(input.value) || 0;
+    val = Math.min(Math.max(val, 0), max);
+    input.value = val;
+    this.atualizarResumoConsignacao();
+  },
+
+  atualizarResumoConsignacao: function() {
+    let totalPecas = 0;
+    let valorTotal = 0;
+    
+    document.querySelectorAll(".input-consign-qty").forEach(input => {
+      const qtd = parseInt(input.value) || 0;
+      if (qtd > 0) {
+        totalPecas += qtd;
+        const prodId = input.getAttribute("data-prod-id");
+        const prod = this.state.produtos.find(p => p.id === prodId);
+        if (prod) {
+          const custoTotal = Number(prod.custoBruto || 0) + Number(prod.custoBanho || 0) + Number(prod.custoLiquido || 0);
+          const precoVenda = custoTotal * Number(prod.markup || 1);
+          valorTotal += precoVenda * qtd;
+        }
+      }
+    });
+    
+    document.getElementById("consignar-total-pecas").innerText = `${totalPecas} pçs`;
+    document.getElementById("consignar-valor-total").innerText = `R$ ${valorTotal.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
   },
 
   processarConsignacao: async function() {
@@ -1478,7 +1557,7 @@ const app = {
     if (!rev.consignado || rev.consignado.length === 0) {
       tbody.innerHTML = `
         <tr>
-          <td colspan="4" style="text-align: center; color: var(--text-secondary); padding: 2rem;">
+          <td colspan="6" style="text-align: center; color: var(--text-secondary); padding: 2rem;">
             Nenhuma peça consignada para acertar.
           </td>
         </tr>
@@ -1494,23 +1573,102 @@ const app = {
           <strong>${item.codigo}</strong><br>
           <span style="font-size: 0.8rem; color: var(--text-secondary);">${item.nome}</span>
         </td>
+        <td>R$ ${Number(item.precoVenda).toFixed(2).replace(".", ",")}</td>
         <td><strong>${item.quantidadeConsignada}</strong> pçs</td>
         <td>
-          <input type="number" class="acerto-input input-acerto-vendido" 
-                 data-prod-id="${item.produtoId}" 
-                 value="0" min="0" max="${item.quantidadeConsignada}" 
-                 oninput="app.sincronizarAcertoQuantidades(this, 'vendido')">
+          <div class="acerto-input-wrapper">
+            <button class="btn-input-adjust" onclick="app.ajustarQtdAcerto(this, -1, 'vendido', ${item.quantidadeConsignada})"><i class="fa-solid fa-minus"></i></button>
+            <input type="number" class="input-acerto-vendido" 
+                   data-prod-id="${item.produtoId}" 
+                   value="0" min="0" max="${item.quantidadeConsignada}" 
+                   oninput="app.sincronizarAcertoQuantidades(this, 'vendido')">
+            <button class="btn-input-adjust" onclick="app.ajustarQtdAcerto(this, 1, 'vendido', ${item.quantidadeConsignada})"><i class="fa-solid fa-plus"></i></button>
+          </div>
         </td>
         <td>
-          <input type="number" class="acerto-input input-acerto-devolvido" 
-                 data-prod-id="${item.produtoId}" 
-                 value="${item.quantidadeConsignada}" min="0" max="${item.quantidadeConsignada}" 
-                 oninput="app.sincronizarAcertoQuantidades(this, 'devolvido')">
+          <div class="acerto-input-wrapper">
+            <button class="btn-input-adjust" onclick="app.ajustarQtdAcerto(this, -1, 'devolvido', ${item.quantidadeConsignada})"><i class="fa-solid fa-minus"></i></button>
+            <input type="number" class="input-acerto-devolvido" 
+                   data-prod-id="${item.produtoId}" 
+                   value="${item.quantidadeConsignada}" min="0" max="${item.quantidadeConsignada}" 
+                   oninput="app.sincronizarAcertoQuantidades(this, 'devolvido')">
+            <button class="btn-input-adjust" onclick="app.ajustarQtdAcerto(this, 1, 'devolvido', ${item.quantidadeConsignada})"><i class="fa-solid fa-plus"></i></button>
+          </div>
+        </td>
+        <td style="text-align: right;">
+          <div style="display: flex; gap: 0.3rem; justify-content: flex-end;">
+            <button class="btn-shortcut" onclick="app.definirAcertoLinha('${item.produtoId}', 'venda', ${item.quantidadeConsignada})">Vendeu Tudo</button>
+            <button class="btn-shortcut danger" onclick="app.definirAcertoLinha('${item.produtoId}', 'devolucao', ${item.quantidadeConsignada})">Devolveu Tudo</button>
+          </div>
         </td>
       `;
       tbody.appendChild(tr);
     });
 
+    this.calcularResumoFechamentoAcerto();
+  },
+
+  filtrarTabelaAcerto: function() {
+    const busca = document.getElementById("acerto-busca").value.toLowerCase();
+    const linhas = document.querySelectorAll("#table-preencher-acerto tbody tr");
+    
+    linhas.forEach(tr => {
+      const tdInfo = tr.querySelector("td:nth-child(1)");
+      if (!tdInfo) return;
+      
+      const texto = tdInfo.textContent.toLowerCase();
+      if (texto.includes(busca)) {
+        tr.style.display = "";
+      } else {
+        tr.style.display = "none";
+      }
+    });
+  },
+
+  ajustarQtdAcerto: function(btn, delta, acao, max) {
+    const input = btn.parentElement.querySelector("input");
+    if (input) {
+      let val = parseInt(input.value) || 0;
+      val = Math.min(Math.max(val + delta, 0), max);
+      input.value = val;
+      this.sincronizarAcertoQuantidades(input, acao);
+    }
+  },
+
+  definirAcertoLinha: function(prodId, acao, max) {
+    const inputVendido = document.querySelector(`.input-acerto-vendido[data-prod-id="${prodId}"]`);
+    const inputDevolvido = document.querySelector(`.input-acerto-devolvido[data-prod-id="${prodId}"]`);
+    if (inputVendido && inputDevolvido) {
+      if (acao === 'venda') {
+        inputVendido.value = max;
+        inputDevolvido.value = 0;
+      } else {
+        inputVendido.value = 0;
+        inputDevolvido.value = max;
+      }
+      this.calcularResumoFechamentoAcerto();
+    }
+  },
+
+  marcarAcertoEmMassa: function(acao) {
+    const rev = this.state.revendedoras.find(r => r.id === this.state.revendedoraSelecionadaId);
+    if (!rev || !rev.consignado) return;
+    
+    rev.consignado.forEach(item => {
+      const prodId = item.produtoId;
+      const max = item.quantidadeConsignada;
+      const inputVendido = document.querySelector(`.input-acerto-vendido[data-prod-id="${prodId}"]`);
+      const inputDevolvido = document.querySelector(`.input-acerto-devolvido[data-prod-id="${prodId}"]`);
+      if (inputVendido && inputDevolvido) {
+        if (acao === 'vender_tudo') {
+          inputVendido.value = max;
+          inputDevolvido.value = 0;
+        } else {
+          inputVendido.value = 0;
+          inputDevolvido.value = max;
+        }
+      }
+    });
     this.calcularResumoFechamentoAcerto();
   },
 
