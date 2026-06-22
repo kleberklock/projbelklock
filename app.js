@@ -12,6 +12,7 @@ const app = {
     usuarioLogado: null,
     produtos: [],
     revendedoras: [],
+    clientes: [],
     feedImagens: [],
     abaAtiva: "dashboard",
     subAbaMktAtiva: "feed",
@@ -199,6 +200,7 @@ const app = {
     const menuEstoque = document.querySelector('.nav-item[data-target="estoque"]');
     const menuMarketing = document.querySelector('.nav-item[data-target="marketing"]');
     const menuDashboard = document.querySelector('.nav-item[data-target="dashboard"]');
+    const menuClientes = document.querySelector('.nav-item[data-target="clientes"]');
     const btnCadastrarProduto = document.getElementById("btn-open-modal-produto");
     const divHeaderActions = document.querySelector("#dashboard .header-actions");
     const menuVendasGeral = document.getElementById("menu-vendas-geral");
@@ -211,6 +213,7 @@ const app = {
       if (menuMarketing) menuMarketing.style.display = "none";
       if (menuDashboard) menuDashboard.style.display = "none";
       if (menuVendasGeral) menuVendasGeral.style.display = "none";
+      if (menuClientes) menuClientes.style.display = "none";
       if (btnCadastrarProduto) btnCadastrarProduto.style.display = "none";
       if (divHeaderActions) divHeaderActions.style.display = "none";
       // Exibe menu exclusivo da revendedora
@@ -225,6 +228,7 @@ const app = {
       if (menuMarketing) menuMarketing.style.display = "block";
       if (menuDashboard) menuDashboard.style.display = "block";
       if (menuVendasGeral) menuVendasGeral.style.display = "block";
+      if (menuClientes) menuClientes.style.display = "block";
       if (menuMinhaMaleta) menuMinhaMaleta.style.display = "none";
       if (btnCadastrarProduto) btnCadastrarProduto.style.display = "inline-flex";
       if (divHeaderActions) divHeaderActions.style.display = "block";
@@ -244,12 +248,14 @@ const app = {
     
     if (this.state.usuarioLogado.role === 'admin') {
       await this.carregarRevendedorasDaAPI();
+      await this.carregarClientesDaAPI();
       await this.carregarVendasConsolidadas();
       this.renderizarAbas();
       this.renderizarEstoque();
       this.renderizarRevendedoras();
       this.renderizarDashboard();
       this.renderizarMarketing();
+      this.renderizarClientes();
     } else {
       // Revendedora: carrega maleta e navega direto para Minha Maleta
       await this.carregarMaletaPropriaDaAPI();
@@ -962,6 +968,25 @@ const app = {
     // WhatsApp Venda Rápida (Confirmar)
     document.getElementById("btn-enviar-venda-rapida").addEventListener("click", () => this.processarVendaRapidaWhats());
 
+    // Modal de Clientes
+    this.configurarModal("modal-cliente", "btn-open-modal-cliente", "btn-close-modal-cliente", "btn-cancelar-cliente");
+    document.getElementById("btn-salvar-cliente").addEventListener("click", () => this.salvarCliente());
+    const clienteWhatsInput = document.getElementById("cliente-whatsapp");
+    if (clienteWhatsInput) clienteWhatsInput.addEventListener("input", (e) => this.aplicarMascaraWhatsApp(e.target));
+
+    // WhatsApp Mask no Venda Rápida (novo campo)
+    const vrClienteWhats = document.getElementById("vr-cliente-whatsapp");
+    if (vrClienteWhats) vrClienteWhats.addEventListener("input", (e) => this.aplicarMascaraWhatsApp(e.target));
+    
+    // Selector de cliente na Venda Rápida: mostra/oculta box de novo cliente
+    const vrSelect = document.getElementById("vr-cliente-select");
+    if (vrSelect) {
+      vrSelect.addEventListener("change", () => {
+        const novoBox = document.getElementById("vr-novo-cliente-box");
+        if (novoBox) novoBox.style.display = vrSelect.value ? "none" : "block";
+      });
+    }
+
     // Configuração Drag and Drop da planilha
     const dropzone = document.getElementById("dropzone-excel");
     dropzone.addEventListener("dragover", (e) => { e.preventDefault(); dropzone.style.borderColor = "var(--gold-primary)"; });
@@ -1032,6 +1057,7 @@ const app = {
     if (tabId === "estoque") this.renderizarEstoque();
     if (tabId === "revendedoras") this.renderizarRevendedoras();
     if (tabId === "marketing") this.renderizarMarketing();
+    if (tabId === "clientes") this.renderizarClientes();
     if (tabId === "vendas-geral") {
       this.carregarVendasConsolidadas().then(() => this.renderizarVendasConsolidadas());
     }
@@ -1978,7 +2004,7 @@ const app = {
     if (!rev.consignado || rev.consignado.length === 0) {
       tbody.innerHTML = `
         <tr>
-          <td colspan="6" style="text-align: center; color: var(--text-secondary); padding: 2rem;">
+          <td colspan="8" style="text-align: center; color: var(--text-secondary); padding: 2rem;">
             Nenhuma peça consignada para acertar.
           </td>
         </tr>
@@ -1999,9 +2025,9 @@ const app = {
         <td>
           <div class="acerto-input-wrapper">
             <button class="btn-input-adjust" onclick="app.ajustarQtdAcerto(this, -1, 'vendido', ${item.quantidadeConsignada})"><i class="fa-solid fa-minus"></i></button>
-            <input type="number" class="input-acerto-vendido" 
-                   data-prod-id="${item.produtoId}" 
-                   value="0" min="0" max="${item.quantidadeConsignada}" 
+            <input type="number" class="input-acerto-vendido"
+                   data-prod-id="${item.produtoId}"
+                   value="0" min="0" max="${item.quantidadeConsignada}"
                    oninput="app.sincronizarAcertoQuantidades(this, 'vendido')">
             <button class="btn-input-adjust" onclick="app.ajustarQtdAcerto(this, 1, 'vendido', ${item.quantidadeConsignada})"><i class="fa-solid fa-plus"></i></button>
           </div>
@@ -2009,11 +2035,29 @@ const app = {
         <td>
           <div class="acerto-input-wrapper">
             <button class="btn-input-adjust" onclick="app.ajustarQtdAcerto(this, -1, 'devolvido', ${item.quantidadeConsignada})"><i class="fa-solid fa-minus"></i></button>
-            <input type="number" class="input-acerto-devolvido" 
-                   data-prod-id="${item.produtoId}" 
-                   value="${item.quantidadeConsignada}" min="0" max="${item.quantidadeConsignada}" 
+            <input type="number" class="input-acerto-devolvido"
+                   data-prod-id="${item.produtoId}"
+                   value="${item.quantidadeConsignada}" min="0" max="${item.quantidadeConsignada}"
                    oninput="app.sincronizarAcertoQuantidades(this, 'devolvido')">
             <button class="btn-input-adjust" onclick="app.ajustarQtdAcerto(this, 1, 'devolvido', ${item.quantidadeConsignada})"><i class="fa-solid fa-plus"></i></button>
+          </div>
+        </td>
+        <td>
+          <div class="acerto-input-wrapper">
+            <input type="number" class="input-acerto-perdido"
+                   data-prod-id="${item.produtoId}"
+                   value="0" min="0" max="${item.quantidadeConsignada}"
+                   oninput="app.sincronizarAcertoQuantidades(this, 'perdido')"
+                   style="border-color: rgba(239, 154, 154, 0.5);">
+          </div>
+        </td>
+        <td>
+          <div class="acerto-input-wrapper">
+            <input type="number" class="input-acerto-defeito"
+                   data-prod-id="${item.produtoId}"
+                   value="0" min="0" max="${item.quantidadeConsignada}"
+                   oninput="app.sincronizarAcertoQuantidades(this, 'defeito')"
+                   style="border-color: rgba(255, 183, 77, 0.5);">
           </div>
         </td>
         <td style="text-align: right;">
@@ -2059,13 +2103,19 @@ const app = {
   definirAcertoLinha: function(prodId, acao, max) {
     const inputVendido = document.querySelector(`.input-acerto-vendido[data-prod-id="${prodId}"]`);
     const inputDevolvido = document.querySelector(`.input-acerto-devolvido[data-prod-id="${prodId}"]`);
+    const inputPerdido = document.querySelector(`.input-acerto-perdido[data-prod-id="${prodId}"]`);
+    const inputDefeito = document.querySelector(`.input-acerto-defeito[data-prod-id="${prodId}"]`);
     if (inputVendido && inputDevolvido) {
       if (acao === 'venda') {
         inputVendido.value = max;
         inputDevolvido.value = 0;
+        if (inputPerdido) inputPerdido.value = 0;
+        if (inputDefeito) inputDefeito.value = 0;
       } else {
         inputVendido.value = 0;
         inputDevolvido.value = max;
+        if (inputPerdido) inputPerdido.value = 0;
+        if (inputDefeito) inputDefeito.value = 0;
       }
       this.calcularResumoFechamentoAcerto();
     }
@@ -2080,46 +2130,63 @@ const app = {
       const max = item.quantidadeConsignada;
       const inputVendido = document.querySelector(`.input-acerto-vendido[data-prod-id="${prodId}"]`);
       const inputDevolvido = document.querySelector(`.input-acerto-devolvido[data-prod-id="${prodId}"]`);
+      const inputPerdido = document.querySelector(`.input-acerto-perdido[data-prod-id="${prodId}"]`);
+      const inputDefeito = document.querySelector(`.input-acerto-defeito[data-prod-id="${prodId}"]`);
       if (inputVendido && inputDevolvido) {
         if (acao === 'vender_tudo') {
           inputVendido.value = max;
           inputDevolvido.value = 0;
+          if (inputPerdido) inputPerdido.value = 0;
+          if (inputDefeito) inputDefeito.value = 0;
         } else {
           inputVendido.value = 0;
           inputDevolvido.value = max;
+          if (inputPerdido) inputPerdido.value = 0;
+          if (inputDefeito) inputDefeito.value = 0;
         }
       }
     });
     this.calcularResumoFechamentoAcerto();
   },
 
-  // Garante que Qtd Vendida + Qtd Devolvida = Qtd Consignada
+  // Garante que Qtd Vendida + Qtd Devolvida + Qtd Perdida + Qtd Defeito = Qtd Consignada
   sincronizarAcertoQuantidades: function(input, acao) {
     const prodId = input.getAttribute("data-prod-id");
-    const valor = parseInt(input.value) || 0;
+    let valor = parseInt(input.value) || 0;
     
     const rev = this.state.revendedoras.find(r => r.id === this.state.revendedoraSelecionadaId);
     const item = rev.consignado.find(c => c.produtoId === prodId);
-    
     if (!item) return;
     
     const maxVal = item.quantidadeConsignada;
     
-    if (acao === 'vendido') {
-      const valorAjustado = Math.min(Math.max(valor, 0), maxVal);
-      input.value = valorAjustado;
-      
-      // Ajusta o correspondente devolvido
-      const inputDevolvido = document.querySelector(`.input-acerto-devolvido[data-prod-id="${prodId}"]`);
-      if (inputDevolvido) inputDevolvido.value = maxVal - valorAjustado;
-    } else {
-      const valorAjustado = Math.min(Math.max(valor, 0), maxVal);
-      input.value = valorAjustado;
-      
-      // Ajusta o correspondente vendido
-      const inputVendido = document.querySelector(`.input-acerto-vendido[data-prod-id="${prodId}"]`);
-      if (inputVendido) inputVendido.value = maxVal - valorAjustado;
+    const inpVend = document.querySelector(`.input-acerto-vendido[data-prod-id="${prodId}"]`);
+    const inpDev  = document.querySelector(`.input-acerto-devolvido[data-prod-id="${prodId}"]`);
+    const inpPerd = document.querySelector(`.input-acerto-perdido[data-prod-id="${prodId}"]`);
+    const inpDef  = document.querySelector(`.input-acerto-defeito[data-prod-id="${prodId}"]`);
+    
+    let v   = parseInt(inpVend ? inpVend.value : 0) || 0;
+    let d   = parseInt(inpDev  ? inpDev.value  : 0) || 0;
+    let p   = parseInt(inpPerd ? inpPerd.value : 0) || 0;
+    let def = parseInt(inpDef  ? inpDef.value  : 0) || 0;
+
+    // A prioridade de ajuste automático vai para a devolução.
+    if (acao === 'vendido') { v = Math.min(Math.max(valor, 0), maxVal); d = Math.max(0, maxVal - (v + p + def)); }
+    else if (acao === 'perdido') { p = Math.min(Math.max(valor, 0), maxVal); d = Math.max(0, maxVal - (v + p + def)); }
+    else if (acao === 'defeito') { def = Math.min(Math.max(valor, 0), maxVal); d = Math.max(0, maxVal - (v + p + def)); }
+    else if (acao === 'devolvido') { 
+      d = Math.min(Math.max(valor, 0), maxVal);
+      if (v + d + p + def > maxVal) v = Math.max(0, maxVal - (d + p + def));
     }
+
+    // Evita valores negativos
+    if (d < 0) { d = 0; v = Math.max(0, maxVal - (d + p + def)); }
+    if (v < 0) v = 0;
+
+    if (inpVend) inpVend.value = v;
+    if (inpDev)  inpDev.value  = d;
+    if (inpPerd) inpPerd.value = p;
+    if (inpDef)  inpDef.value  = def;
 
     this.calcularResumoFechamentoAcerto();
   },
@@ -2133,8 +2200,12 @@ const app = {
       const prodId = input.getAttribute("data-prod-id");
       const qtdVendida = parseInt(input.value) || 0;
       
-      const inputDev = document.querySelector(`.input-acerto-devolvido[data-prod-id="${prodId}"]`);
-      const qtdDevolvida = inputDev ? (parseInt(inputDev.value) || 0) : 0;
+      const inputDev  = document.querySelector(`.input-acerto-devolvido[data-prod-id="${prodId}"]`);
+      const inputPerd = document.querySelector(`.input-acerto-perdido[data-prod-id="${prodId}"]`);
+      const inputDef  = document.querySelector(`.input-acerto-defeito[data-prod-id="${prodId}"]`);
+      const qtdDevolvida  = inputDev  ? (parseInt(inputDev.value)  || 0) : 0;
+      const qtdPerdida    = inputPerd ? (parseInt(inputPerd.value) || 0) : 0;
+      const qtdDefeito    = inputDef  ? (parseInt(inputDef.value)  || 0) : 0;
       
       const itemOrigem = rev.consignado.find(c => c.produtoId === prodId);
       if (itemOrigem) {
@@ -2145,6 +2216,8 @@ const app = {
           quantidadeConsignada: itemOrigem.quantidadeConsignada,
           quantidadeVendida: qtdVendida,
           quantidadeDevolvida: qtdDevolvida,
+          quantidadePerdida: qtdPerdida,
+          quantidadeDefeito: qtdDefeito,
           precoVenda: itemOrigem.precoVenda
         });
       }
@@ -2161,18 +2234,25 @@ const app = {
     
     let totalPecasConsignadas = 0;
     let faturamentoBruto = 0;
+    let valorPerdas = 0;
 
     itensAcerto.forEach(item => {
       totalPecasConsignadas += item.quantidadeConsignada;
       faturamentoBruto += Number(item.precoVenda) * item.quantidadeVendida;
+      valorPerdas += Number(item.precoVenda) * (item.quantidadePerdida || 0);
     });
 
-    const comissaoValor = faturamentoBruto * (Number(rev.comissao) / 100);
-    const liquidoReceber = faturamentoBruto - comissaoValor;
+    const comissaoBruta = faturamentoBruto * (Number(rev.comissao) / 100);
+    const comissaoFinal = Math.max(0, comissaoBruta - valorPerdas);
+    const liquidoReceber = faturamentoBruto - comissaoBruta + valorPerdas;
 
     document.getElementById("acerto-total-peças-levadas").innerText = `${totalPecasConsignadas} pçs`;
     document.getElementById("acerto-total-faturamento-bruto").innerText = `R$ ${faturamentoBruto.toFixed(2).replace(".", ",")}`;
-    document.getElementById("acerto-comissao-valor").innerText = `R$ ${comissaoValor.toFixed(2).replace(".", ",")}`;
+    document.getElementById("acerto-comissao-valor").innerText = `R$ ${comissaoBruta.toFixed(2).replace(".", ",")}`;
+    
+    const elDesconto = document.getElementById("acerto-desconto-perdas");
+    if (elDesconto) elDesconto.innerText = `- R$ ${valorPerdas.toFixed(2).replace(".", ",")}`;
+    
     document.getElementById("acerto-total-liquido-receber").innerText = `R$ ${liquidoReceber.toFixed(2).replace(".", ",")}`;
   },
 
@@ -2190,6 +2270,8 @@ const app = {
     let totalConsignada = 0;
     let totalVendida = 0;
     let totalDevolvida = 0;
+    let totalPerdida = 0;
+    let totalDefeito = 0;
 
     const postItens = [];
 
@@ -2198,13 +2280,17 @@ const app = {
       totalConsignada += item.quantidadeConsignada;
       totalVendida += item.quantidadeVendida;
       totalDevolvida += item.quantidadeDevolvida;
+      totalPerdida += (item.quantidadePerdida || 0);
+      totalDefeito += (item.quantidadeDefeito || 0);
       
       faturamentoBruto += Number(item.precoVenda) * item.quantidadeVendida;
 
       postItens.push({
         produtoId: item.produtoId,
         quantidadeVendida: item.quantidadeVendida,
-        quantidadeDevolvida: item.quantidadeDevolvida
+        quantidadeDevolvida: item.quantidadeDevolvida,
+        quantidadePerdida: item.quantidadePerdida || 0,
+        quantidadeDefeito: item.quantidadeDefeito || 0
       });
 
       // 1. As devoluções retornam ao Estoque Central localmente para reatividade
@@ -2220,8 +2306,10 @@ const app = {
       }
     });
 
-    const valorComissao = faturamentoBruto * (Number(rev.comissao) / 100);
-    const valorLiquido = faturamentoBruto - valorComissao;
+    const valorComissaoBruta = faturamentoBruto * (Number(rev.comissao) / 100);
+    const valorPerdas = itensAcerto.reduce((acc, item) => acc + Number(item.precoVenda) * (item.quantidadePerdida || 0), 0);
+    const valorComissao = Math.max(0, valorComissaoBruta - valorPerdas);
+    const valorLiquido = faturamentoBruto - valorComissaoBruta + valorPerdas;
 
     try {
       // Sincroniza fechamento de acerto com a Azure
@@ -2236,10 +2324,13 @@ const app = {
       if(!rev.historico) rev.historico = [];
       rev.historico.push({
         data: new Date().toISOString(),
-        totalConsignada: totalConsignada,
-        totalVendida: totalVendida,
-        totalDevolvida: totalDevolvida,
-        faturamentoBruto: faturamentoBruto,
+        totalConsignada,
+        totalVendida,
+        totalDevolvida,
+        totalPerdida,
+        totalDefeito,
+        faturamentoBruto,
+        valorDescontoPerda: valorPerdas,
         comissaoPaga: valorComissao,
         liquidoBelklock: valorLiquido
       });
@@ -2692,8 +2783,25 @@ const app = {
 
   // 13. VENDA RÁPIDA / COMPARTILHAR CATÁLOGO WHATSAPP (MODAL)
   abrirModalVendaRapida: function() {
-    document.getElementById("vr-cliente").value = "";
-    document.getElementById("vr-whatsapp").value = "";
+    // Popular o select de clientes
+    const vrSelect = document.getElementById("vr-cliente-select");
+    if (vrSelect) {
+      vrSelect.innerHTML = '<option value="">-- Cliente Avulsa (Não Registar) --</option>';
+      this.state.clientes.forEach(c => {
+        const opt = document.createElement("option");
+        opt.value = c.id;
+        opt.textContent = `${c.nome} (${c.whatsapp})`;
+        vrSelect.appendChild(opt);
+      });
+    }
+    // Limpa campos de novo cliente
+    const nomeInput = document.getElementById("vr-cliente-nome");
+    const whaInput  = document.getElementById("vr-cliente-whatsapp");
+    if (nomeInput) nomeInput.value = "";
+    if (whaInput)  whaInput.value  = "";
+    // Mostra box de novo cliente por padrão (select em branco)
+    const novoBox = document.getElementById("vr-novo-cliente-box");
+    if (novoBox) novoBox.style.display = "block";
 
     const tbody = document.querySelector("#table-selecionar-venda-rapida tbody");
     tbody.innerHTML = "";
@@ -2721,11 +2829,43 @@ const app = {
   },
 
   processarVendaRapidaWhats: async function() {
-    const nomeCliente = document.getElementById("vr-cliente").value.trim() || "Cliente Especial";
-    const whatsapp = document.getElementById("vr-whatsapp").value.trim();
+    // Resolve dados do cliente
+    const vrSelect = document.getElementById("vr-cliente-select");
+    let clienteId = null;
+    let nomeCliente = "Cliente Especial";
+    let whatsapp = "";
+
+    if (vrSelect && vrSelect.value) {
+      // Cliente já existente selecionado
+      clienteId = vrSelect.value;
+      const clienteObj = this.state.clientes.find(c => c.id === clienteId);
+      if (clienteObj) {
+        nomeCliente = clienteObj.nome;
+        whatsapp = clienteObj.whatsapp;
+      }
+    } else {
+      // Novo cliente ou avulsa
+      const nomeInput = document.getElementById("vr-cliente-nome");
+      const whaInput  = document.getElementById("vr-cliente-whatsapp");
+      nomeCliente = (nomeInput && nomeInput.value.trim()) || "Cliente Especial";
+      whatsapp    = (whaInput  && whaInput.value.trim())  || "";
+
+      // Se informou WhatsApp, regista nova cliente automaticamente
+      if (whatsapp && nomeInput && nomeInput.value.trim()) {
+        try {
+          if (this.state.token && !this.state.token.startsWith("mock_")) {
+            const novaCliente = await this.requisitarAPI("/clientes", "POST", { nome: nomeCliente, whatsapp });
+            clienteId = novaCliente.id;
+            this.state.clientes.push(novaCliente);
+          }
+        } catch(e) {
+          console.warn("Não foi possível salvar cliente:", e.message);
+        }
+      }
+    }
 
     if (!whatsapp) {
-      alert("Por favor, informe o WhatsApp da cliente.");
+      alert("Por favor, selecione uma cliente ou informe o WhatsApp para enviar a mensagem.");
       return;
     }
 
@@ -2756,7 +2896,8 @@ const app = {
               nome: item.nome,
               preco: item.preco,
               whatsappCliente: whatsapp,
-              nomeCliente: nomeCliente
+              nomeCliente: nomeCliente,
+              clienteId: clienteId || undefined
             });
           }
           
@@ -3169,6 +3310,162 @@ const app = {
       `;
       tbody.appendChild(tr);
     });
+  },
+
+  // ==========================================
+  // MÓDULO CLIENTES
+  // ==========================================
+
+  carregarClientesDaAPI: async function() {
+    if (!this.state.token || this.state.token.startsWith("mock_")) return;
+    try {
+      const clientes = await this.requisitarAPI("/clientes");
+      this.state.clientes = clientes || [];
+    } catch (err) {
+      console.warn("Não foi possível carregar clientes:", err.message);
+      this.state.clientes = [];
+    }
+  },
+
+  renderizarClientes: function() {
+    const tbody = document.getElementById("tbody-clientes");
+    if (!tbody) return;
+
+    const busca = ((document.getElementById("filtro-clientes-busca") || {}).value || "").toLowerCase();
+
+    const filtradas = this.state.clientes.filter(c =>
+      c.nome.toLowerCase().includes(busca) || (c.whatsapp || "").toLowerCase().includes(busca)
+    );
+
+    tbody.innerHTML = "";
+    if (filtradas.length === 0) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="6" style="text-align: center; color: var(--text-secondary); padding: 3rem;">
+            <i class="fa-solid fa-address-book" style="font-size: 2rem; opacity: 0.3; display: block; margin-bottom: 0.8rem;"></i>
+            ${busca ? "Nenhuma cliente encontrada para a busca." : "Nenhuma cliente cadastrada ainda."}
+          </td>
+        </tr>`;
+      return;
+    }
+
+    filtradas.forEach(c => {
+      const dataCadastro = new Date(c.createdAt).toLocaleDateString('pt-BR');
+      let aniversarioStr = "—";
+      if (c.dataNascimento) {
+        const partes = c.dataNascimento.split("-");
+        if (partes.length === 3) aniversarioStr = `${partes[2]}/${partes[1]}/${partes[0]}`;
+        else aniversarioStr = c.dataNascimento;
+      }
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td><strong>${c.nome}</strong></td>
+        <td>
+          <a href="https://api.whatsapp.com/send?phone=55${(c.whatsapp || "").replace(/\D/g, '')}" target="_blank" style="color: #81c784; text-decoration: none;">
+            <i class="fa-brands fa-whatsapp"></i> ${c.whatsapp || "—"}
+          </a>
+        </td>
+        <td>${aniversarioStr}</td>
+        <td style="max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${c.observacoes || "—"}</td>
+        <td style="color: var(--text-secondary); font-size: 0.85rem;">${dataCadastro}</td>
+        <td>
+          <div style="display: flex; gap: 0.4rem;">
+            <button class="btn-qty" onclick="app.abrirModalCliente('${c.id}')" title="Editar"><i class="fa-solid fa-pen"></i></button>
+            <button class="btn-qty" style="color: #ef9a9a; border-color: rgba(198,40,40,0.1);" onclick="app.excluirCliente('${c.id}')" title="Excluir"><i class="fa-solid fa-trash"></i></button>
+          </div>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+  },
+
+  abrirModalCliente: function(clienteId) {
+    const modal = document.getElementById("modal-cliente");
+    const titulo = document.getElementById("modal-cliente-titulo");
+    const btnSalvar = document.getElementById("btn-salvar-cliente");
+
+    document.getElementById("cliente-nome").value = "";
+    document.getElementById("cliente-whatsapp").value = "";
+    document.getElementById("cliente-nascimento").value = "";
+    document.getElementById("cliente-observacoes").value = "";
+    btnSalvar.removeAttribute("data-edit-id");
+
+    if (clienteId) {
+      const c = this.state.clientes.find(x => x.id === clienteId);
+      if (c) {
+        document.getElementById("cliente-nome").value = c.nome || "";
+        document.getElementById("cliente-whatsapp").value = c.whatsapp || "";
+        document.getElementById("cliente-nascimento").value = c.dataNascimento || "";
+        document.getElementById("cliente-observacoes").value = c.observacoes || "";
+        btnSalvar.setAttribute("data-edit-id", clienteId);
+        titulo.innerHTML = '<i class="fa-solid fa-address-book"></i> Editar Cliente';
+      }
+    } else {
+      titulo.innerHTML = '<i class="fa-solid fa-address-book"></i> Nova Cliente';
+    }
+
+    modal.classList.add("active");
+  },
+
+  salvarCliente: async function() {
+    const nome = document.getElementById("cliente-nome").value.trim();
+    const whatsapp = document.getElementById("cliente-whatsapp").value.trim();
+    const dataNascimento = document.getElementById("cliente-nascimento").value || null;
+    const observacoes = document.getElementById("cliente-observacoes").value.trim() || null;
+    const editId = document.getElementById("btn-salvar-cliente").getAttribute("data-edit-id");
+
+    if (!nome || !whatsapp) {
+      alert("Por favor, preencha o nome e o WhatsApp da cliente.");
+      return;
+    }
+
+    const body = { nome, whatsapp, dataNascimento, observacoes };
+
+    try {
+      if (editId) {
+        // Editar
+        let clienteAtualizado;
+        if (this.state.token && !this.state.token.startsWith("mock_")) {
+          clienteAtualizado = await this.requisitarAPI(`/clientes/${editId}`, "PUT", body);
+        } else {
+          clienteAtualizado = { id: editId, ...body, createdAt: new Date().toISOString() };
+        }
+        const idx = this.state.clientes.findIndex(c => c.id === editId);
+        if (idx !== -1) this.state.clientes[idx] = clienteAtualizado;
+        alert("Cliente atualizada com sucesso!");
+      } else {
+        // Criar
+        let novaCliente;
+        if (this.state.token && !this.state.token.startsWith("mock_")) {
+          novaCliente = await this.requisitarAPI("/clientes", "POST", body);
+        } else {
+          novaCliente = { id: 'cli_' + Date.now(), ...body, createdAt: new Date().toISOString() };
+        }
+        this.state.clientes.push(novaCliente);
+        alert("Cliente cadastrada com sucesso!");
+      }
+
+      document.getElementById("modal-cliente").classList.remove("active");
+      this.renderizarClientes();
+    } catch (err) {
+      console.error(err);
+      alert("Erro ao salvar cliente: " + err.message);
+    }
+  },
+
+  excluirCliente: async function(clienteId) {
+    if (!confirm("Deseja realmente excluir esta cliente? O histórico de compras relacionado será mantido.")) return;
+    try {
+      if (this.state.token && !this.state.token.startsWith("mock_")) {
+        await this.requisitarAPI(`/clientes/${clienteId}`, "DELETE");
+      }
+      this.state.clientes = this.state.clientes.filter(c => c.id !== clienteId);
+      this.renderizarClientes();
+      alert("Cliente removida com sucesso!");
+    } catch (err) {
+      console.error(err);
+      alert("Erro ao excluir cliente: " + err.message);
+    }
   }
 
 };

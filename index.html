@@ -85,6 +85,9 @@
           <li class="nav-item" data-target="revendedoras">
             <button id="btn-tab-revendedoras"><i class="fa-solid fa-users-line"></i>Revendedoras</button>
           </li>
+          <li class="nav-item" data-target="clientes">
+            <button id="btn-tab-clientes"><i class="fa-solid fa-address-book"></i>Meus Clientes</button>
+          </li>
           <li class="nav-item" data-target="vendas-geral" id="menu-vendas-geral">
             <button id="btn-tab-vendas-geral"><i class="fa-solid fa-receipt"></i>Histórico de Vendas</button>
           </li>
@@ -856,6 +859,53 @@
         </div>
       </section>
 
+      <!-- ==========================================
+           ABA: CLIENTES
+           ========================================== -->
+      <section id="clientes" class="app-section">
+        <div class="section-header">
+          <div class="section-title">
+            <h2>Gestão de Clientes</h2>
+            <p>Registre as suas clientes, acompanhe datas de aniversário e mantenha o histórico de compras para uma relação mais pessoal e eficaz.</p>
+          </div>
+          <div class="header-actions">
+            <button class="btn-gold" id="btn-open-modal-cliente"><i class="fa-solid fa-user-plus"></i> Nova Cliente</button>
+          </div>
+        </div>
+
+        <!-- Barra de busca -->
+        <div class="dashboard-panel" style="margin-bottom: 2rem;">
+          <div class="form-group" style="margin-bottom: 0;">
+            <input type="text" id="filtro-clientes-busca" class="form-control" placeholder="Buscar por nome ou WhatsApp..." oninput="app.renderizarClientes()">
+          </div>
+        </div>
+
+        <div class="dashboard-panel">
+          <div class="table-responsive">
+            <table class="premium-table" id="table-clientes">
+              <thead>
+                <tr>
+                  <th>Nome da Cliente</th>
+                  <th>WhatsApp</th>
+                  <th>Data de Nascimento</th>
+                  <th>Observações</th>
+                  <th>Cadastrada em</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-clientes">
+                <tr>
+                  <td colspan="6" style="text-align: center; color: var(--text-secondary); padding: 3rem;">
+                    <i class="fa-solid fa-address-book" style="font-size: 2rem; opacity: 0.3; display: block; margin-bottom: 0.8rem;"></i>
+                    Nenhuma cliente cadastrada ainda.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
     </main>
 
   </div>
@@ -1145,8 +1195,10 @@
                   <th>Produto</th>
                   <th>Preço Unit.</th>
                   <th>Consignadas</th>
-                  <th style="width: 140px; text-align: center;">Vendas</th>
-                  <th style="width: 140px; text-align: center;">Devoluções</th>
+                  <th style="width: 120px; text-align: center;">Vendas</th>
+                  <th style="width: 120px; text-align: center;">Devoluções</th>
+                  <th style="width: 120px; text-align: center; color: #ef9a9a;">Perdas/Danos</th>
+                  <th style="width: 120px; text-align: center; color: #ffb74d;">Defeitos</th>
                   <th style="text-align: right;">Atalhos</th>
                 </tr>
               </thead>
@@ -1173,6 +1225,10 @@
             <div class="pricing-row">
               <span>Comissão (<span id="acerto-comissao-percent">30</span>%)</span>
               <span id="acerto-comissao-valor" style="color: var(--text-secondary);">R$ 0,00</span>
+            </div>
+            <div class="pricing-row" style="color: #ef9a9a;">
+              <span><i class="fa-solid fa-triangle-exclamation"></i> Desconto Perdas/Danos</span>
+              <span id="acerto-desconto-perdas" style="color: #ef9a9a;">- R$ 0,00</span>
             </div>
 
             <div class="pricing-row total" style="margin: 0.8rem 0; padding: 0.8rem 0; font-size: 1.15rem; background: rgba(212, 175, 55, 0.05); padding-left: 0.5rem; padding-right: 0.5rem; border-radius: var(--radius-sm);">
@@ -1210,13 +1266,15 @@
       </div>
 
       <div class="form-group">
-        <label for="vr-cliente">Nome da Cliente</label>
-        <input type="text" id="vr-cliente" class="form-control" placeholder="Ex: Camila Oliveira">
+        <label for="vr-cliente-select">Selecionar Cliente</label>
+        <select id="vr-cliente-select" class="form-control">
+          <option value="">-- Cliente Avulsa (Não Registar) --</option>
+        </select>
       </div>
-
-      <div class="form-group">
-        <label for="vr-whatsapp">WhatsApp da Cliente</label>
-        <input type="text" id="vr-whatsapp" class="form-control" placeholder="Ex: (11) 98888-8888">
+      <div class="form-group" id="vr-novo-cliente-box">
+        <label>Ou Registar Nova Cliente</label>
+        <input type="text" id="vr-cliente-nome" class="form-control" placeholder="Nome da Cliente" style="margin-bottom: 0.5rem;">
+        <input type="text" id="vr-cliente-whatsapp" class="form-control" placeholder="WhatsApp">
       </div>
 
       <div class="form-group">
@@ -1306,6 +1364,43 @@
         <button class="btn-gold" id="btn-confirmar-venda-rev">
           <i class="fa-solid fa-check"></i> Confirmar Venda
         </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================
+       MODAL: CADASTRO / EDIÇÃO DE CLIENTE
+       ========================================== -->
+  <div class="modal-backdrop" id="modal-cliente">
+    <div class="modal-card" style="width: 480px;">
+      <div class="modal-title-row">
+        <h3 id="modal-cliente-titulo"><i class="fa-solid fa-address-book"></i> Nova Cliente</h3>
+        <button class="btn-close-modal" id="btn-close-modal-cliente"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <div class="form-group">
+        <label for="cliente-nome">Nome Completo *</label>
+        <input type="text" id="cliente-nome" class="form-control" placeholder="Ex: Maria Fernanda Silva" required>
+      </div>
+
+      <div class="form-group">
+        <label for="cliente-whatsapp">WhatsApp *</label>
+        <input type="text" id="cliente-whatsapp" class="form-control" placeholder="Ex: (11) 99999-9999" required>
+      </div>
+
+      <div class="form-group">
+        <label for="cliente-nascimento">Data de Nascimento (para Aniversário)</label>
+        <input type="date" id="cliente-nascimento" class="form-control">
+      </div>
+
+      <div class="form-group">
+        <label for="cliente-observacoes">Observações / Preferências</label>
+        <textarea id="cliente-observacoes" class="form-control" placeholder="Ex: Prefere brincos, adora dourado..." rows="3" style="resize: vertical; font-family: inherit;"></textarea>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn-outline-gold" id="btn-cancelar-cliente">Cancelar</button>
+        <button class="btn-gold" id="btn-salvar-cliente"><i class="fa-solid fa-floppy-disk"></i> Salvar Cliente</button>
       </div>
     </div>
   </div>

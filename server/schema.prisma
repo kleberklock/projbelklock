@@ -23,18 +23,19 @@ model Usuario {
 }
 
 model Produto {
-  id           String        @id @default(uuid())
-  codigo       String        @unique
-  nome         String
-  categoria    String
-  quantidade   Int           @default(0) // estoque no centro de distribuição
-  custoBruto   Float         @default(0.0)
-  custoBanho   Float         @default(0.0)
-  custoLiquido Float         @default(0.0)
-  markup       Float         @default(3.0)
-  fotoUrl      String?
-  consignados  Consignado[]
-  createdAt    DateTime      @default(now())
+  id                 String        @id @default(uuid())
+  codigo             String        @unique
+  nome               String
+  categoria          String
+  quantidade         Int           @default(0) // estoque no centro de distribuição
+  quantidadeDefeito  Int           @default(0) // peças devolvidas com defeito
+  custoBruto         Float         @default(0.0)
+  custoBanho         Float         @default(0.0)
+  custoLiquido       Float         @default(0.0)
+  markup             Float         @default(3.0)
+  fotoUrl            String?
+  consignados        Consignado[]
+  createdAt          DateTime      @default(now())
 }
 
 model Consignado {
@@ -51,16 +52,19 @@ model Consignado {
 }
 
 model HistoricoAcerto {
-  id               String   @id @default(uuid())
-  usuarioId        String
-  data             DateTime @default(now())
-  totalConsignada  Int
-  totalVendida     Int
-  totalDevolvida   Int
-  faturamentoBruto Float
-  comissaoPaga     Float
-  liquidoBelklock  Float
-  usuario          Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  id                String   @id @default(uuid())
+  usuarioId         String
+  data              DateTime @default(now())
+  totalConsignada   Int
+  totalVendida      Int
+  totalDevolvida    Int
+  totalPerdida      Int      @default(0)
+  totalDefeito      Int      @default(0)
+  faturamentoBruto  Float
+  valorDescontoPerda Float   @default(0.0)
+  comissaoPaga      Float
+  liquidoBelklock   Float
+  usuario           Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
 }
 
 model VendaDireta {
@@ -71,17 +75,32 @@ model VendaDireta {
   preco           Float
   whatsappCliente String?
   nomeCliente     String?
+  clienteId       String?
+  cliente         Cliente? @relation(fields: [clienteId], references: [id])
 }
 
 model VendaRevendedora {
-  id           String   @id @default(uuid())
-  data         DateTime @default(now())
-  usuarioId    String
-  produtoId    String
-  nomeProduto  String
+  id            String   @id @default(uuid())
+  data          DateTime @default(now())
+  usuarioId     String
+  produtoId     String
+  nomeProduto   String
   codigoProduto String
-  quantidade   Int
-  precoVenda   Float
+  quantidade    Int
+  precoVenda    Float
   comissaoValor Float
-  usuario      Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  clienteId     String?
+  cliente       Cliente? @relation(fields: [clienteId], references: [id])
+  usuario       Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+}
+
+model Cliente {
+  id               String             @id @default(uuid())
+  nome             String
+  whatsapp         String             @unique
+  dataNascimento   String?
+  observacoes      String?
+  vendas           VendaDireta[]
+  vendasRevendedora VendaRevendedora[]
+  createdAt        DateTime           @default(now())
 }

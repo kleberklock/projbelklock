@@ -443,7 +443,8 @@ app.post('/api/consignacoes', autenticarJWT, autorizarRole(['admin']), async (re
 
 // Finalizar Acerto de Contas (Admin)
 app.post('/api/acertos', autenticarJWT, autorizarRole(['admin']), async (req, res) => {
-  const { usuarioId, itensAcerto } = req.body; // itensAcerto: [{ produtoId, quantidadeVendida, quantidadeDevolvida }]
+  // itensAcerto: [{ produtoId, quantidadeVendida, quantidadeDevolvida, quantidadePerdida, quantidadeDefeito }]
+  const { usuarioId, itensAcerto } = req.body;
   
   if (!usuarioId || !itensAcerto || itensAcerto.length === 0) {
     return res.status(400).json({ error: 'Falta dados para o fechamento.' });
@@ -457,6 +458,9 @@ app.post('/api/acertos', autenticarJWT, autorizarRole(['admin']), async (req, re
     let totalConsignada = 0;
     let totalVendida = 0;
     let totalDevolvida = 0;
+    let totalPerdida = 0;
+    let totalDefeito = 0;
+    let valorDescontoPerda = 0;
 
     for (const item of itensAcerto) {
       const consignado = await prisma.consignado.findUnique({
@@ -466,26 +470,45 @@ app.post('/api/acertos', autenticarJWT, autorizarRole(['admin']), async (req, re
       });
 
       if (consignado) {
-        totalConsignada += consignado.quantidadeConsignada;
-        totalVendida += item.quantidadeVendida;
-        totalDevolvida += item.quantidadeDevolvida;
-        faturamentoBruto += consignado.precoVenda * item.quantidadeVendida;
+        const qtdPerdida = parseInt(item.quantidadePerdida) || 0;
+        const qtdDefeito = parseInt(item.quantidadeDefeito) || 0;
 
-        // 1. As devoluções retornam ao Estoque Central
-        if (item.quantidadeDevolvida > 0) {
+        totalConsignada += consignado.quantidadeConsignada;
+        totalVendida += parseInt(item.quantidadeVendida) || 0;
+        totalDevolvida += parseInt(item.quantidadeDevolvida) || 0;
+        totalPerdida += qtdPerdida;
+        totalDefeito += qtdDefeito;
+        faturamentoBruto += consignado.precoVenda * (parseInt(item.quantidadeVendida) || 0);
+
+        // Valor das perdas: responsabilidade financeira da revendedora
+        valorDescontoPerda += consignado.precoVenda * qtdPerdida;
+
+        // 1. As devoluções normais retornam ao Estoque Central
+        if (parseInt(item.quantidadeDevolvida) > 0) {
           await prisma.produto.update({
             where: { id: item.produtoId },
-            data: { quantidade: { increment: item.quantidadeDevolvida } }
+            data: { quantidade: { increment: parseInt(item.quantidadeDevolvida) } }
           });
         }
 
-        // 2. Remove o item consignado (limpa a maleta)
+        // 2. Defeitos: incrementam o contador de defeito no produto (não voltam ao estoque normal)
+        if (qtdDefeito > 0) {
+          await prisma.produto.update({
+            where: { id: item.produtoId },
+            data: { quantidadeDefeito: { increment: qtdDefeito } }
+          });
+        }
+
+        // 3. Remove o item consignado (limpa a maleta)
         await prisma.consignado.delete({ where: { id: consignado.id } });
       }
     }
 
-    const comissaoPaga = faturamentoBruto * (revendedora.comissao / 100);
-    const liquidoBelklock = faturamentoBruto - comissaoPaga;
+    // A comissão é calculada sobre o faturamento bruto das vendas
+    // O valor das perdas é descontado da comissão (a revendedora cobre o prejuízo)
+    const comissaoBruta = faturamentoBruto * (revendedora.comissao / 100);
+    const comissaoPaga = Math.max(0, comissaoBruta - valorDescontoPerda);
+    const liquidoBelklock = faturamentoBruto - comissaoBruta + valorDescontoPerda;
 
     // Salva o histórico de acerto
     const acerto = await prisma.historicoAcerto.create({
@@ -494,7 +517,10 @@ app.post('/api/acertos', autenticarJWT, autorizarRole(['admin']), async (req, re
         totalConsignada,
         totalVendida,
         totalDevolvida,
+        totalPerdida,
+        totalDefeito,
         faturamentoBruto,
+        valorDescontoPerda,
         comissaoPaga,
         liquidoBelklock
       }
@@ -505,6 +531,7 @@ app.post('/api/acertos', autenticarJWT, autorizarRole(['admin']), async (req, re
       acerto
     });
   } catch (error) {
+    console.error('Erro no acerto:', error);
     res.status(500).json({ error: 'Erro ao processar acerto no banco de dados.' });
   }
 });
@@ -845,6 +872,70 @@ app.post('/api/importar', autenticarJWT, autorizarRole(['admin']), async (req, r
   } catch (error) {
     console.error("Erro na importação em massa:", error);
     res.status(500).json({ error: 'Erro ao processar importação no banco de dados.' });
+  }
+});
+
+// ==========================================
+// ROTAS DE CLIENTES
+// ==========================================
+
+// Listar Clientes
+app.get('/api/clientes', autenticarJWT, autorizarRole(['admin']), async (req, res) => {
+  try {
+    const clientes = await prisma.cliente.findMany({
+      orderBy: { nome: 'asc' }
+    });
+    res.json(clientes);
+  } catch (error) {
+    res.status(500).json({ error: 'Erro ao listar clientes.' });
+  }
+});
+
+// Criar Cliente
+app.post('/api/clientes', autenticarJWT, autorizarRole(['admin']), async (req, res) => {
+  const { nome, whatsapp, dataNascimento, observacoes } = req.body;
+  if (!nome || !whatsapp) {
+    return res.status(400).json({ error: 'Nome e WhatsApp são obrigatórios.' });
+  }
+  try {
+    const cliente = await prisma.cliente.create({
+      data: { nome, whatsapp, dataNascimento: dataNascimento || null, observacoes: observacoes || null }
+    });
+    res.status(201).json(cliente);
+  } catch (error) {
+    if (error.code === 'P2002') {
+      return res.status(400).json({ error: 'Já existe uma cliente cadastrada com este WhatsApp.' });
+    }
+    res.status(500).json({ error: 'Erro ao cadastrar cliente.' });
+  }
+});
+
+// Editar Cliente
+app.put('/api/clientes/:id', autenticarJWT, autorizarRole(['admin']), async (req, res) => {
+  const { id } = req.params;
+  const { nome, whatsapp, dataNascimento, observacoes } = req.body;
+  try {
+    const cliente = await prisma.cliente.update({
+      where: { id },
+      data: { nome, whatsapp, dataNascimento: dataNascimento || null, observacoes: observacoes || null }
+    });
+    res.json(cliente);
+  } catch (error) {
+    if (error.code === 'P2002') {
+      return res.status(400).json({ error: 'Já existe uma cliente cadastrada com este WhatsApp.' });
+    }
+    res.status(500).json({ error: 'Erro ao atualizar cliente.' });
+  }
+});
+
+// Excluir Cliente
+app.delete('/api/clientes/:id', autenticarJWT, autorizarRole(['admin']), async (req, res) => {
+  const { id } = req.params;
+  try {
+    await prisma.cliente.delete({ where: { id } });
+    res.json({ message: 'Cliente removida com sucesso!' });
+  } catch (error) {
+    res.status(500).json({ error: 'Erro ao excluir cliente.' });
   }
 });
 
