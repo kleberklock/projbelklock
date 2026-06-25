@@ -23,8 +23,13 @@ const app = {
     nomeEmpresa: "BelKlock Semijoias",
     revendedoraSelecionadaId: null,
     usandoFicticio: true,
+    dreImposto: 0.0,
+    dreDespesaFixa: 0.0,
+    dreCmvEstimado: 33.0,
     colunasEstoque: ["Código", "Nome do Produto", "Categoria", "Estoque Central", "Custo Bruto", "Custo Banho", "Custo Oper.", "Markup", "Preço Venda"],
     vendasSessao: [], // Vendas registradas pela revendedora nesta sessão
+    notificacoes: [],
+    pollingNotificacoesInterval: null,
     ordenacao: {
       estoque: { coluna: null, direcao: "asc" },
       clientes: { coluna: null, direcao: "asc" },
@@ -153,22 +158,31 @@ const app = {
     }
   },
 
-  // 2. Inicialização do Aplicativo
+  // 2. Inicialização do Aplicativo (Perfil Administrador)
   init: function() {
-    this.registrarEventosLogin();
-    this.carregarDadosDoLocalStorage(); // Inicializa dados locais (mocks de demonstração se vazio)
+    this.carregarDadosDoLocalStorage(); // Inicializa dados locais se necessário
     
-    // Verifica se há sessão ativa no LocalStorage
     const token = localStorage.getItem("belklock_token");
-    const usuario = localStorage.getItem("belklock_usuario");
+    const usuarioJson = localStorage.getItem("belklock_usuario");
     
-    if (token && usuario) {
+    if (!token || !usuarioJson) {
+      this.fazerLogout();
+      return;
+    }
+    
+    try {
+      const usuario = JSON.parse(usuarioJson);
+      if (usuario.role !== 'admin') {
+        window.location.href = "vendedora.html";
+        return;
+      }
       this.state.token = token;
-      this.state.usuarioLogado = JSON.parse(usuario);
+      this.state.usuarioLogado = usuario;
       this.exibirInterfacePosLogin();
       this.carregarDadosIniciais();
-    } else {
-      this.exibirInterfaceLogin();
+    } catch (e) {
+      console.error("Erro na inicialização do Admin:", e);
+      this.fazerLogout();
     }
   },
 
@@ -296,29 +310,22 @@ const app = {
   },
 
   fazerLogout: function() {
+    if (this.state.pollingNotificacoesInterval) {
+      clearInterval(this.state.pollingNotificacoesInterval);
+      this.state.pollingNotificacoesInterval = null;
+    }
     this.state.token = null;
     this.state.usuarioLogado = null;
     localStorage.removeItem("belklock_token");
     localStorage.removeItem("belklock_usuario");
-    this.atualizarInfoUsuarioSidebar();
-    
-    this.exibirInterfaceLogin();
+    window.location.href = "index.html";
   },
 
   exibirInterfaceLogin: function() {
-    document.getElementById("login-container").style.display = "flex";
-    document.getElementById("app-main-container").style.display = "none";
-    
-    // Limpa campos de login
-    document.getElementById("login-email").value = "";
-    document.getElementById("login-senha").value = "";
-    document.getElementById("login-error-msg").style.display = "none";
+    window.location.href = "index.html";
   },
 
   exibirInterfacePosLogin: function() {
-    document.getElementById("login-container").style.display = "none";
-    document.getElementById("app-main-container").style.display = "flex";
-    
     // Atualiza o título da marca
     const mainH1 = document.getElementById("main-h1");
     if (mainH1) mainH1.innerText = this.state.nomeEmpresa || "BelKlock Semijoias";
@@ -408,6 +415,9 @@ const app = {
       this.renderizarDashboard();
       this.renderizarMarketing();
       this.renderizarClientes();
+      
+      // Inicia o polling de notificações de novas vendas
+      this.inicializarPollingNotificacoes();
     } else {
       // Revendedora: carrega maleta e navega direto para Minha Maleta
       await this.carregarMaletaPropriaDaAPI();
@@ -889,6 +899,13 @@ const app = {
         this.state.apiUrl = apiUrlSalva;
       }
 
+      const impostoSalvo = localStorage.getItem("belklock_dre_imposto");
+      const despesaSalva = localStorage.getItem("belklock_dre_despesa_fixa");
+      const cmvSalvo = localStorage.getItem("belklock_dre_cmv_estimado");
+      this.state.dreImposto = impostoSalvo ? parseFloat(impostoSalvo) : 0.0;
+      this.state.dreDespesaFixa = despesaSalva ? parseFloat(despesaSalva) : 0.0;
+      this.state.dreCmvEstimado = cmvSalvo ? parseFloat(cmvSalvo) : 33.0;
+
       if (this.state.usandoFicticio && !produtosSalvos && !revendedorasSalvas) {
         this.state.produtos = this.obterProdutosMock();
         this.state.revendedoras = this.obterRevendedorasMock();
@@ -931,6 +948,9 @@ const app = {
     localStorage.setItem("belklock_limiar_critico", this.state.limiarEstoqueCritico || 3);
     localStorage.setItem("belklock_nome_empresa", this.state.nomeEmpresa || "BelKlock Semijoias");
     localStorage.setItem("belklock_api_url", this.state.apiUrl || "http://localhost:5000/api");
+    localStorage.setItem("belklock_dre_imposto", this.state.dreImposto);
+    localStorage.setItem("belklock_dre_despesa_fixa", this.state.dreDespesaFixa);
+    localStorage.setItem("belklock_dre_cmv_estimado", this.state.dreCmvEstimado);
   },
 
   // 4. Cadastro de Mock de dados para demonstração sem placeholders vazios
@@ -1059,7 +1079,7 @@ const app = {
 
     // Botões rápidos do Dashboard
     document.getElementById("btn-quick-sale").addEventListener("click", () => this.abrirModalVendaRapida());
-    document.getElementById("btn-view-all-stock").addEventListener("click", () => this.navegarParaAba("estoque"));
+    document.getElementById("btn-view-all-stock").addEventListener("click", () => this.abrirModalTodosAlertas());
 
     // Eventos de Input da Calculadora no Modal de Produto
     const inputsPrecificacao = ["prod-bruto", "prod-banho", "prod-liquido", "prod-markup"];
@@ -1073,16 +1093,25 @@ const app = {
     this.configurarModal("modal-consignar", "btn-open-modal-consignar", "btn-close-modal-consignar", "btn-cancelar-consignar");
     this.configurarModal("modal-acerto", "btn-open-modal-acerto", "btn-close-modal-acerto", "btn-cancelar-acerto");
     this.configurarModal("modal-venda-rapida", null, "btn-close-modal-venda-rapida", "btn-cancelar-venda-rapida");
+    this.configurarModal("modal-todos-alertas", null, "btn-close-modal-todos-alertas", "btn-fechar-todos-alertas");
+    this.configurarModal("modal-notificacoes", "notification-bell-container", "btn-close-modal-notificacoes", "btn-fechar-notificacoes");
 
-    // Modal de Venda da Revendedora
-    const btnAbrirVendaRev = document.getElementById("btn-open-modal-venda-rev");
-    if (btnAbrirVendaRev) btnAbrirVendaRev.addEventListener("click", () => this._abrirModalVendaRevInterno());
-    const btnFecharVendaRev = document.getElementById("btn-close-modal-venda-rev");
-    if (btnFecharVendaRev) btnFecharVendaRev.addEventListener("click", () => document.getElementById("modal-venda-rev").classList.remove("active"));
-    const btnCancelarVendaRev = document.getElementById("btn-cancelar-venda-rev");
-    if (btnCancelarVendaRev) btnCancelarVendaRev.addEventListener("click", () => document.getElementById("modal-venda-rev").classList.remove("active"));
-    const btnConfirmarVendaRev = document.getElementById("btn-confirmar-venda-rev");
-    if (btnConfirmarVendaRev) btnConfirmarVendaRev.addEventListener("click", () => this.confirmarVendaRevendedora());
+    // Modal de Venda Direta da Administradora
+    const addListenerSafe = (id, event, callback) => {
+      const el = document.getElementById(id);
+      if (el) el.addEventListener(event, callback);
+    };
+    addListenerSafe("btn-open-modal-venda-admin", "click", () => this.abrirModalVendaAdmin());
+    addListenerSafe("btn-close-modal-venda-admin", "click", () => {
+      const m = document.getElementById("modal-venda-admin");
+      if (m) m.classList.remove("active");
+    });
+    addListenerSafe("btn-cancelar-venda-admin", "click", () => {
+      const m = document.getElementById("modal-venda-admin");
+      if (m) m.classList.remove("active");
+    });
+    addListenerSafe("btn-confirmar-venda-admin", "click", () => this.confirmarVendaAdmin());
+
 
     // Salvar Produto
     document.getElementById("btn-salvar-produto").addEventListener("click", () => this.salvarNovoProduto());
@@ -1103,6 +1132,12 @@ const app = {
     document.getElementById("btn-salvar-acerto-apenas").addEventListener("click", () => this.finalizarAcerto(false));
     document.getElementById("btn-finalizar-acerto-whats").addEventListener("click", () => this.finalizarAcerto(true));
     document.getElementById("btn-finalizar-acerto-excel").addEventListener("click", () => this.exportarExcelAcerto());
+
+    // Notificações
+    const btnMarcarLidas = document.getElementById("btn-marcar-todas-lidas");
+    if (btnMarcarLidas) {
+      btnMarcarLidas.addEventListener("click", () => this.marcarTodasNotificacoesComoLidas());
+    }
 
     // Excel
     document.getElementById("btn-exportar-estoque").addEventListener("click", () => ExcelHandler.exportarEstoque(this.state.produtos, this.state.colunasEstoque));
@@ -1198,6 +1233,9 @@ const app = {
         const buscaInput = document.getElementById("acerto-busca");
         if (buscaInput) buscaInput.value = "";
         this.renderizarTabelaPreencherAcerto();
+      }
+      if (modalId === "modal-notificacoes") {
+        this.renderizarNotificacoes();
       }
     };
 
@@ -1309,6 +1347,18 @@ const app = {
     tableAlertasBody.innerHTML = "";
     
     const produtosCriticos = this.state.produtos.filter(p => Number(p.quantidade || 0) <= (this.state.limiarEstoqueCritico || 3));
+    
+    // Ordenação dos produtos em alerta crítico: menor quantidade primeiro (críticos no topo)
+    produtosCriticos.sort((a, b) => Number(a.quantidade || 0) - Number(b.quantidade || 0));
+
+    // Controla o botão "Ver Mais" baseado na quantidade de produtos em alerta
+    const btnVerMais = document.getElementById("btn-view-all-stock");
+    if (btnVerMais) {
+      btnVerMais.style.display = produtosCriticos.length > 5 ? "inline-flex" : "none";
+    }
+
+    // Exibe apenas os primeiros 5 produtos no painel do Dashboard
+    const produtosCriticosExibidos = produtosCriticos.slice(0, 5);
 
     if (produtosCriticos.length === 0) {
       tableAlertasBody.innerHTML = `
@@ -1320,7 +1370,7 @@ const app = {
         </tr>
       `;
     } else {
-      produtosCriticos.forEach(p => {
+      produtosCriticosExibidos.forEach(p => {
         const custoTotal = Number(p.custoBruto || 0) + Number(p.custoBanho || 0) + Number(p.custoLiquido || 0);
         const precoVenda = custoTotal * Number(p.markup || 1);
         const statusText = p.quantidade === 0 ? "Esgotado" : "Crítico";
@@ -1379,6 +1429,19 @@ const app = {
 
     this.renderizarGraficosDashboard();
 
+    // Atualiza cards de Vendas Diretas da Administradora
+    if (typeof this.obterMetricasVendasAdmin === 'function') {
+      const metricas = this.obterMetricasVendasAdmin();
+      const elHoje = document.getElementById("val-vendas-diretas-hoje");
+      const elQtdHoje = document.getElementById("val-qtd-vendas-diretas-hoje");
+      const elMes = document.getElementById("val-vendas-diretas-mes");
+      const elQtdMes = document.getElementById("val-qtd-vendas-diretas-mes");
+      if (elHoje) elHoje.innerText = `R$ ${metricas.totalHoje.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+      if (elQtdHoje) elQtdHoje.innerText = metricas.qtdHoje;
+      if (elMes) elMes.innerText = `R$ ${metricas.totalMes.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+      if (elQtdMes) elQtdMes.innerText = metricas.qtdMes;
+    }
+
     // Inicializa datas do DRE se não estiverem preenchidas
     const inputInicio = document.getElementById("dre-data-inicio");
     const inputFim = document.getElementById("dre-data-fim");
@@ -1395,6 +1458,51 @@ const app = {
     this.carregarDRE();
   },
 
+  abrirModalTodosAlertas: function() {
+    const tableTodosBody = document.querySelector("#table-todos-alertas tbody");
+    if (!tableTodosBody) return;
+    
+    tableTodosBody.innerHTML = "";
+    
+    const produtosCriticos = this.state.produtos.filter(p => Number(p.quantidade || 0) <= (this.state.limiarEstoqueCritico || 3));
+    
+    // Ordenação dos produtos em alerta crítico: menor quantidade primeiro
+    produtosCriticos.sort((a, b) => Number(a.quantidade || 0) - Number(b.quantidade || 0));
+
+    if (produtosCriticos.length === 0) {
+      tableTodosBody.innerHTML = `
+        <tr>
+          <td colspan="6" style="text-align: center; color: var(--text-secondary); padding: 2rem;">
+            Nenhum produto crítico em estoque.
+          </td>
+        </tr>
+      `;
+    } else {
+      produtosCriticos.forEach(p => {
+        const custoTotal = Number(p.custoBruto || 0) + Number(p.custoBanho || 0) + Number(p.custoLiquido || 0);
+        const precoVenda = custoTotal * Number(p.markup || 1);
+        const statusText = p.quantidade === 0 ? "Esgotado" : "Crítico";
+        const badgeClass = p.quantidade === 0 ? "badge-low" : "badge-low";
+
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td><strong>${p.codigo || ""}</strong></td>
+          <td>${p.nome || ""}</td>
+          <td>${p.categoria || ""}</td>
+          <td><strong style="color: var(--danger);">${p.quantidade}</strong> unid.</td>
+          <td>R$ ${precoVenda.toFixed(2).replace(".", ",")}</td>
+          <td><span class="badge ${badgeClass}">${statusText}</span></td>
+        `;
+        tableTodosBody.appendChild(tr);
+      });
+    }
+
+    const modal = document.getElementById("modal-todos-alertas");
+    if (modal) {
+      modal.classList.add("active");
+    }
+  },
+
   carregarDRE: async function() {
     const inputInicio = document.getElementById("dre-data-inicio");
     const inputFim = document.getElementById("dre-data-fim");
@@ -1403,9 +1511,9 @@ const app = {
     const inicio = inputInicio.value;
     const fim = inputFim.value;
 
-    if (this.state.token) {
+    if (this.state.token && !this.state.token.startsWith("mock_")) {
       try {
-        const dados = await this.requisitarAPI(`/relatorios/dre?inicio=${inicio}&fim=${fim}`);
+        const dados = await this.requisitarAPI(`/relatorios/dre?inicio=${inicio}&fim=${fim}&cmvEstimado=${this.state.dreCmvEstimado}`);
         this.renderizarDadosDRE(dados.resumo);
       } catch (err) {
         console.error("Erro ao carregar DRE do servidor:", err);
@@ -1427,13 +1535,13 @@ const app = {
     const numProdutos = this.state.produtos.length || 10;
     const numRev = this.state.revendedoras.length || 3;
 
-    const faturamentoVendasDiretas = numProdutos * 15 * (diasDiferenca / 30); 
-    const custoVendasDiretas = faturamentoVendasDiretas / 3.0;
+    const faturamentoVendasDiretas = numProdutos * 15 * (diasDiferenca / 30) * 50; 
+    const custoVendasDiretas = faturamentoVendasDiretas * (this.state.dreCmvEstimado / 100);
     
     const faturamentoAcertos = numRev * 250 * (diasDiferenca / 30);
     const comissoesPagas = faturamentoAcertos * 0.3;
     const descontoPerdas = numRev * 15 * (diasDiferenca / 30);
-    const custoVendasConsignado = faturamentoAcertos * 0.28;
+    const custoVendasConsignado = faturamentoAcertos * (this.state.dreCmvEstimado / 100);
 
     const faturamentoBrutoTotal = faturamentoVendasDiretas + faturamentoAcertos;
     const custoTotalMercadorias = custoVendasDiretas + custoVendasConsignado;
@@ -1460,26 +1568,34 @@ const app = {
     const fatConsignadoEl = document.getElementById("dre-fat-consignado");
     const comissoesEl = document.getElementById("dre-comissoes");
     const perdasEl = document.getElementById("dre-perdas-ajuste");
+    const impostosEl = document.getElementById("dre-impostos");
     const recLiquidaEl = document.getElementById("dre-receita-liquida");
     const cmvEl = document.getElementById("dre-cmv");
     const custoDiretasEl = document.getElementById("dre-custo-diretas");
     const custoConsignadoEl = document.getElementById("dre-custo-consignado");
+    const despesasFixasEl = document.getElementById("dre-despesas-fixas");
     
+    const valorImposto = resumo.faturamentoBrutoTotal * (this.state.dreImposto / 100);
+    const valorDespesasFixas = this.state.dreDespesaFixa;
+
     if (fatBrutoEl) fatBrutoEl.innerText = formatar(resumo.faturamentoBrutoTotal);
     if (fatDiretasEl) fatDiretasEl.innerText = formatar(resumo.faturamentoVendasDiretas);
     if (fatConsignadoEl) fatConsignadoEl.innerText = formatar(resumo.faturamentoAcertos);
     
     if (comissoesEl) comissoesEl.innerText = `(-) ${formatar(resumo.comissoesPagas)}`;
     if (perdasEl) perdasEl.innerText = `(+) ${formatar(resumo.descontoPerdas)}`;
+    if (impostosEl) impostosEl.innerText = `(-) ${formatar(valorImposto)}`;
     
-    const receitaLiquida = resumo.faturamentoBrutoTotal - resumo.comissoesPagas + resumo.descontoPerdas;
+    const receitaLiquida = resumo.faturamentoBrutoTotal - resumo.comissoesPagas + resumo.descontoPerdas - valorImposto;
     if (recLiquidaEl) recLiquidaEl.innerText = formatar(receitaLiquida);
     
     if (cmvEl) cmvEl.innerText = `(-) ${formatar(resumo.custoTotalMercadorias)}`;
     if (custoDiretasEl) custoDiretasEl.innerText = formatar(resumo.custoVendasDiretas);
     if (custoConsignadoEl) custoConsignadoEl.innerText = formatar(resumo.custoVendasConsignado);
     
-    const lucro = resumo.lucroLiquidoEstimado;
+    if (despesasFixasEl) despesasFixasEl.innerText = `(-) ${formatar(valorDespesasFixas)}`;
+
+    const lucro = receitaLiquida - resumo.custoTotalMercadorias - valorDespesasFixas;
     const lucroEl = document.getElementById("dre-lucro-liquido");
     const resultadoValorEl = document.getElementById("dre-resultado-valor");
     const resultadoStatusEl = document.getElementById("dre-resultado-status");
@@ -2452,25 +2568,35 @@ const app = {
     const rev = this.state.revendedoras.find(r => r.id === this.state.revendedoraSelecionadaId);
     if (rev) {
       if (await this.confirmar(`Deseja realmente excluir a revendedora ${rev.nome}? As peças atualmente com ela retornarão automaticamente ao Estoque Central.`)) {
-        // Devolve peças consignadas ao estoque central antes de deletar
-        rev.consignado.forEach(item => {
-          const prod = this.state.produtos.find(p => p.id === item.produtoId);
-          if (prod) {
-            prod.quantidade = Number(prod.quantidade || 0) + Number(item.quantidadeConsignada || 0);
-            // Atualiza _valoresDinamicos para refletir na tabela de estoque imediatamente
-            if (prod._valoresDinamicos) {
-              prod._valoresDinamicos["Estoque Central"] = prod.quantidade;
-            }
+        try {
+          if (this.state.token && !this.state.token.startsWith("mock_")) {
+            await this.requisitarAPI(`/revendedoras/${rev.id}`, "DELETE");
           }
-        });
 
-        this.state.revendedoras = this.state.revendedoras.filter(r => r.id !== rev.id);
-        this.state.revendedoraSelecionadaId = this.state.revendedoras.length > 0 ? this.state.revendedoras[0].id : null;
-        
-        this.salvarDadosNoLocalStorage();
-        this.renderizarRevendedoras();
-        this.renderizarEstoque();
-        this.renderizarDashboard();
+          // Devolve peças consignadas ao estoque central antes de deletar
+          rev.consignado.forEach(item => {
+            const prod = this.state.produtos.find(p => p.id === item.produtoId);
+            if (prod) {
+              prod.quantidade = Number(prod.quantidade || 0) + Number(item.quantidadeConsignada || 0);
+              // Atualiza _valoresDinamicos para refletir na tabela de estoque imediatamente
+              if (prod._valoresDinamicos) {
+                prod._valoresDinamicos["Estoque Central"] = prod.quantidade;
+              }
+            }
+          });
+
+          this.state.revendedoras = this.state.revendedoras.filter(r => r.id !== rev.id);
+          this.state.revendedoraSelecionadaId = this.state.revendedoras.length > 0 ? this.state.revendedoras[0].id : null;
+          
+          this.salvarDadosNoLocalStorage();
+          this.renderizarRevendedoras();
+          this.renderizarEstoque();
+          this.renderizarDashboard();
+          this.toast("Revendedora excluída com sucesso!", "success");
+        } catch (error) {
+          console.error(error);
+          this.toast("Erro ao excluir revendedora: " + error.message, "error");
+        }
       }
     }
   },
@@ -2683,12 +2809,57 @@ const app = {
   },
 
   // 10. LÓGICA DE ACERTO DE CONTAS (MODAL)
-  renderizarTabelaPreencherAcerto: function() {
+  buscarVendasPendentesAcerto: async function(revendedoraId) {
+    const offlineMode = this.state.token && this.state.token.startsWith("mock_");
+    if (offlineMode) {
+      const localVendasKey = `belklock_vendas_${revendedoraId}`;
+      const vendas = JSON.parse(localStorage.getItem(localVendasKey) || "[]");
+      const rev = this.state.revendedoras.find(r => r.id === revendedoraId);
+      const ultimoAcerto = rev.historico && rev.historico.length > 0 ? rev.historico[rev.historico.length - 1] : null;
+      if (ultimoAcerto) {
+        const dataUltimoAcerto = new Date(ultimoAcerto.data);
+        return vendas.filter(v => new Date(v.data) > dataUltimoAcerto);
+      }
+      return vendas;
+    }
+    
+    try {
+      const vendas = await this.requisitarAPI(`/vendas-revendedora?usuarioId=${revendedoraId}&apenasPendentes=true`);
+      return vendas;
+    } catch (err) {
+      console.warn("Erro ao buscar vendas pendentes:", err);
+      return [];
+    }
+  },
+
+  renderizarTabelaPreencherAcerto: async function() {
     const rev = this.state.revendedoras.find(r => r.id === this.state.revendedoraSelecionadaId);
     if (!rev) return;
 
     document.getElementById("acerto-nome-revendedora").innerText = rev.nome;
     document.getElementById("acerto-comissao-percent").innerText = rev.comissao;
+
+    // Busca preferências da revendedora
+    const prefPagamento = localStorage.getItem(`belklock_pref_pagamento_${rev.id}`) || "Pix";
+    const prefPix = localStorage.getItem(`belklock_pref_pix_${rev.id}`) || "";
+    
+    // Atualiza o dropdown no modal de acerto com a preferência da revendedora
+    const selectForma = document.getElementById("acerto-forma-pagamento");
+    if (selectForma) {
+      selectForma.value = prefPagamento;
+    }
+
+    // Exibe nota de sugestão da revendedora
+    const elInfoPref = document.getElementById("acerto-pref-info-revendedora");
+    if (elInfoPref) {
+      if (prefPix) {
+        elInfoPref.innerHTML = `<i class="fa-solid fa-credit-card"></i> Preferência da Revendedora: <strong>${prefPagamento}</strong><br><i class="fa-solid fa-key" style="margin-top: 3px;"></i> Chave Pix informada: <code>${prefPix}</code>`;
+        elInfoPref.style.display = "block";
+      } else {
+        elInfoPref.innerHTML = `<i class="fa-solid fa-credit-card"></i> Preferência da Revendedora: <strong>${prefPagamento}</strong>`;
+        elInfoPref.style.display = "block";
+      }
+    }
 
     const tbody = document.querySelector("#table-preencher-acerto tbody");
     tbody.innerHTML = "";
@@ -2705,12 +2876,27 @@ const app = {
       return;
     }
 
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: var(--text-secondary); padding: 2rem;"><i class="fa-solid fa-spinner fa-spin"></i> Buscando vendas pendentes da revendedora...</td></tr>`;
+
+    // Carrega vendas pendentes
+    const vendasPendentes = await this.buscarVendasPendentesAcerto(rev.id);
+    const mapaVendas = new Map();
+    vendasPendentes.forEach(v => {
+      mapaVendas.set(v.produtoId, (mapaVendas.get(v.produtoId) || 0) + v.quantidade);
+    });
+
+    tbody.innerHTML = "";
+
     rev.consignado.forEach(item => {
       const tr = document.createElement("tr");
+      
+      const qtdVendidaSugerida = Math.min(mapaVendas.get(item.produtoId) || 0, item.quantidadeConsignada);
+      const qtdDevolvidaSugerida = item.quantidadeConsignada - qtdVendidaSugerida;
+
       tr.innerHTML = `
         <td>
           <strong>${item.codigo}</strong><br>
-          <span style="font-size: 0.8rem; color: var(--text-secondary);">${item.nome}</span>
+          <span class="prod-name-cell" style="font-size: 0.8rem; color: var(--text-secondary);">${item.nome}</span>
         </td>
         <td>R$ ${Number(item.precoVenda).toFixed(2).replace(".", ",")}</td>
         <td><strong>${item.quantidadeConsignada}</strong> pçs</td>
@@ -2719,17 +2905,18 @@ const app = {
             <button class="btn-input-adjust" onclick="app.ajustarQtdAcerto(this, -1, 'vendido', ${item.quantidadeConsignada})"><i class="fa-solid fa-minus"></i></button>
             <input type="number" class="input-acerto-vendido"
                    data-prod-id="${item.produtoId}"
-                   value="0" min="0" max="${item.quantidadeConsignada}"
+                   value="${qtdVendidaSugerida}" min="0" max="${item.quantidadeConsignada}"
                    oninput="app.sincronizarAcertoQuantidades(this, 'vendido')">
             <button class="btn-input-adjust" onclick="app.ajustarQtdAcerto(this, 1, 'vendido', ${item.quantidadeConsignada})"><i class="fa-solid fa-plus"></i></button>
           </div>
+          ${qtdVendidaSugerida > 0 ? `<div style="font-size: 0.72rem; color: #81c784; text-align: center; margin-top: 3px;"><i class="fa-solid fa-check"></i> ${qtdVendidaSugerida} reg. no app</div>` : ''}
         </td>
         <td>
           <div class="acerto-input-wrapper">
             <button class="btn-input-adjust" onclick="app.ajustarQtdAcerto(this, -1, 'devolvido', ${item.quantidadeConsignada})"><i class="fa-solid fa-minus"></i></button>
             <input type="number" class="input-acerto-devolvido"
                    data-prod-id="${item.produtoId}"
-                   value="${item.quantidadeConsignada}" min="0" max="${item.quantidadeConsignada}"
+                   value="${qtdDevolvidaSugerida}" min="0" max="${item.quantidadeConsignada}"
                    oninput="app.sincronizarAcertoQuantidades(this, 'devolvido')">
             <button class="btn-input-adjust" onclick="app.ajustarQtdAcerto(this, 1, 'devolvido', ${item.quantidadeConsignada})"><i class="fa-solid fa-plus"></i></button>
           </div>
@@ -2740,7 +2927,7 @@ const app = {
                    data-prod-id="${item.produtoId}"
                    value="0" min="0" max="${item.quantidadeConsignada}"
                    oninput="app.sincronizarAcertoQuantidades(this, 'perdido')"
-                   style="border-color: rgba(239, 154, 154, 0.5);">
+                   style="border-color: rgba(239, 154, 154, 0.5); width: 60px; text-align: center;">
           </div>
         </td>
         <td>
@@ -2749,7 +2936,7 @@ const app = {
                    data-prod-id="${item.produtoId}"
                    value="0" min="0" max="${item.quantidadeConsignada}"
                    oninput="app.sincronizarAcertoQuantidades(this, 'defeito')"
-                   style="border-color: rgba(255, 183, 77, 0.5);">
+                   style="border-color: rgba(255, 183, 77, 0.5); width: 60px; text-align: center;">
           </div>
         </td>
         <td style="text-align: right;">
@@ -3003,12 +3190,16 @@ const app = {
     const valorComissao = Math.max(0, valorComissaoBruta - valorPerdas);
     const valorLiquido = faturamentoBruto - valorComissaoBruta + valorPerdas;
 
+    const selectForma = document.getElementById("acerto-forma-pagamento");
+    const formaPagamento = selectForma ? selectForma.value : "Pix";
+
     try {
       // Sincroniza fechamento de acerto com a Azure
-      if (this.state.token) {
+      if (this.state.token && !this.state.token.startsWith("mock_")) {
         await this.requisitarAPI("/acertos", "POST", {
           usuarioId: rev.id,
-          itensAcerto: postItens
+          itensAcerto: postItens,
+          formaPagamento: formaPagamento
         });
       }
 
@@ -3024,7 +3215,8 @@ const app = {
         faturamentoBruto,
         valorDescontoPerda: valorPerdas,
         comissaoPaga: valorComissao,
-        liquidoBelklock: valorLiquido
+        liquidoBelklock: valorLiquido,
+        formaPagamento: formaPagamento
       });
 
       // Se deve abrir WhatsApp, gera e redireciona
@@ -3715,7 +3907,19 @@ const app = {
             borderWidth: 2
           }]
         },
-        options: { plugins: { legend: { labels: { color: '#e0e0e0' } } } }
+        options: { 
+          plugins: { 
+            legend: { labels: { color: '#e0e0e0' } },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  let value = context.parsed;
+                  return ` ${context.label}: R$ ${value.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+                }
+              }
+            }
+          } 
+        }
       });
     }
 
@@ -3746,10 +3950,28 @@ const app = {
         },
         options: { 
           scales: { 
-            y: { ticks: { color: '#e0e0e0' }, grid: { color: 'rgba(255,255,255,0.1)' } },
+            y: { 
+              ticks: { 
+                color: '#e0e0e0',
+                callback: function(value) {
+                  return 'R$ ' + value.toLocaleString('pt-BR', {minimumFractionDigits: 0});
+                }
+              }, 
+              grid: { color: 'rgba(255,255,255,0.1)' } 
+            },
             x: { ticks: { color: '#e0e0e0' }, grid: { display: false } }
           },
-          plugins: { legend: { display: false } }
+          plugins: { 
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  let value = context.raw;
+                  return ` Faturamento: R$ ${value.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+                }
+              }
+            }
+          }
         }
       });
     }
@@ -3783,7 +4005,8 @@ const app = {
     const offlineMode = this.state.token && this.state.token.startsWith("mock_");
     if (offlineMode) {
       const vendasConsolidadas = [];
-      
+
+      // Vendas das revendedoras (localStorage por revendedora)
       this.state.revendedoras.forEach(r => {
         const localVendasKey = `belklock_vendas_${r.id}`;
         const localVendas = JSON.parse(localStorage.getItem(localVendasKey) || "[]");
@@ -3799,13 +4022,35 @@ const app = {
             total: v.precoVenda * v.quantidade,
             comissao: v.comissaoValor,
             vendedor: r.nome,
-            contato: r.whatsapp || '—',
-            cliente: '—',
+            contato: v.whatsappCliente || '—',
+            cliente: v.nomeCliente || 'Cliente Avulso',
             usuarioId: r.id
           });
         });
       });
-      
+
+      // Vendas diretas da administradora (localStorage global)
+      const vendasAdminLocais = JSON.parse(localStorage.getItem("belklock_vendas_admin") || "[]");
+      vendasAdminLocais.forEach(v => {
+        vendasConsolidadas.push({
+          id: v.id,
+          data: v.data,
+          tipo: 'direta',
+          nomeProduto: v.nomeProduto,
+          codigoProduto: v.codigoProduto,
+          quantidade: v.quantidade,
+          precoVenda: v.precoVenda,
+          total: v.total,
+          comissao: 0,
+          lucroEstimado: v.lucroEstimado || 0,
+          formaPagamento: v.formaPagamento || '',
+          vendedor: 'BelKlock (Direta)',
+          contato: v.whatsappCliente || '—',
+          cliente: v.nomeCliente || 'Cliente Avulso',
+          usuarioId: null
+        });
+      });
+
       vendasConsolidadas.sort((a, b) => new Date(b.data) - new Date(a.data));
       this.state.vendasConsolidadas = vendasConsolidadas;
       this.atualizarSeletorFiltroRevendedoras();
@@ -3853,8 +4098,8 @@ const app = {
           total: v.precoVenda * v.quantidade,
           comissao: v.comissaoValor,
           vendedor: v.usuario ? v.usuario.nome : 'Revendedora',
-          contato: v.usuario && v.usuario.whatsapp ? v.usuario.whatsapp : '—',
-          cliente: '—',
+          contato: v.cliente && v.cliente.whatsapp ? v.cliente.whatsapp : '—',
+          cliente: v.cliente ? v.cliente.nome : 'Cliente Avulso',
           usuarioId: v.usuarioId
         });
       });
@@ -3983,28 +4228,35 @@ const app = {
         const dataStr = new Date(v.data).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' });
         
         const badgeStyle = v.tipo === 'direta' 
-          ? 'background: rgba(212, 175, 55, 0.15); border-color: rgba(212, 175, 55, 0.3); color: var(--gold-light);' 
+          ? 'background: rgba(67, 160, 71, 0.15); border-color: rgba(67, 160, 71, 0.3); color: #81c784;' 
           : 'background: rgba(100, 181, 246, 0.15); border-color: rgba(100, 181, 246, 0.3); color: #90caf9;';
-        const badgeLabel = v.tipo === 'direta' ? 'Direta (Admin)' : 'Revendedora';
+        const badgeLabel = v.tipo === 'direta' ? 'Direta (Admin)' : v.vendedor;
+        const badgeSub = v.tipo === 'direta' && v.formaPagamento ? `<br><small style="font-size:0.72rem;opacity:0.75;">${v.formaPagamento}</small>` : '';
         
-        const contatoWhatsApp = v.contato !== '—' 
+        const contatoWhatsApp = v.contato && v.contato !== '—' 
           ? `<a href="https://api.whatsapp.com/send?phone=55${v.contato.replace(/\D/g, '')}" target="_blank" style="color: #81c784; text-decoration: none;"><i class="fa-brands fa-whatsapp"></i> ${v.contato}</a>`
           : '—';
           
-        const clienteInfo = v.tipo === 'direta' 
-          ? `${v.cliente}<br><small style="color:var(--text-secondary);">${contatoWhatsApp}</small>`
-          : `${v.vendedor}<br><small style="color:var(--text-secondary);">${contatoWhatsApp}</small>`;
+        const clienteInfo = `${v.cliente || 'Cliente Avulso'}<br><small style="color:var(--text-secondary);">${contatoWhatsApp}</small>`;
           
+        // Para vendas diretas: exibe lucro estimado no lugar de comissão (que é 0)
+        const comissaoOuLucro = v.tipo === 'direta'
+          ? `<span style="color: #a5d6a7; font-weight: 700; font-size: 0.8rem;">R$ ${(v.lucroEstimado || 0).toFixed(2).replace(".", ",")} <small style="opacity:0.7;font-weight:400;">(lucro)</small></span>`
+          : `R$ ${v.comissao.toFixed(2).replace(".", ",")}`;
+
         const tr = document.createElement("tr");
         tr.innerHTML = `
           <td style="color: var(--text-secondary); font-size: 0.85rem;">${dataStr}</td>
-          <td><span class="badge" style="${badgeStyle}">${badgeLabel}</span></td>
+          <td><span class="badge" style="${badgeStyle}">${badgeLabel}${badgeSub}</span></td>
           <td><strong>${v.nomeProduto}</strong><br><span style="font-size:0.78rem;color:var(--text-secondary);">${v.codigoProduto}</span></td>
           <td>${v.quantidade} pçs</td>
           <td>R$ ${v.precoVenda.toFixed(2).replace(".", ",")}</td>
           <td style="color: var(--gold-primary); font-weight: 700;">R$ ${v.total.toFixed(2).replace(".", ",")}</td>
-          <td style="color: #81c784; font-weight: 700;">R$ ${v.comissao.toFixed(2).replace(".", ",")}</td>
+          <td style="color: #81c784; font-weight: 700;">${comissaoOuLucro}</td>
           <td>${clienteInfo}</td>
+          <td>
+            <button class="btn-qty" style="color: #ef9a9a; border-color: rgba(198, 40, 40, 0.1);" onclick="app.excluirVenda('${v.id}', '${v.tipo}')" title="Excluir Venda"><i class="fa-solid fa-trash"></i></button>
+          </td>
         `;
         tbody.appendChild(tr);
       });
@@ -4060,6 +4312,13 @@ const app = {
     if (inputLimiar) inputLimiar.value = this.state.limiarEstoqueCritico || 3;
     if (inputApi) inputApi.value = this.state.apiUrl || "http://localhost:5000/api";
 
+    const inputImposto = document.getElementById("cfg-dre-imposto");
+    const inputDespesa = document.getElementById("cfg-dre-despesa-fixa");
+    const inputCmv = document.getElementById("cfg-dre-cmv-estimado");
+    if (inputImposto) inputImposto.value = this.state.dreImposto;
+    if (inputDespesa) inputDespesa.value = this.state.dreDespesaFixa;
+    if (inputCmv) inputCmv.value = this.state.dreCmvEstimado;
+ 
     if (statusConexao) {
       if (this.state.token && !this.state.token.startsWith("mock_")) {
         statusConexao.innerText = "Conectado à API (Autenticado)";
@@ -4085,6 +4344,9 @@ const app = {
     const inputNome = document.getElementById("cfg-nome-empresa").value.trim();
     const inputLimiar = parseInt(document.getElementById("cfg-limiar-critico").value) || 3;
     const inputApi = document.getElementById("cfg-api-url").value.trim();
+    const inputImposto = parseFloat(document.getElementById("cfg-dre-imposto").value) || 0.0;
+    const inputDespesa = parseFloat(document.getElementById("cfg-dre-despesa-fixa").value) || 0.0;
+    const inputCmv = parseFloat(document.getElementById("cfg-dre-cmv-estimado").value) || 33.0;
 
     if (!inputNome) {
       this.toast("O nome da empresa não pode ser vazio.", "warning");
@@ -4094,6 +4356,9 @@ const app = {
     this.state.nomeEmpresa = inputNome;
     this.state.limiarEstoqueCritico = inputLimiar;
     this.state.apiUrl = inputApi;
+    this.state.dreImposto = inputImposto;
+    this.state.dreDespesaFixa = inputDespesa;
+    this.state.dreCmvEstimado = inputCmv;
 
     const mainH1 = document.getElementById("main-h1");
     if (mainH1) mainH1.innerText = inputNome;
@@ -4378,6 +4643,219 @@ const app = {
     } catch (err) {
       console.error(err);
       this.toast("Erro ao excluir cliente: " + err.message, "error");
+    }
+  },
+
+  excluirTodosClientes: async function() {
+    if (!await this.confirmar("🚨 ATENÇÃO: Deseja realmente excluir TODAS as clientes cadastradas? Esta ação NÃO pode ser desfeita!")) return;
+    try {
+      if (this.state.token && !this.state.token.startsWith("mock_")) {
+        await this.requisitarAPI("/clientes", "DELETE");
+      }
+      this.state.clientes = [];
+      this.renderizarClientes();
+      this.toast("Todas as clientes foram removidas com sucesso!", "success");
+    } catch (err) {
+      console.error(err);
+      this.toast("Erro ao excluir todas as clientes: " + err.message, "error");
+    }
+  },
+
+  excluirTodasRevendedoras: async function() {
+    if (!await this.confirmar("🚨 ATENÇÃO: Deseja realmente excluir TODAS as revendedoras cadastradas? As consignações delas serão perdidas. Esta ação NÃO pode ser desfeita!")) return;
+    try {
+      if (this.state.token && !this.state.token.startsWith("mock_")) {
+        await this.requisitarAPI("/revendedoras", "DELETE");
+      }
+      this.state.revendedoras = [];
+      this.state.revendedoraSelecionadaId = null;
+      this.salvarDadosNoLocalStorage();
+      this.renderizarRevendedoras();
+      this.renderizarDashboard();
+      this.toast("Todas as revendedoras foram excluídas com sucesso!", "success");
+    } catch (err) {
+      console.error(err);
+      this.toast("Erro ao excluir todas as revendedoras: " + err.message, "error");
+    }
+  },
+
+  excluirVenda: async function(id, tipo) {
+    if (!await this.confirmar("Deseja realmente excluir esta venda do histórico? Esta ação NÃO devolverá a peça ao estoque central.")) return;
+    try {
+      if (this.state.token && !this.state.token.startsWith("mock_")) {
+        await this.requisitarAPI(`/vendas/${tipo}/${id}`, "DELETE");
+      }
+      this.state.vendasConsolidadas = this.state.vendasConsolidadas.filter(v => v.id !== id);
+      this.renderizarVendasConsolidadas();
+      this.renderizarDashboard();
+      this.toast("Venda excluída com sucesso!", "success");
+    } catch (err) {
+      console.error(err);
+      this.toast("Erro ao excluir venda: " + err.message, "error");
+    }
+  },
+
+  excluirTodoHistoricoVendas: async function() {
+    if (!await this.confirmar("🚨 ATENÇÃO: Deseja realmente limpar TODO o histórico de vendas do sistema? Esta ação NÃO pode ser desfeita!")) return;
+    try {
+      if (this.state.token && !this.state.token.startsWith("mock_")) {
+        await this.requisitarAPI("/vendas", "DELETE");
+      }
+      this.state.vendasConsolidadas = [];
+      this.renderizarVendasConsolidadas();
+      this.renderizarDashboard();
+      this.toast("Histórico de vendas excluído com sucesso!", "success");
+    } catch (err) {
+      console.error(err);
+      this.toast("Erro ao excluir histórico de vendas: " + err.message, "error");
+    }
+  },
+
+  inicializarPollingNotificacoes: function() {
+    if (this.state.pollingNotificacoesInterval) {
+      clearInterval(this.state.pollingNotificacoesInterval);
+    }
+    
+    // Executa uma busca inicial imediata
+    this.buscarNotificacoes();
+    
+    // Define polling a cada 30 segundos
+    this.state.pollingNotificacoesInterval = setInterval(() => {
+      this.buscarNotificacoes();
+    }, 30000);
+  },
+
+  buscarNotificacoes: async function() {
+    try {
+      let novas = [];
+      if (this.state.token && !this.state.token.startsWith("mock_")) {
+        novas = await this.requisitarAPI("/notificacoes", "GET");
+      } else {
+        // Fallback local/mock
+        const localNotifs = localStorage.getItem("belklock_notificacoes_mock");
+        novas = localNotifs ? JSON.parse(localNotifs) : [];
+      }
+
+      if (!Array.isArray(novas)) {
+        novas = [];
+      }
+
+      // Identifica notificações realmente novas para exibir o toast animado
+      const idsExistentes = new Set(this.state.notificacoes.map(n => n.id));
+      const notificacoesNovas = novas.filter(n => !idsExistentes.has(n.id));
+
+      if (notificacoesNovas.length > 0 && this.state.notificacoes.length > 0) {
+        // Apenas exibe toast se já existia um estado prévio carregado (para não inundar de toasts ao fazer login)
+        notificacoesNovas.forEach(n => {
+          this.toast(n.mensagem, "success");
+        });
+      }
+
+      this.state.notificacoes = novas;
+      this.atualizarBadgeSino();
+    } catch (err) {
+      console.error("Erro ao buscar notificações:", err);
+    }
+  },
+
+  atualizarBadgeSino: function() {
+    const badge = document.getElementById("notification-count");
+    if (!badge) return;
+    
+    const count = this.state.notificacoes.filter(n => !n.lida).length;
+    badge.innerText = count;
+    if (count > 0) {
+      badge.style.display = "flex";
+    } else {
+      badge.style.display = "none";
+    }
+  },
+
+  renderizarNotificacoes: function() {
+    const container = document.getElementById("notifications-list-container");
+    if (!container) return;
+
+    container.innerHTML = "";
+    
+    const naoLidas = this.state.notificacoes.filter(n => !n.lida);
+
+    if (naoLidas.length === 0) {
+      container.innerHTML = `
+        <div style="text-align: center; color: var(--text-secondary); padding: 2rem;">
+          <i class="fa-solid fa-bell-slash" style="font-size: 2rem; color: rgba(212, 175, 55, 0.3); margin-bottom: 0.8rem; display: block;"></i>
+          Você não tem nenhuma nova notificação.
+        </div>
+      `;
+      return;
+    }
+
+    naoLidas.forEach(n => {
+      const card = document.createElement("div");
+      card.className = "notification-item-card";
+      card.style.cssText = `
+        background: rgba(212, 175, 55, 0.04);
+        border-left: 3px solid var(--gold-primary);
+        border-radius: var(--radius-sm);
+        padding: 0.8rem 1rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.3rem;
+        transition: all 0.3s ease;
+      `;
+
+      let detalhesHtml = "";
+      if (n.detalhes) {
+        try {
+          const det = typeof n.detalhes === 'string' ? JSON.parse(n.detalhes) : n.detalhes;
+          if (det && det.itens && Array.isArray(det.itens)) {
+            detalhesHtml = `
+              <div style="font-size: 0.78rem; color: var(--text-secondary); margin-top: 0.4rem; padding-top: 0.4rem; border-top: 1px dashed rgba(212, 175, 55, 0.2);">
+                <strong style="color: var(--text-primary);">Peças vendidas:</strong>
+                <ul style="margin: 0.2rem 0 0 1rem; padding: 0; list-style-type: disc;">
+                  ${det.itens.map(it => `<li>${it.quantidade}x ${it.codigo || it.produtoId} (${it.nome})</li>`).join("")}
+                </ul>
+              </div>
+            `;
+          }
+        } catch (e) {
+          // ignora erro se não for JSON
+        }
+      }
+
+      const dataFormatada = new Date(n.createdAt).toLocaleString('pt-BR');
+
+      card.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem;">
+          <span style="font-size: 0.88rem; font-weight: 500; color: var(--text-primary); line-height: 1.4;">${n.mensagem}</span>
+          <span style="font-size: 0.72rem; color: var(--text-secondary); white-space: nowrap;">${dataFormatada}</span>
+        </div>
+        ${detalhesHtml}
+      `;
+      container.appendChild(card);
+    });
+  },
+
+  marcarTodasNotificacoesComoLidas: async function() {
+    try {
+      if (this.state.token && !this.state.token.startsWith("mock_")) {
+        await this.requisitarAPI("/notificacoes/ler", "PUT", {});
+      } else {
+        // Fallback local/mock
+        localStorage.setItem("belklock_notificacoes_mock", JSON.stringify([]));
+      }
+
+      this.state.notificacoes = [];
+      this.atualizarBadgeSino();
+      this.renderizarNotificacoes();
+      
+      const modal = document.getElementById("modal-notificacoes");
+      if (modal) {
+        modal.classList.remove("active");
+      }
+      this.toast("Notificações limpas com sucesso!", "success");
+    } catch (err) {
+      console.error(err);
+      this.toast("Erro ao limpar notificações: " + err.message, "error");
     }
   }
 

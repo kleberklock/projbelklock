@@ -153,22 +153,31 @@ const app = {
     }
   },
 
-  // 2. Inicialização do Aplicativo
+  // 2. Inicialização do Aplicativo (Perfil Revendedora)
   init: function() {
-    this.registrarEventosLogin();
-    this.carregarDadosDoLocalStorage(); // Inicializa dados locais (mocks de demonstração se vazio)
+    this.carregarDadosDoLocalStorage(); // Inicializa dados locais se necessário
     
-    // Verifica se há sessão ativa no LocalStorage
     const token = localStorage.getItem("belklock_token");
-    const usuario = localStorage.getItem("belklock_usuario");
+    const usuarioJson = localStorage.getItem("belklock_usuario");
     
-    if (token && usuario) {
+    if (!token || !usuarioJson) {
+      this.fazerLogout();
+      return;
+    }
+    
+    try {
+      const usuario = JSON.parse(usuarioJson);
+      if (usuario.role !== 'revendedora') {
+        window.location.href = "admin.html";
+        return;
+      }
       this.state.token = token;
-      this.state.usuarioLogado = JSON.parse(usuario);
+      this.state.usuarioLogado = usuario;
       this.exibirInterfacePosLogin();
       this.carregarDadosIniciais();
-    } else {
-      this.exibirInterfaceLogin();
+    } catch (e) {
+      console.error("Erro na inicialização da Revendedora:", e);
+      this.fazerLogout();
     }
   },
 
@@ -300,25 +309,14 @@ const app = {
     this.state.usuarioLogado = null;
     localStorage.removeItem("belklock_token");
     localStorage.removeItem("belklock_usuario");
-    this.atualizarInfoUsuarioSidebar();
-    
-    this.exibirInterfaceLogin();
+    window.location.href = "index.html";
   },
 
   exibirInterfaceLogin: function() {
-    document.getElementById("login-container").style.display = "flex";
-    document.getElementById("app-main-container").style.display = "none";
-    
-    // Limpa campos de login
-    document.getElementById("login-email").value = "";
-    document.getElementById("login-senha").value = "";
-    document.getElementById("login-error-msg").style.display = "none";
+    window.location.href = "index.html";
   },
 
   exibirInterfacePosLogin: function() {
-    document.getElementById("login-container").style.display = "none";
-    document.getElementById("app-main-container").style.display = "flex";
-    
     // Atualiza o título da marca
     const mainH1 = document.getElementById("main-h1");
     if (mainH1) mainH1.innerText = this.state.nomeEmpresa || "BelKlock Semijoias";
@@ -418,6 +416,7 @@ const app = {
       // Atualiza boas-vindas com nome
       const el = document.getElementById("maleta-boas-vindas");
       if (el) el.innerText = `Olá, ${this.state.usuarioLogado.nome.split(' ')[0]}! 💎`;
+      this.carregarPreferenciaPagamento();
     }
     
     console.log("BelKlock Semijoias inicializado com sucesso!");
@@ -830,6 +829,25 @@ const app = {
         const vendasLocais = JSON.parse(localStorage.getItem(localVendasKey) || "[]");
         vendasLocais.unshift(novaVenda);
         localStorage.setItem(localVendasKey, JSON.stringify(vendasLocais));
+
+        // Adiciona notificação de demonstração
+        const mockNotificacoes = JSON.parse(localStorage.getItem("belklock_notificacoes_mock") || "[]");
+        mockNotificacoes.unshift({
+          id: "notif_" + Date.now(),
+          tipo: "venda_revendedora",
+          mensagem: `Nova venda registrada por ${this.state.usuarioLogado.nome}: ${quantidade}x ${item.nome}`,
+          detalhes: JSON.stringify({
+            itens: [{
+              produtoId: produtoId,
+              codigo: item.codigo,
+              nome: item.nome,
+              quantidade: quantidade
+            }]
+          }),
+          lida: false,
+          createdAt: new Date().toISOString()
+        });
+        localStorage.setItem("belklock_notificacoes_mock", JSON.stringify(mockNotificacoes));
       } else {
         resp = await this.requisitarAPI("/vendas-revendedora", "POST", { produtoId, quantidade });
 
@@ -1040,6 +1058,14 @@ const app = {
 
   // 5. Registro e escuta de eventos na UI
   registrarEventosUI: function() {
+    // Helper function para adicionar event listener apenas se o elemento existir
+    const addListenerSafe = (id, event, callback) => {
+      const el = document.getElementById(id);
+      if (el) {
+        el.addEventListener(event, callback);
+      }
+    };
+
     // Cliques na navegação da Sidebar
     document.querySelectorAll(".nav-item").forEach(item => {
       item.addEventListener("click", () => {
@@ -1049,22 +1075,18 @@ const app = {
     });
 
     // Filtros de busca no estoque
-    const filtroBusca = document.getElementById("filtro-busca");
-    const filtroCategoria = document.getElementById("filtro-categoria");
-    const filtroStatus = document.getElementById("filtro-status");
-    
-    if (filtroBusca) filtroBusca.addEventListener("input", () => this.renderizarEstoque());
-    if (filtroCategoria) filtroCategoria.addEventListener("change", () => this.renderizarEstoque());
-    if (filtroStatus) filtroStatus.addEventListener("change", () => this.renderizarEstoque());
+    addListenerSafe("filtro-busca", "input", () => this.renderizarEstoque());
+    addListenerSafe("filtro-categoria", "change", () => this.renderizarEstoque());
+    addListenerSafe("filtro-status", "change", () => this.renderizarEstoque());
 
     // Botões rápidos do Dashboard
-    document.getElementById("btn-quick-sale").addEventListener("click", () => this.abrirModalVendaRapida());
-    document.getElementById("btn-view-all-stock").addEventListener("click", () => this.navegarParaAba("estoque"));
+    addListenerSafe("btn-quick-sale", "click", () => this.abrirModalVendaRapida());
+    addListenerSafe("btn-view-all-stock", "click", () => this.navegarParaAba("estoque"));
 
     // Eventos de Input da Calculadora no Modal de Produto
     const inputsPrecificacao = ["prod-bruto", "prod-banho", "prod-liquido", "prod-markup"];
     inputsPrecificacao.forEach(id => {
-      document.getElementById(id).addEventListener("input", () => this.calcularPrecificacaoDinamicamente());
+      addListenerSafe(id, "input", () => this.calcularPrecificacaoDinamicamente());
     });
 
     // Modais e seus gatilhos
@@ -1075,71 +1097,77 @@ const app = {
     this.configurarModal("modal-venda-rapida", null, "btn-close-modal-venda-rapida", "btn-cancelar-venda-rapida");
 
     // Modal de Venda da Revendedora
-    const btnAbrirVendaRev = document.getElementById("btn-open-modal-venda-rev");
-    if (btnAbrirVendaRev) btnAbrirVendaRev.addEventListener("click", () => this._abrirModalVendaRevInterno());
-    const btnFecharVendaRev = document.getElementById("btn-close-modal-venda-rev");
-    if (btnFecharVendaRev) btnFecharVendaRev.addEventListener("click", () => document.getElementById("modal-venda-rev").classList.remove("active"));
-    const btnCancelarVendaRev = document.getElementById("btn-cancelar-venda-rev");
-    if (btnCancelarVendaRev) btnCancelarVendaRev.addEventListener("click", () => document.getElementById("modal-venda-rev").classList.remove("active"));
-    const btnConfirmarVendaRev = document.getElementById("btn-confirmar-venda-rev");
-    if (btnConfirmarVendaRev) btnConfirmarVendaRev.addEventListener("click", () => this.confirmarVendaRevendedora());
+    addListenerSafe("btn-open-modal-venda-rev", "click", () => this._abrirModalVendaRevInterno());
+    addListenerSafe("btn-close-modal-venda-rev", "click", () => {
+      const modal = document.getElementById("modal-venda-rev");
+      if (modal) modal.classList.remove("active");
+    });
+    addListenerSafe("btn-cancelar-venda-rev", "click", () => {
+      const modal = document.getElementById("modal-venda-rev");
+      if (modal) modal.classList.remove("active");
+    });
+    addListenerSafe("btn-confirmar-venda-rev", "click", () => this.confirmarVendaRevendedora());
 
     // Salvar Produto
-    document.getElementById("btn-salvar-produto").addEventListener("click", () => this.salvarNovoProduto());
+    addListenerSafe("btn-salvar-produto", "click", () => this.salvarNovoProduto());
 
     // Salvar Revendedora
-    document.getElementById("btn-salvar-revendedora").addEventListener("click", () => this.salvarNovaRevendedora());
+    addListenerSafe("btn-salvar-revendedora", "click", () => this.salvarNovaRevendedora());
 
     // Consignar Peças (Confirmar envio)
-    document.getElementById("btn-confirmar-consignar").addEventListener("click", () => this.processarConsignacao());
+    addListenerSafe("btn-confirmar-consignar", "click", () => this.processarConsignacao());
 
     // Excluir Revendedora
-    document.getElementById("btn-excluir-revendedora").addEventListener("click", () => this.excluirRevendedoraSelecionada());
+    addListenerSafe("btn-excluir-revendedora", "click", () => this.excluirRevendedoraSelecionada());
 
     // Editar Revendedora
-    document.getElementById("btn-editar-revendedora").addEventListener("click", () => this.editarRevendedoraSelecionada());
+    addListenerSafe("btn-editar-revendedora", "click", () => this.editarRevendedoraSelecionada());
 
     // Fechamento de acertos
-    document.getElementById("btn-salvar-acerto-apenas").addEventListener("click", () => this.finalizarAcerto(false));
-    document.getElementById("btn-finalizar-acerto-whats").addEventListener("click", () => this.finalizarAcerto(true));
-    document.getElementById("btn-finalizar-acerto-excel").addEventListener("click", () => this.exportarExcelAcerto());
+    addListenerSafe("btn-salvar-acerto-apenas", "click", () => this.finalizarAcerto(false));
+    addListenerSafe("btn-finalizar-acerto-whats", "click", () => this.finalizarAcerto(true));
+    addListenerSafe("btn-finalizar-acerto-excel", "click", () => this.exportarExcelAcerto());
 
     // Excel
-    document.getElementById("btn-exportar-estoque").addEventListener("click", () => ExcelHandler.exportarEstoque(this.state.produtos, this.state.colunasEstoque));
-    document.getElementById("btn-trigger-import-file").addEventListener("click", () => document.getElementById("input-import-excel").click());
-    document.getElementById("input-import-excel").addEventListener("change", (e) => this.processarImportacaoExcel(e));
-    document.getElementById("btn-limpar-ficticios").addEventListener("click", () => this.zerarDadosDemonstracao());
-    document.getElementById("btn-excluir-todos-produtos").addEventListener("click", () => this.excluirTodosOsProdutos());
-
+    addListenerSafe("btn-exportar-estoque", "click", () => ExcelHandler.exportarEstoque(this.state.produtos, this.state.colunasEstoque));
+    addListenerSafe("btn-trigger-import-file", "click", () => {
+      const input = document.getElementById("input-import-excel");
+      if (input) input.click();
+    });
+    addListenerSafe("input-import-excel", "change", (e) => this.processarImportacaoExcel(e));
+    addListenerSafe("btn-limpar-ficticios", "click", () => this.zerarDadosDemonstracao());
+    addListenerSafe("btn-excluir-todos-produtos", "click", () => this.excluirTodosOsProdutos());
 
     // Upload do Instagram Feed
-    document.getElementById("zone-upload-feed").addEventListener("click", () => document.getElementById("input-upload-feed").click());
-    document.getElementById("input-upload-feed").addEventListener("change", (e) => this.processarUploadFeed(e));
-    document.getElementById("btn-clear-feed").addEventListener("click", () => this.reiniciarFeedPadrao());
+    addListenerSafe("zone-upload-feed", "click", () => {
+      const input = document.getElementById("input-upload-feed");
+      if (input) input.click();
+    });
+    addListenerSafe("input-upload-feed", "change", (e) => this.processarUploadFeed(e));
+    addListenerSafe("btn-clear-feed", "click", () => this.reiniciarFeedPadrao());
 
     // WhatsApp Mask
-    const revWhatsApp = document.getElementById("rev-whatsapp");
-    if(revWhatsApp) revWhatsApp.addEventListener("input", (e) => this.aplicarMascaraWhatsApp(e.target));
-    const vrWhatsApp = document.getElementById("vr-whatsapp");
-    if(vrWhatsApp) vrWhatsApp.addEventListener("input", (e) => this.aplicarMascaraWhatsApp(e.target));
+    addListenerSafe("rev-whatsapp", "input", (e) => this.aplicarMascaraWhatsApp(e.target));
+    addListenerSafe("vr-whatsapp", "input", (e) => this.aplicarMascaraWhatsApp(e.target));
 
     // Backup Geral JSON Export/Import
-    document.getElementById("btn-backup-exportar").addEventListener("click", () => this.exportarBackupGeralJSON());
-    document.getElementById("btn-backup-importar").addEventListener("click", () => document.getElementById("input-backup-json").click());
-    document.getElementById("input-backup-json").addEventListener("change", (e) => this.importarBackupGeralJSON(e));
+    addListenerSafe("btn-backup-exportar", "click", () => this.exportarBackupGeralJSON());
+    addListenerSafe("btn-backup-importar", "click", () => {
+      const input = document.getElementById("input-backup-json");
+      if (input) input.click();
+    });
+    addListenerSafe("input-backup-json", "change", (e) => this.importarBackupGeralJSON(e));
 
     // WhatsApp Venda Rápida (Confirmar)
-    document.getElementById("btn-enviar-venda-rapida").addEventListener("click", () => this.processarVendaRapidaWhats());
+    addListenerSafe("btn-enviar-venda-rapida", "click", () => this.processarVendaRapidaWhats());
 
     // Modal de Clientes
     this.configurarModal("modal-cliente", "btn-open-modal-cliente", "btn-close-modal-cliente", "btn-cancelar-cliente");
-    document.getElementById("btn-salvar-cliente").addEventListener("click", () => this.salvarCliente());
-    const clienteWhatsInput = document.getElementById("cliente-whatsapp");
-    if (clienteWhatsInput) clienteWhatsInput.addEventListener("input", (e) => this.aplicarMascaraWhatsApp(e.target));
+    addListenerSafe("btn-salvar-cliente", "click", () => this.salvarCliente());
+    addListenerSafe("cliente-whatsapp", "input", (e) => this.aplicarMascaraWhatsApp(e.target));
 
     // WhatsApp Mask no Venda Rápida (novo campo)
-    const vrClienteWhats = document.getElementById("vr-cliente-whatsapp");
-    if (vrClienteWhats) vrClienteWhats.addEventListener("input", (e) => this.aplicarMascaraWhatsApp(e.target));
+    addListenerSafe("vr-cliente-whatsapp", "input", (e) => this.aplicarMascaraWhatsApp(e.target));
     
     // Selector de cliente na Venda Rápida: mostra/oculta box de novo cliente
     const vrSelect = document.getElementById("vr-cliente-select");
@@ -1152,20 +1180,22 @@ const app = {
 
     // Configuração Drag and Drop da planilha
     const dropzone = document.getElementById("dropzone-excel");
-    dropzone.addEventListener("dragover", (e) => { e.preventDefault(); dropzone.style.borderColor = "var(--gold-primary)"; });
-    dropzone.addEventListener("dragleave", () => { dropzone.style.borderColor = "rgba(212, 175, 55, 0.3)"; });
-    dropzone.addEventListener("drop", (e) => {
-      e.preventDefault();
-      dropzone.style.borderColor = "rgba(212, 175, 55, 0.3)";
-      if (e.dataTransfer.files.length > 0) {
-        const file = e.dataTransfer.files[0];
-        if (file.name.endsWith(".csv")) {
-          ExcelHandler.importarEstoque(file, (produtos) => this.mesclarEstoqueImportado(produtos));
-        } else {
-          this.toast("Por favor, envie apenas planilhas no formato .csv", "warning");
+    if (dropzone) {
+      dropzone.addEventListener("dragover", (e) => { e.preventDefault(); dropzone.style.borderColor = "var(--gold-primary)"; });
+      dropzone.addEventListener("dragleave", () => { dropzone.style.borderColor = "rgba(212, 175, 55, 0.3)"; });
+      dropzone.addEventListener("drop", (e) => {
+        e.preventDefault();
+        dropzone.style.borderColor = "rgba(212, 175, 55, 0.3)";
+        if (e.dataTransfer.files.length > 0) {
+          const file = e.dataTransfer.files[0];
+          if (file.name.endsWith(".csv")) {
+            ExcelHandler.importarEstoque(file, (produtos) => this.mesclarEstoqueImportado(produtos));
+          } else {
+            this.toast("Por favor, envie apenas planilhas no formato .csv", "warning");
+          }
         }
-      }
-    });
+      });
+    }
   },
 
   configurarModal: function(modalId, triggerId, closeBtnId, cancelBtnId) {
@@ -4379,6 +4409,47 @@ const app = {
       console.error(err);
       this.toast("Erro ao excluir cliente: " + err.message, "error");
     }
+  },
+
+  carregarPreferenciaPagamento: function() {
+    const id = this.state.usuarioLogado ? this.state.usuarioLogado.id : "default";
+    const prefForma = localStorage.getItem("belklock_pref_pagamento_" + id) || "Pix";
+    const prefPix = localStorage.getItem("belklock_pref_pix_" + id) || "";
+    
+    const selectForma = document.getElementById("pref-forma-pagamento");
+    const inputPix = document.getElementById("pref-chave-pix");
+    
+    if (selectForma) selectForma.value = prefForma;
+    if (inputPix) inputPix.value = prefPix;
+    
+    this.ajustarCamposPreferenciaPagamento();
+  },
+  
+  ajustarCamposPreferenciaPagamento: function() {
+    const selectForma = document.getElementById("pref-forma-pagamento");
+    const containerPix = document.getElementById("pref-chave-pix-container");
+    if (selectForma && containerPix) {
+      if (selectForma.value === "Pix") {
+        containerPix.style.display = "block";
+      } else {
+        containerPix.style.display = "none";
+      }
+    }
+  },
+  
+  salvarPreferenciaPagamento: function() {
+    const id = this.state.usuarioLogado ? this.state.usuarioLogado.id : "default";
+    const selectForma = document.getElementById("pref-forma-pagamento");
+    const inputPix = document.getElementById("pref-chave-pix");
+    
+    if (selectForma) {
+      localStorage.setItem("belklock_pref_pagamento_" + id, selectForma.value);
+    }
+    if (inputPix) {
+      localStorage.setItem("belklock_pref_pix_" + id, inputPix.value.trim());
+    }
+    
+    this.toast("Preferência de pagamento salva com sucesso!", "success");
   }
 
 };

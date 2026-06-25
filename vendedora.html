@@ -1,0 +1,1686 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>BelKlock Semijoias - Gestão Premium</title>
+  
+  <!-- PWA e Configurações Mobile -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#d4af37">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="apple-touch-icon" href="assets/logo.svg">
+
+  <!-- SEO Meta Tags -->
+  <meta name="description" content="Plataforma de gestão inteligente e precificação para vendedoras e revendedoras de semijoias. Controle de estoque, consignação e marketing integrado.">
+  <meta name="author" content="BelKlock">
+  
+  <!-- CSS Principal -->
+  <link rel="stylesheet" href="style.css">
+  
+  <!-- FontAwesome para Ícones de Alta Qualidade -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- Biblioteca Chart.js para Gráficos de BI -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+  <!-- ==========================================
+       TELA DE LOGIN PREMIUM (REMOVIDA DESTA PÁGINA)
+       ========================================== -->
+  <div class="app-container" id="app-main-container" style="display: flex;">
+    
+    <!-- ==========================================
+         SIDEBAR LATERAL (NAVEGAÇÃO SPA)
+         ========================================== -->
+    <aside class="sidebar">
+      <div class="brand">
+        <!-- Inclusão do logotipo SVG premium criado previamente -->
+        <img src="assets/logo.svg" alt="BelKlock Semijoias" id="logo-brand">
+      </div>
+      
+      <nav class="nav-container">
+        <ul class="nav-menu">
+          <li class="nav-item active" data-target="minha-maleta" id="menu-minha-maleta">
+            <button id="btn-tab-minha-maleta"><i class="fa-solid fa-briefcase"></i>Minha Maleta</button>
+          </li>
+          <li class="nav-item" data-target="clientes">
+            <button id="btn-tab-clientes"><i class="fa-solid fa-address-book"></i>Meus Clientes</button>
+          </li>
+          <li class="nav-item" data-target="vendas-geral" id="menu-vendas-geral">
+            <button id="btn-tab-vendas-geral"><i class="fa-solid fa-receipt"></i>Minhas Vendas</button>
+          </li>
+          <li class="nav-item" data-target="marketing">
+            <button id="btn-tab-marketing"><i class="fa-solid fa-wand-magic-sparkles"></i>Divulgação & Mkt</button>
+          </li>
+        </ul>
+      </nav>
+      
+      <div class="sidebar-footer">
+        <div id="sidebar-user-info" class="sidebar-user-info" style="display: none;">
+          <div class="user-avatar" id="sidebar-user-avatar">U</div>
+          <div class="user-details">
+            <span class="user-name" id="sidebar-user-name">Usuário</span>
+            <span class="user-role" id="sidebar-user-role">Função</span>
+          </div>
+        </div>
+        <button id="btn-logout" class="btn-danger" style="width: 100%; justify-content: center; margin-bottom: 1rem; padding: 0.5rem;"><i class="fa-solid fa-right-from-bracket"></i> Sair da Conta</button>
+        <p>BelKlock Semijoias v1.0</p>
+        <p>&copy; 2026 BelKlock</p>
+      </div>
+    </aside>
+
+    <!-- ==========================================
+         ÁREA DE CONTEÚDO PRINCIPAL
+         ========================================== -->
+    <main class="main-content">
+      
+      <!-- ==========================================
+           ABA: DASHBOARD (INATIVA PARA REVENDEDORA)
+           ========================================== -->
+      <section id="dashboard" class="app-section" style="display: none !important;">
+        <div class="section-header">
+          <div class="section-title">
+            <h1 id="main-h1">BelKlock Semijoias</h1>
+            <p>Seja bem-vinda ao seu centro de gestão e luxo comercial.</p>
+          </div>
+          <div class="header-actions">
+            <button class="btn-gold" id="btn-quick-sale"><i class="fa-brands fa-whatsapp"></i> Venda Rápida WhatsApp</button>
+          </div>
+        </div>
+
+        <!-- Indicadores Numéricos -->
+        <div class="metrics-grid">
+          <div class="metric-card" id="metric-stock-total">
+            <div class="metric-icon"><i class="fa-solid fa-ring"></i></div>
+            <div class="metric-info">
+              <h3>Estoque Central</h3>
+              <div class="metric-value" id="val-estoque-central">0 pçs</div>
+            </div>
+          </div>
+          <div class="metric-card" id="metric-stock-value">
+            <div class="metric-icon"><i class="fa-solid fa-vault"></i></div>
+            <div class="metric-info">
+              <h3>Capital em Peças</h3>
+              <div class="metric-value" id="val-capital-pecas">R$ 0,00</div>
+            </div>
+          </div>
+          <div class="metric-card" id="metric-consign-value">
+            <div class="metric-icon"><i class="fa-solid fa-handshake"></i></div>
+            <div class="metric-info">
+              <h3>No Consignado</h3>
+              <div class="metric-value" id="val-capital-consignado">R$ 0,00</div>
+            </div>
+          </div>
+          <div class="metric-card" id="metric-revenue-estimate">
+            <div class="metric-icon"><i class="fa-solid fa-chart-line"></i></div>
+            <div class="metric-info">
+              <h3>Retorno Estimado</h3>
+              <div class="metric-value" id="val-retorno-estimado">R$ 0,00</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="dashboard-grid">
+          <!-- Alertas e Estoque Crítico -->
+          <div class="dashboard-panel">
+            <div class="panel-header">
+              <h2><i class="fa-solid fa-circle-exclamation"></i> Alertas de Estoque Crítico</h2>
+              <button class="btn-outline-gold" id="btn-view-all-stock"><i class="fa-solid fa-arrow-right"></i> Ver Tudo</button>
+            </div>
+            <div class="table-responsive">
+              <table class="premium-table" id="table-alertas">
+                <thead>
+                  <tr>
+                    <th>Código</th>
+                    <th>Produto</th>
+                    <th>Categoria</th>
+                    <th>Qtd.</th>
+                    <th>Preço de Venda</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td colspan="6" style="text-align: center; color: var(--text-secondary);">Carregando alertas de estoque...</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Revendedoras em Destaque -->
+          <div class="dashboard-panel">
+            <div class="panel-header">
+              <h2><i class="fa-solid fa-star"></i> Revendedoras Ativas</h2>
+            </div>
+            <div class="table-responsive">
+              <table class="premium-table" id="table-resumo-revendedoras">
+                <thead>
+                  <tr>
+                    <th>Nome</th>
+                    <th>Qtd. Consig.</th>
+                    <th>Valor Consig.</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td colspan="3" style="text-align: center; color: var(--text-secondary);">Sem revendedoras cadastradas.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Painéis de Gráficos Analíticos (Chart.js) -->
+        <div class="dashboard-grid" style="margin-top: 2rem;">
+          <!-- Gráfico de Pizza: Capital por Categoria -->
+          <div class="dashboard-panel" style="display: flex; flex-direction: column; align-items: center;">
+            <div class="panel-header" style="width: 100%;">
+              <h2><i class="fa-solid fa-chart-pie"></i> Capital por Categoria</h2>
+            </div>
+            <div style="position: relative; width: 100%; max-width: 250px; height: 250px; display: flex; justify-content: center; align-items: center; margin-top: 1rem;">
+              <canvas id="chart-categorias"></canvas>
+            </div>
+          </div>
+
+          <!-- Gráfico de Barras: Ranking de Revendedoras -->
+          <div class="dashboard-panel">
+            <div class="panel-header">
+              <h2><i class="fa-solid fa-chart-column"></i> Ranking de Revendedoras</h2>
+            </div>
+            <div style="position: relative; width: 100%; height: 250px; margin-top: 1rem;">
+              <canvas id="chart-revendedoras"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- Relatório DRE Simplificado -->
+        <div class="dashboard-panel" style="margin-top: 2rem; width: 100%;">
+          <div class="panel-header">
+            <h2><i class="fa-solid fa-calculator"></i> Demonstrativo do Resultado do Exercício (DRE)</h2>
+            <div class="dre-filter-container" style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+              <input type="date" id="dre-data-inicio" class="form-control" style="max-width: 150px; padding: 0.3rem 0.5rem;">
+              <span style="color: var(--text-secondary);">até</span>
+              <input type="date" id="dre-data-fim" class="form-control" style="max-width: 150px; padding: 0.3rem 0.5rem;">
+              <button class="btn-gold" onclick="app.carregarDRE()" style="padding: 0.4rem 1rem;"><i class="fa-solid fa-filter"></i> Filtrar</button>
+            </div>
+          </div>
+          
+          <div class="dre-layout-grid" style="display: grid; grid-template-columns: 1.5fr 1fr; gap: 2rem; margin-top: 1.5rem;">
+            <!-- Tabela DRE -->
+            <div>
+              <table class="premium-table" id="table-dre" style="width: 100%;">
+                <tbody>
+                  <tr style="font-weight: bold; font-size: 1.05rem;">
+                    <td>(=) FATURAMENTO BRUTO</td>
+                    <td id="dre-fat-bruto" style="text-align: right; color: var(--gold-primary);">R$ 0,00</td>
+                  </tr>
+                  <tr style="font-size: 0.9rem; color: var(--text-secondary);">
+                    <td style="padding-left: 2rem;">Vendas Diretas (Admin)</td>
+                    <td id="dre-fat-diretas" style="text-align: right;">R$ 0,00</td>
+                  </tr>
+                  <tr style="font-size: 0.9rem; color: var(--text-secondary);">
+                    <td style="padding-left: 2rem;">Acertos de Consignado</td>
+                    <td id="dre-fat-consignado" style="text-align: right;">R$ 0,00</td>
+                  </tr>
+                  
+                  <tr style="color: var(--danger);">
+                    <td>(-) Deduções (Comissões Pagas)</td>
+                    <td id="dre-comissoes" style="text-align: right;">R$ 0,00</td>
+                  </tr>
+                  <tr style="font-size: 0.9rem; color: var(--text-secondary);">
+                    <td style="padding-left: 2rem;">(+) Ajuste de Perdas (Cobrado das Revendedoras)</td>
+                    <td id="dre-perdas-ajuste" style="text-align: right; color: var(--gold-primary);">R$ 0,00</td>
+                  </tr>
+                  
+                  <tr style="font-weight: bold;">
+                    <td>(=) RECEITA LÍQUIDA</td>
+                    <td id="dre-receita-liquida" style="text-align: right;">R$ 0,00</td>
+                  </tr>
+                  
+                  <tr style="color: var(--danger);">
+                    <td>(-) CUSTO DAS MERCADORIAS VENDIDAS (CMV)</td>
+                    <td id="dre-cmv" style="text-align: right;">R$ 0,00</td>
+                  </tr>
+                  <tr style="font-size: 0.9rem; color: var(--text-secondary);">
+                    <td style="padding-left: 2rem;">Custo das Vendas Diretas</td>
+                    <td id="dre-custo-diretas" style="text-align: right;">R$ 0,00</td>
+                  </tr>
+                  <tr style="font-size: 0.9rem; color: var(--text-secondary);">
+                    <td style="padding-left: 2rem;">Custo das Vendas Consignadas</td>
+                    <td id="dre-custo-consignado" style="text-align: right;">R$ 0,00</td>
+                  </tr>
+                  
+                  <tr style="font-weight: bold; font-size: 1.15rem; border-top: 2px solid var(--border-color);" id="dre-lucro-row">
+                    <td>(=) LUCRO LÍQUIDO ESTIMADO</td>
+                    <td id="dre-lucro-liquido" style="text-align: right; color: #66bb6a;">R$ 0,00</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Resumo Visual / Card -->
+            <div style="display: flex; flex-direction: column; justify-content: center; align-items: center; background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 2rem; text-align: center;">
+              <h4 style="margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 1px; font-size: 0.9rem; color: var(--text-secondary);">Resultado no Período</h4>
+              <div id="dre-resultado-valor" style="font-size: 2rem; font-weight: bold; color: #66bb6a; margin: 1rem 0;">R$ 0,00</div>
+              <p id="dre-resultado-status" style="font-size: 0.95rem; color: var(--text-secondary);">Parabéns! Sua empresa está operando no azul no período selecionado.</p>
+              <div style="display: flex; gap: 1rem; width: 100%; margin-top: 1.5rem; border-top: 1px solid var(--border-color); padding-top: 1rem; font-size: 0.85rem;">
+                <div style="flex: 1;">
+                  <span style="color: var(--text-secondary); display: block;">Margem de Lucro</span>
+                  <strong id="dre-margem-lucro">0.0%</strong>
+                </div>
+                <div style="flex: 1; border-left: 1px solid var(--border-color);">
+                  <span style="color: var(--text-secondary); display: block;">Markup Médio</span>
+                  <strong id="dre-markup-medio">3.0x</strong>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==========================================
+           ABA: ESTOQUE E CUSTOS (CADASTRO / BUSCA)
+           ========================================== -->
+      <section id="estoque" class="app-section">
+        <div class="section-header">
+          <div class="section-title">
+            <h2>Gestão de Peças e Precificação Avançada</h2>
+            <p>Cadastre suas joias brutas, aplique banhos e calcule o markup exato do seu faturamento.</p>
+          </div>
+          <div class="header-actions">
+            <button class="btn-gold" id="btn-open-modal-produto"><i class="fa-solid fa-plus"></i> Cadastrar Semijoia</button>
+          </div>
+        </div>
+
+        <!-- Sub-abas do Estoque -->
+        <div class="mkt-tabs" id="estoque-tabs" style="margin-bottom: 2rem;">
+          <button class="mkt-tab-btn active" id="btn-subtab-estoque-geral" onclick="app.mudarSubAbaEstoque('geral')"><i class="fa-solid fa-boxes-stacked"></i> Estoque Central</button>
+          <button class="mkt-tab-btn" id="btn-subtab-estoque-defeitos" onclick="app.mudarSubAbaEstoque('defeitos')"><i class="fa-solid fa-circle-exclamation" style="color: var(--danger);"></i> Peças com Defeito</button>
+        </div>
+
+        <!-- Conteúdo: Estoque Geral -->
+        <div id="subtab-estoque-geral-content">
+          <div class="dashboard-panel" style="margin-bottom: 2rem;">
+            <div class="form-grid" style="grid-template-columns: 2fr 1fr 1fr; gap: 1rem; margin-bottom: 0;">
+              <div class="form-group" style="margin-bottom: 0;">
+                <input type="text" id="filtro-busca" class="form-control" placeholder="Buscar por nome ou código do produto...">
+              </div>
+              <div class="form-group" style="margin-bottom: 0;">
+                <select id="filtro-categoria" class="form-control">
+                  <option value="">Todas as Categorias</option>
+                  <option value="Brincos">Brincos</option>
+                  <option value="Colares">Colares</option>
+                  <option value="Anéis">Anéis</option>
+                  <option value="Pulseiras">Pulseiras</option>
+                  <option value="Conjuntos">Conjuntos</option>
+                  <option value="Outros">Outros</option>
+                </select>
+              </div>
+              <div class="form-group" style="margin-bottom: 0;">
+                <select id="filtro-status" class="form-control">
+                  <option value="">Todos os Status</option>
+                  <option value="baixo">Estoque Baixo</option>
+                  <option value="disponivel">Disponível</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div class="dashboard-panel">
+            <div class="table-responsive">
+              <table class="premium-table" id="table-estoque-completo">
+                <thead>
+                  <tr>
+                    <th>Código</th>
+                    <th>Nome do Produto</th>
+                    <th>Categoria</th>
+                    <th>Custo Bruto</th>
+                    <th>Custo Banho</th>
+                    <th>Custo Oper.</th>
+                    <th>Markup</th>
+                    <th>Preço Venda</th>
+                    <th>Estoque Central</th>
+                    <th>Consignado</th>
+                    <th>Ações</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td colspan="11" style="text-align: center; color: var(--text-secondary);">Cadastre seu primeiro produto para começar!</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Conteúdo: Peças com Defeito -->
+        <div id="subtab-estoque-defeitos-content" style="display: none;">
+          <div class="dashboard-panel">
+            <div class="table-responsive">
+              <table class="premium-table" id="table-estoque-defeitos">
+                <thead>
+                  <tr>
+                    <th style="cursor: pointer;" onclick="app.ordenarTabela('defeitos', 'codigo')">Código <i class="fa-solid fa-sort" style="margin-left: 5px; opacity: 0.3;"></i></th>
+                    <th style="cursor: pointer;" onclick="app.ordenarTabela('defeitos', 'nome')">Nome do Produto <i class="fa-solid fa-sort" style="margin-left: 5px; opacity: 0.3;"></i></th>
+                    <th style="cursor: pointer;" onclick="app.ordenarTabela('defeitos', 'categoria')">Categoria <i class="fa-solid fa-sort" style="margin-left: 5px; opacity: 0.3;"></i></th>
+                    <th style="cursor: pointer;" onclick="app.ordenarTabela('defeitos', 'quantidade')">Estoque Central <i class="fa-solid fa-sort" style="margin-left: 5px; opacity: 0.3;"></i></th>
+                    <th style="cursor: pointer;" onclick="app.ordenarTabela('defeitos', 'quantidadeDefeito')">Quantidade com Defeito <i class="fa-solid fa-sort" style="margin-left: 5px; opacity: 0.3;"></i></th>
+                    <th>Ações</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td colspan="6" style="text-align: center; color: var(--text-secondary); padding: 3rem;">
+                      Nenhuma peça com defeito registrada.
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==========================================
+           ABA: MINHA MALETA (EXCLUSIVO REVENDEDORAS)
+           ========================================== -->
+      <section id="minha-maleta" class="app-section active">
+        <div class="section-header">
+          <div class="section-title">
+            <h1 id="maleta-boas-vindas">Olá, Revendedora!</h1>
+            <p>Aqui está a sua maleta de semijoias e o resumo das suas vendas.</p>
+          </div>
+          <div class="header-actions">
+            <button class="btn-gold" id="btn-open-modal-venda-rev">
+              <i class="fa-solid fa-cash-register"></i> Fiz uma Venda!
+            </button>
+          </div>
+        </div>
+
+        <!-- Cards de Resumo -->
+        <div class="metrics-grid" id="maleta-metrics-grid">
+          <div class="metric-card">
+            <div class="metric-icon"><i class="fa-solid fa-briefcase"></i></div>
+            <div class="metric-info">
+              <h3>Peças na Maleta</h3>
+              <div class="metric-value" id="maleta-total-pecas">0 pçs</div>
+            </div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-icon"><i class="fa-solid fa-money-bill-wave"></i></div>
+            <div class="metric-info">
+              <h3>Valor da Maleta</h3>
+              <div class="metric-value" id="maleta-valor-total">R$ 0,00</div>
+            </div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-icon"><i class="fa-solid fa-percent"></i></div>
+            <div class="metric-info">
+              <h3>Comissão Projetada</h3>
+              <div class="metric-value comissao-destaque" id="maleta-comissao-projetada">R$ 0,00</div>
+            </div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-icon"><i class="fa-solid fa-check-circle"></i></div>
+            <div class="metric-info">
+              <h3>Vendas Registradas</h3>
+              <div class="metric-value vendas-destaque" id="maleta-vendas-hoje">0</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Abas: Maleta Atual | Histórico de Vendas -->
+        <div class="mkt-tabs" style="margin-bottom: 1.5rem;">
+          <button class="mkt-tab-btn active" id="btn-subtab-maleta-rev" onclick="app.mudarSubAbaMaleta('pecas')">
+            <i class="fa-solid fa-gem"></i> Minhas Peças
+          </button>
+          <button class="mkt-tab-btn" id="btn-subtab-historico-rev" onclick="app.mudarSubAbaMaleta('historico')">
+            <i class="fa-solid fa-receipt"></i> Histórico de Vendas
+          </button>
+        </div>
+
+        <!-- Sub-aba: Peças -->
+        <div id="sub-maleta-pecas" class="sub-aba-rev">
+          <div class="dashboard-panel">
+            <div class="panel-header">
+              <h2><i class="fa-solid fa-gem"></i> Peças Consignadas Comigo</h2>
+              <div style="display: flex; gap: 0.8rem; align-items: center;">
+                <input type="text" id="maleta-busca-peca" class="form-control" placeholder="Buscar peça..." style="width: 200px; padding: 0.5rem 0.8rem; font-size: 0.85rem;" oninput="app.filtrarMaletaPecas()">
+              </div>
+            </div>
+            <div class="table-responsive">
+              <table class="premium-table" id="table-minha-maleta">
+                <thead>
+                  <tr>
+                    <th>Código</th>
+                    <th>Peça</th>
+                    <th>Categoria</th>
+                    <th>Qtd. Consig.</th>
+                    <th>Preço de Venda</th>
+                    <th>Subtotal</th>
+                    <th>Sua Comissão</th>
+                    <th>Ação</th>
+                  </tr>
+                </thead>
+                <tbody id="tbody-minha-maleta">
+                  <tr>
+                    <td colspan="8" style="text-align: center; color: var(--text-secondary); padding: 3rem;">
+                      <i class="fa-solid fa-briefcase" style="font-size: 2rem; opacity: 0.3; display: block; margin-bottom: 0.8rem;"></i>
+                      Você ainda não tem peças consignadas. Entre em contato com a administradora.
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Painel de Preferência de Pagamento para Acerto -->
+          <div class="dashboard-panel" style="margin-top: 2rem;">
+            <div class="panel-header">
+              <h2><i class="fa-solid fa-credit-card"></i> Preferência de Pagamento para Acerto</h2>
+            </div>
+            <div style="margin-top: 1rem; display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 1.5rem; align-items: start;">
+              <div>
+                <div class="form-group" style="margin-bottom: 1.2rem;">
+                  <label for="pref-forma-pagamento" style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Como você prefere pagar no acerto?</label>
+                  <select id="pref-forma-pagamento" class="form-control" onchange="app.ajustarCamposPreferenciaPagamento()" style="width: 100%; padding: 0.5rem; background: var(--bg-primary); border-color: rgba(212, 175, 55, 0.3); color: var(--text-primary); font-family: inherit;">
+                    <option value="Pix" selected>Pix</option>
+                    <option value="Dinheiro">Dinheiro</option>
+                    <option value="Cartão de Crédito">Cartão de Crédito</option>
+                    <option value="Cartão de Débito">Cartão de Débito</option>
+                    <option value="Transferência">Transferência Bancária</option>
+                  </select>
+                </div>
+                
+                <div class="form-group" id="pref-chave-pix-container" style="margin-bottom: 1.2rem;">
+                  <label for="pref-chave-pix" style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Sua Chave Pix para Receber/Pagar no Acerto</label>
+                  <input type="text" id="pref-chave-pix" class="form-control" placeholder="E-mail, CPF, Celular ou Chave Aleatória">
+                </div>
+                
+                <button class="btn-gold" onclick="app.salvarPreferenciaPagamento()" style="margin-top: 0.5rem;"><i class="fa-solid fa-floppy-disk"></i> Salvar Preferência de Pagamento</button>
+              </div>
+              
+              <div style="background: rgba(212, 175, 55, 0.04); border: 1px solid rgba(212, 175, 55, 0.15); border-radius: var(--radius-md); padding: 1.2rem; font-size: 0.85rem; line-height: 1.6; color: var(--text-secondary);">
+                <p style="margin: 0 0 0.5rem 0;"><strong style="color: var(--gold-light);"><i class="fa-solid fa-circle-info"></i> Como funciona o acerto?</strong></p>
+                <p style="margin: 0 0 0.6rem 0;">Ao definir a sua forma de pagamento favorita e a sua chave Pix, o sistema automaticamente sugerirá estes dados para a administradora no momento do acerto de contas.</p>
+                <p style="margin: 0;">Isso agiliza a transferência de comissões e o fechamento do seu relatório financeiro.</p>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Sub-aba: Histórico de Vendas -->
+        <div id="sub-maleta-historico" class="sub-aba-rev" style="display:none;">
+          <div class="dashboard-panel">
+            <div class="panel-header">
+              <h2><i class="fa-solid fa-receipt"></i> Minhas Vendas Registradas</h2>
+            </div>
+            <div class="table-responsive">
+              <table class="premium-table" id="table-vendas-revendedora">
+                <thead>
+                  <tr>
+                    <th>Data</th>
+                    <th>Produto</th>
+                    <th>Qtd.</th>
+                    <th>Preço Unit.</th>
+                    <th>Total Venda</th>
+                    <th>Sua Comissão</th>
+                  </tr>
+                </thead>
+                <tbody id="tbody-vendas-revendedora">
+                  <tr>
+                    <td colspan="6" style="text-align: center; color: var(--text-secondary); padding: 3rem;">
+                      Nenhuma venda registrada ainda. Use o botão "Fiz uma Venda!" para começar.
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==========================================
+           ABA: GESTÃO DE REVENDEDORAS (CONSIGNADO)
+           ========================================== -->
+      <section id="revendedoras" class="app-section">
+        <div class="section-header">
+          <div class="section-title">
+            <h2>Rede de Revendedoras e Consignados</h2>
+            <p>Monitore suas maletas de semijoias distribuídas e feche acertos de vendas e devoluções com clareza.</p>
+          </div>
+          <div class="header-actions">
+            <button class="btn-gold" id="btn-open-modal-revendedora"><i class="fa-solid fa-user-plus"></i> Nova Revendedora</button>
+          </div>
+        </div>
+
+        <div class="split-layout">
+          <!-- Coluna 1: Lista de Revendedoras -->
+          <div>
+            <h3 style="font-family: var(--font-title); font-size: 1.3rem; margin-bottom: 1.2rem; color: var(--gold-light);">Revendedoras</h3>
+            <div class="list-container" id="lista-revendedoras-container">
+              <!-- Renderizado via JS -->
+              <p style="color: var(--text-secondary); text-align: center;">Nenhuma revendedora cadastrada.</p>
+            </div>
+          </div>
+
+          <!-- Coluna 2: Detalhes do Consignado / Painel de Ações -->
+          <div class="detail-view" id="painel-detalhes-revendedora" style="display: none;">
+            <div class="detail-header">
+              <div>
+                <h3 id="detalhe-nome-revendedora">Nome da Revendedora</h3>
+                <p><i class="fa-brands fa-whatsapp"></i> <span id="detalhe-whatsapp-revendedora">(00) 99999-9999</span></p>
+                <p style="margin-top: 0.3rem;">
+                  <i class="fa-solid fa-percent"></i> Comissão: <span id="detalhe-comissao-revendedora">30%</span>
+                  <span style="margin-left: 1.5rem;">
+                    <i class="fa-solid fa-key"></i> PIN: <strong id="detalhe-pin-revendedora" style="color: var(--gold-primary);">0000</strong>
+                    <button class="btn-qty" onclick="app.regenerarPINRevendedora()" title="Regenerar PIN e Senha" style="padding: 2px 6px; font-size: 0.75rem; vertical-align: middle; margin-left: 5px; display: inline-flex; align-items: center; justify-content: center; height: auto;"><i class="fa-solid fa-rotate"></i> Resetar</button>
+                  </span>
+                </p>
+              </div>
+              <div style="display: flex; gap: 0.5rem;">
+                <button class="btn-gold" id="btn-open-modal-consignar"><i class="fa-solid fa-briefcase"></i> Consignar Peças</button>
+                <button class="btn-outline-gold" id="btn-open-modal-acerto"><i class="fa-solid fa-calculator"></i> Realizar Acerto</button>
+              </div>
+            </div>
+
+            <!-- Resumos de Finanças e Peças Consignadas -->
+            <div class="metrics-grid" style="grid-template-columns: repeat(3, 1fr); margin-bottom: 2rem;">
+              <div class="metric-card" style="padding: 1.2rem; gap: 0.8rem; border-color: rgba(255, 255, 255, 0.05);">
+                <div class="metric-info">
+                  <h3 style="font-size: 0.75rem;">Consignadas</h3>
+                  <div class="metric-value" style="font-size: 1.4rem;" id="detalhe-qtd-consignada">0 pçs</div>
+                </div>
+              </div>
+              <div class="metric-card" style="padding: 1.2rem; gap: 0.8rem; border-color: rgba(255, 255, 255, 0.05);">
+                <div class="metric-info">
+                  <h3 style="font-size: 0.75rem;">Total Bruto</h3>
+                  <div class="metric-value" style="font-size: 1.4rem; color: var(--gold-primary);" id="detalhe-valor-consignado">R$ 0,00</div>
+                </div>
+              </div>
+              <div class="metric-card" style="padding: 1.2rem; gap: 0.8rem; border-color: rgba(255, 255, 255, 0.05);">
+                <div class="metric-info">
+                  <h3 style="font-size: 0.75rem;">Sua Margem Líquida</h3>
+                  <div class="metric-value" style="font-size: 1.4rem; color: #81c784;" id="detalhe-liquido-projetado">R$ 0,00</div>
+                    </div>
+              </div>
+            </div>
+
+            <!-- Abas Internas da Revendedora: Maleta Atual vs Histórico -->
+            <div class="mkt-tabs" style="margin-bottom: 1.5rem;">
+              <button class="mkt-tab-btn active" id="btn-subtab-maleta" onclick="app.mudarSubAbaRevendedora('maleta')"><i class="fa-solid fa-briefcase"></i> Maleta Atual</button>
+              <button class="mkt-tab-btn" id="btn-subtab-vendas-rev" onclick="app.mudarSubAbaRevendedora('vendas')"><i class="fa-solid fa-receipt"></i> Histórico de Vendas</button>
+              <button class="mkt-tab-btn" id="btn-subtab-historico" onclick="app.mudarSubAbaRevendedora('historico')"><i class="fa-solid fa-clock-rotate-left"></i> Histórico de Acertos</button>
+            </div>
+
+            <!-- Conteúdo Sub-Aba: Maleta Atual -->
+            <div id="sub-aba-rev-maleta" class="sub-aba-rev active">
+              <h4 style="font-family: var(--font-title); font-size: 1.15rem; color: var(--gold-light); margin-bottom: 1rem;">Peças na Maleta Atual</h4>
+              <div class="table-responsive">
+                <table class="premium-table" id="table-itens-consignados">
+                  <thead>
+                    <tr>
+                      <th>Código</th>
+                      <th>Produto</th>
+                      <th>Qtd. Consignada</th>
+                      <th>Preço de Venda</th>
+                      <th>Subtotal Bruto</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td colspan="5" style="text-align: center; color: var(--text-secondary);">Esta revendedora ainda não levou peças em consignação.</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Conteúdo Sub-Aba: Vendas Efetuadas -->
+            <div id="sub-aba-rev-vendas" class="sub-aba-rev" style="display: none;">
+              <h4 style="font-family: var(--font-title); font-size: 1.15rem; color: var(--gold-light); margin-bottom: 1rem;">Histórico de Vendas Efetuadas</h4>
+              <div class="table-responsive">
+                <table class="premium-table" id="table-vendas-individuais-revendedora">
+                  <thead>
+                    <tr>
+                      <th>Data</th>
+                      <th>Produto</th>
+                      <th>Qtd. Vendida</th>
+                      <th>Preço Unit.</th>
+                      <th>Total Venda</th>
+                      <th>Comissão Gerada</th>
+                    </tr>
+                  </thead>
+                  <tbody id="tbody-vendas-individuais-revendedora">
+                    <tr>
+                      <td colspan="6" style="text-align: center; color: var(--text-secondary); padding: 2rem;">Nenhuma venda registrada para esta revendedora.</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Conteúdo Sub-Aba: Histórico de Acertos -->
+            <div id="sub-aba-rev-historico" class="sub-aba-rev" style="display: none;">
+              <h4 style="font-family: var(--font-title); font-size: 1.15rem; color: var(--gold-light); margin-bottom: 1rem;">Histórico de Acertos Passados</h4>
+              <div class="table-responsive">
+                <table class="premium-table" id="table-historico-acertos">
+                  <thead>
+                    <tr>
+                      <th>Data do Fechamento</th>
+                      <th>Peças (Consig/Vend/Devol)</th>
+                      <th>Faturamento Bruto</th>
+                      <th>Comissão Paga</th>
+                      <th>Líquido BelKlock</th>
+                      <th>Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td colspan="6" style="text-align: center; color: var(--text-secondary);">Nenhum acerto registrado para esta revendedora.</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            
+            <div style="margin-top: 1.5rem; display: flex; justify-content: flex-end; gap: 1rem;">
+              <button class="btn-outline-gold" id="btn-editar-revendedora"><i class="fa-solid fa-user-pen"></i> Editar Cadastro</button>
+              <button class="btn-danger" id="btn-excluir-revendedora"><i class="fa-solid fa-trash"></i> Remover Revendedora</button>
+            </div>
+          </div>
+          
+          <!-- View Placeholder de Detalhes -->
+          <div class="detail-view" id="placeholder-detalhes-revendedora" style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 5rem 2rem; text-align: center;">
+            <i class="fa-solid fa-briefcase" style="font-size: 3rem; color: var(--gold-primary); opacity: 0.3; margin-bottom: 1.5rem;"></i>
+            <h3 style="font-family: var(--font-title); color: var(--text-secondary); margin-bottom: 0.5rem;">Gestão de Consignados</h3>
+            <p style="color: var(--text-muted); max-width: 400px;">Selecione uma revendedora na barra lateral ou cadastre uma nova para gerenciar as peças consignadas e fazer acertos.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==========================================
+           ABA: HISTÓRICO DE VENDAS CONSOLIDADAS (ADMIN)
+           ========================================== -->
+      <section id="vendas-geral" class="app-section">
+        <div class="section-header">
+          <div class="section-title">
+            <h2>Histórico de Vendas Consolidadas</h2>
+            <p>Monitore e filtre todas as vendas diretas e de revendedoras registradas na plataforma.</p>
+          </div>
+        </div>
+
+        <!-- Indicadores Numéricos Consolidados -->
+        <div class="metrics-grid" style="margin-bottom: 2rem;">
+          <div class="metric-card">
+            <div class="metric-icon"><i class="fa-solid fa-coins"></i></div>
+            <div class="metric-info">
+              <h3>Faturamento Total</h3>
+              <div class="metric-value" id="vendas-geral-total">R$ 0,00</div>
+            </div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-icon"><i class="fa-solid fa-store"></i></div>
+            <div class="metric-info">
+              <h3>Vendas Diretas</h3>
+              <div class="metric-value" id="vendas-geral-diretas" style="color: var(--gold-primary);">R$ 0,00</div>
+            </div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-icon"><i class="fa-solid fa-users"></i></div>
+            <div class="metric-info">
+              <h3>Vendas Revendedoras</h3>
+              <div class="metric-value" id="vendas-geral-revendedoras" style="color: #64b5f6;">R$ 0,00</div>
+            </div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-icon"><i class="fa-solid fa-percent"></i></div>
+            <div class="metric-info">
+              <h3>Comissões Pagas</h3>
+              <div class="metric-value" id="vendas-geral-comissoes" style="color: #81c784;">R$ 0,00</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="dashboard-panel" style="margin-bottom: 2rem;">
+          <div class="form-grid" style="grid-template-columns: 2fr 1fr 1fr 1fr; gap: 1rem; margin-bottom: 0;">
+            <div class="form-group" style="margin-bottom: 0;">
+              <label for="filtro-vendas-busca">Buscar Venda</label>
+              <input type="text" id="filtro-vendas-busca" class="form-control" placeholder="Buscar por produto, código ou vendedor..." oninput="app.renderizarVendasConsolidadas()">
+            </div>
+            <div class="form-group" style="margin-bottom: 0;">
+              <label for="filtro-vendas-tipo">Tipo de Venda</label>
+              <select id="filtro-vendas-tipo" class="form-control" onchange="app.renderizarVendasConsolidadas()">
+                <option value="">Todos os Tipos</option>
+                <option value="direta">Vendas Diretas (Admin)</option>
+                <option value="revendedora">Vendas de Revendedoras</option>
+              </select>
+            </div>
+            <div class="form-group" style="margin-bottom: 0;">
+              <label for="filtro-vendas-revendedora">Revendedora</label>
+              <select id="filtro-vendas-revendedora" class="form-control" onchange="app.renderizarVendasConsolidadas()">
+                <option value="">Todas as Revendedoras</option>
+                <!-- Populado via JS -->
+              </select>
+            </div>
+            <div class="form-group" style="margin-bottom: 0;">
+              <label for="filtro-vendas-periodo">Período</label>
+              <select id="filtro-vendas-periodo" class="form-control" onchange="app.renderizarVendasConsolidadas()">
+                <option value="">Todo o Período</option>
+                <option value="hoje">Hoje</option>
+                <option value="7dias">Últimos 7 dias</option>
+                <option value="30dias">Últimos 30 dias</option>
+                <option value="mes">Este Mês</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="dashboard-panel">
+          <div class="table-responsive">
+            <table class="premium-table" id="table-historico-vendas-geral">
+              <thead>
+                <tr>
+                  <th>Data</th>
+                  <th>Origem/Vendedor</th>
+                  <th>Produto</th>
+                  <th>Qtd.</th>
+                  <th>Preço Unit.</th>
+                  <th>Valor Total</th>
+                  <th>Comissão</th>
+                  <th>Cliente / Contato</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-historico-vendas-geral">
+                <tr>
+                  <td colspan="8" style="text-align: center; color: var(--text-secondary); padding: 3rem;">Nenhuma venda registrada no sistema.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==========================================
+           ABA: DIVULGAÇÃO & MARKETING (INSTAGRAM / WHATSAPP)
+           ========================================== -->
+      <section id="marketing" class="app-section">
+        <div class="section-header">
+          <div class="section-title">
+            <h2>Planejamento Editorial e Público-Alvo</h2>
+            <p>Gerencie sua presença no Instagram, organize seu feed estético e otimize a comunicação pelo WhatsApp.</p>
+          </div>
+        </div>
+
+        <div class="mkt-tabs">
+          <button class="mkt-tab-btn active" id="tab-btn-feed" onclick="app.mudarSubAbaMarketing('feed')"><i class="fa-brands fa-instagram"></i> Simulador de Feed</button>
+          <button class="mkt-tab-btn" id="tab-btn-posts" onclick="app.mudarSubAbaMarketing('posts')"><i class="fa-solid fa-calendar-days"></i> Calendário Editorial & Hashtags</button>
+          <button class="mkt-tab-btn" id="tab-btn-personas" onclick="app.mudarSubAbaMarketing('personas')"><i class="fa-solid fa-users"></i> Público-Alvo & Personas</button>
+        </div>
+
+        <!-- SUB-ABA: SIMULADOR DE FEED -->
+        <div id="sub-aba-feed" class="sub-aba-mkt active">
+          <div class="feed-planner">
+            
+            <!-- Mockup do Celular -->
+            <div class="instagram-mockup">
+              <div class="ig-header">
+                <div class="ig-username">belklock_semijoias <i class="fa-solid fa-circle-check"></i></div>
+              </div>
+              <div class="ig-stats-row">
+                <div>
+                  <span class="ig-stat-num" id="ig-posts-count">9</span>
+                  <span class="ig-stat-label">publicações</span>
+                </div>
+                <div>
+                  <span class="ig-stat-num">5.2K</span>
+                  <span class="ig-stat-label">seguidores</span>
+                </div>
+                <div>
+                  <span class="ig-stat-num">384</span>
+                  <span class="ig-stat-label">seguindo</span>
+                </div>
+              </div>
+              <div class="ig-bio">
+                <span class="ig-name">BelKlock Semijoias de Luxo</span>
+                <span>💎 Semijoias banhadas a Ouro 18k e Ródio</span><br>
+                <span>📦 Enviamos para todo o Brasil</span><br>
+                <span>💼 Faça parte: Seja uma Revendedora!</span><br>
+                <a href="#">wa.me/belklocksemijoias</a>
+              </div>
+              
+              <!-- Grade 3x3 do Feed -->
+              <div class="ig-grid" id="instagram-feed-grid">
+                <!-- Preenchido via JS, padrão 9 slots -->
+              </div>
+            </div>
+
+            <!-- Uploads e Organização -->
+            <div class="feed-instructions">
+              <h3>Estética do Feed de Luxo</h3>
+              <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">Uma identidade visual elegante em preto e dourado gera valor imediato. Planeje a disposição das fotos das suas joias para garantir harmonia de cores.</p>
+              
+              <div class="post-uploader-box" id="zone-upload-feed">
+                <i class="fa-solid fa-cloud-arrow-up"></i>
+                <h4 style="color: var(--gold-light); margin-bottom: 0.3rem;">Adicionar Foto ao Feed</h4>
+                <p style="font-size: 0.8rem; color: var(--text-secondary);">Selecione imagens locais de semijoias para preencher o feed</p>
+                <input type="file" id="input-upload-feed" accept="image/*" style="display: none;">
+              </div>
+
+              <div style="margin-top: 2rem;">
+                <h4 style="font-family: var(--font-title); color: var(--gold-primary); margin-bottom: 0.8rem;">Estilo de Foto Sugerido</h4>
+                <ul style="font-size: 0.9rem; color: var(--text-secondary); padding-left: 1.2rem; display: flex; flex-direction: column; gap: 0.5rem;">
+                  <li><strong>Fotos em Close:</strong> Destaque os detalhes da lapidação das zircônias.</li>
+                  <li><strong>Contraste Escuro:</strong> Use fundos escuros (preto/cinza) para sobressair o brilho do ouro 18k.</li>
+                  <li><strong>Modelos:</strong> Exiba mix de brincos/colares na pele para dar proporção real do produto.</li>
+                </ul>
+              </div>
+              
+              <div style="margin-top: 1.5rem;">
+                <button class="btn-outline-gold" id="btn-clear-feed" style="width: 100%; justify-content: center;"><i class="fa-solid fa-rotate-left"></i> Reiniciar Feed Padrão</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SUB-ABA: CALENDÁRIO EDITORIAL -->
+        <div id="sub-aba-posts" class="sub-aba-mkt" style="display: none;">
+          <h3 style="font-family: var(--font-title); color: var(--gold-light); margin-bottom: 1.5rem; font-size: 1.5rem;">Calendário Editorial Semanal</h3>
+          <div id="mkt-ideias-container">
+            <!-- Inserido dinamicamente pelo JS baseado no marketing-data.js -->
+          </div>
+        </div>
+
+        <!-- SUB-ABA: PÚBLICO-ALVO & PERSONAS -->
+        <div id="sub-aba-personas" class="sub-aba-mkt" style="display: none;">
+          <h3 style="font-family: var(--font-title); color: var(--gold-light); margin-bottom: 1.5rem; font-size: 1.5rem;">Personas de Compras de Semijoias</h3>
+          <div class="persona-container" id="mkt-personas-container">
+            <!-- Inserido dinamicamente pelo JS baseado no marketing-data.js -->
+          </div>
+        </div>
+      </section>
+
+      <!-- ==========================================
+           ABA: PLANILHAS EXCEL (IMPORTAÇÃO E EXPORTAÇÃO)
+           ========================================== -->
+      <section id="planilhas" class="app-section">
+        <div class="section-header">
+          <div class="section-title">
+            <h2>Integração Total com Planilhas Excel</h2>
+            <p>Exporte seu estoque central ou importe catálogos completos a partir de arquivos CSV/Excel facilmente.</p>
+          </div>
+        </div>
+
+        <div class="form-grid">
+          <!-- Coluna 1: Importação -->
+          <div class="dashboard-panel">
+            <div class="panel-header">
+              <h2><i class="fa-solid fa-file-import"></i> Importar Produtos</h2>
+            </div>
+            
+            <div class="import-excel-zone" id="dropzone-excel">
+              <i class="fa-solid fa-file-csv"></i>
+              <h3>Arraste sua Planilha de Estoque</h3>
+              <p>Compatível com arquivos .csv exportados do Excel (separador ";" ou ",")</p>
+              <button class="btn-outline-gold" id="btn-trigger-import-file"><i class="fa-solid fa-search"></i> Procurar Arquivo</button>
+              <input type="file" id="input-import-excel" accept=".csv" style="display: none;">
+            </div>
+
+            <div style="font-size: 0.85rem; color: var(--text-secondary);">
+              <h4 style="color: var(--gold-primary); margin-bottom: 0.5rem;"><i class="fa-solid fa-circle-info"></i> Como formatar sua planilha para importar:</h4>
+              <p style="margin-bottom: 0.3rem;">Certifique-se de que a primeira linha contém os cabeçalhos das colunas:</p>
+              <code style="display: block; background: #000; padding: 0.6rem; border-radius: var(--radius-sm); border: var(--border-gold); color: var(--gold-light); font-size: 0.8rem; margin-top: 0.5rem; overflow-x: auto; white-space: nowrap;">
+                Código; Nome do Produto; Categoria; Qtd. Estoque; Custo Bruto; Custo Banho; Custo Líquido; Markup
+              </code>
+            </div>
+          </div>
+
+          <!-- Coluna 2: Exportações -->
+          <div class="dashboard-panel" style="display: flex; flex-direction: column; justify-content: space-between;">
+            <div>
+              <div class="panel-header">
+                <h2><i class="fa-solid fa-file-export"></i> Exportar Dados</h2>
+              </div>
+              <p style="color: var(--text-secondary); font-size: 0.95rem; margin-bottom: 2rem;">Baixe instantaneamente todas as tabelas de dados do seu sistema. Os arquivos gerados são otimizados em UTF-8 com BOM para abrir nativamente com acentuação e colunas perfeitas no Microsoft Excel.</p>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 1.2rem;">
+              <button class="btn-gold" id="btn-exportar-estoque" style="padding: 1.2rem; justify-content: center; font-size: 1rem;">
+                <i class="fa-solid fa-file-excel"></i> Exportar Planilha de Estoque Geral
+              </button>
+
+              <div style="display: flex; gap: 0.8rem;">
+                <button class="btn-outline-gold" id="btn-backup-exportar" style="flex: 1; padding: 0.8rem; justify-content: center; font-size: 0.85rem;">
+                  <i class="fa-solid fa-cloud-arrow-down"></i> Salvar Backup JSON
+                </button>
+                <button class="btn-outline-gold" id="btn-backup-importar" style="flex: 1; padding: 0.8rem; justify-content: center; font-size: 0.85rem;">
+                  <i class="fa-solid fa-cloud-arrow-up"></i> Carregar Backup JSON
+                </button>
+                <input type="file" id="input-backup-json" accept=".json" style="display: none;">
+              </div>
+              
+              <button class="btn-danger" id="btn-limpar-ficticios" style="padding: 1.1rem; justify-content: center; font-size: 0.95rem; border-color: rgba(198, 40, 40, 0.3);">
+                <i class="fa-solid fa-trash-can"></i> Limpar Dados Fictícios (Demonstração)
+              </button>
+              
+              <button class="btn-danger" id="btn-excluir-todos-produtos" style="padding: 1.1rem; justify-content: center; font-size: 0.95rem; border-color: rgba(198, 40, 40, 0.3); background-color: rgba(198, 40, 40, 0.05); color: #ff8a80; margin-top: -0.4rem;">
+                <i class="fa-solid fa-trash-can"></i> Excluir Todos os Produtos do Estoque
+              </button>
+              
+              <div style="border-top: 1px solid rgba(255, 255, 255, 0.05); padding-top: 1.2rem;">
+                <p style="font-size: 0.8rem; color: var(--text-muted); text-align: center; margin-top: 0.5rem;">Dica: As comissões de revendedoras também podem ser exportadas individualmente dentro de seus respectivos perfis na aba Revendedoras.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==========================================
+           ABA: CLIENTES
+           ========================================== -->
+      <section id="clientes" class="app-section">
+        <div class="section-header">
+          <div class="section-title">
+            <h2>Gestão de Clientes</h2>
+            <p>Registre as suas clientes, acompanhe datas de aniversário e mantenha o histórico de compras para uma relação mais pessoal e eficaz.</p>
+          </div>
+          <div class="header-actions">
+            <button class="btn-gold" id="btn-open-modal-cliente"><i class="fa-solid fa-user-plus"></i> Nova Cliente</button>
+          </div>
+        </div>
+
+        <!-- Sub-abas de Clientes -->
+        <div class="mkt-tabs" id="clientes-tabs" style="margin-bottom: 2rem;">
+          <button class="mkt-tab-btn active" id="btn-subtab-clientes-todos" onclick="app.mudarSubAbaClientes('todos')"><i class="fa-solid fa-users"></i> Todas as Clientes</button>
+          <button class="mkt-tab-btn" id="btn-subtab-clientes-aniversariantes" onclick="app.mudarSubAbaClientes('aniversariantes')"><i class="fa-solid fa-cake-candles" style="color: var(--gold-primary);"></i> Aniversariantes do Mês</button>
+        </div>
+
+        <!-- Conteúdo: Todos os Clientes -->
+        <div id="subtab-clientes-todos-content">
+          <!-- Barra de busca -->
+          <div class="dashboard-panel" style="margin-bottom: 2rem;">
+            <div class="form-group" style="margin-bottom: 0;">
+              <input type="text" id="filtro-clientes-busca" class="form-control" placeholder="Buscar por nome ou WhatsApp..." oninput="app.renderizarClientes()">
+            </div>
+          </div>
+
+          <div class="dashboard-panel">
+            <div class="table-responsive">
+              <table class="premium-table" id="table-clientes">
+                <thead>
+                  <tr>
+                    <th style="cursor: pointer;" onclick="app.ordenarTabela('clientes', 'nome')">Nome da Cliente <i class="fa-solid fa-sort" style="margin-left: 5px; opacity: 0.3;"></i></th>
+                    <th style="cursor: pointer;" onclick="app.ordenarTabela('clientes', 'whatsapp')">WhatsApp <i class="fa-solid fa-sort" style="margin-left: 5px; opacity: 0.3;"></i></th>
+                    <th style="cursor: pointer;" onclick="app.ordenarTabela('clientes', 'dataNascimento')">Data de Nascimento <i class="fa-solid fa-sort" style="margin-left: 5px; opacity: 0.3;"></i></th>
+                    <th>Observações</th>
+                    <th>Cadastrada em</th>
+                    <th>Ações</th>
+                  </tr>
+                </thead>
+                <tbody id="tbody-clientes">
+                  <tr>
+                    <td colspan="6" style="text-align: center; color: var(--text-secondary); padding: 3rem;">
+                      <i class="fa-solid fa-address-book" style="font-size: 2rem; opacity: 0.3; display: block; margin-bottom: 0.8rem;"></i>
+                      Nenhuma cliente cadastrada ainda.
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Conteúdo: Aniversariantes do Mês -->
+        <div id="subtab-clientes-aniversariantes-content" style="display: none;">
+          <div class="dashboard-panel">
+            <div class="table-responsive">
+              <table class="premium-table" id="table-aniversariantes">
+                <thead>
+                  <tr>
+                    <th>Nome da Cliente</th>
+                    <th>WhatsApp</th>
+                    <th>Data de Nascimento</th>
+                    <th>Mensagem Sugerida</th>
+                    <th>Ações</th>
+                  </tr>
+                </thead>
+                <tbody id="tbody-aniversariantes">
+                  <tr>
+                    <td colspan="5" style="text-align: center; color: var(--text-secondary); padding: 3rem;">
+                      Nenhum aniversariante encontrado neste mês.
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==========================================
+           ABA: CONFIGURAÇÕES (ADMIN APENAS)
+           ========================================== -->
+      <section id="configuracoes" class="app-section">
+        <div class="section-header">
+          <div class="section-title">
+            <h2>Configurações do Sistema</h2>
+            <p>Ajuste as definições gerais da plataforma BelKlock.</p>
+          </div>
+        </div>
+
+        <div class="dashboard-grid" style="grid-template-columns: 1.2fr 0.8fr; gap: 2rem;">
+          <!-- Ajustes Gerais -->
+          <div class="dashboard-panel">
+            <div class="panel-header">
+              <h2><i class="fa-solid fa-sliders"></i> Parâmetros Operacionais</h2>
+            </div>
+            <div style="margin-top: 1.5rem;">
+              <div class="form-group" style="margin-bottom: 1.5rem;">
+                <label for="cfg-nome-empresa" style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Nome da Empresa / Marca</label>
+                <input type="text" id="cfg-nome-empresa" class="form-control" placeholder="BelKlock Semijoias">
+              </div>
+
+              <div class="form-group" style="margin-bottom: 1.5rem;">
+                <label for="cfg-limiar-critico" style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Limiar de Estoque Crítico (Alerta)</label>
+                <input type="number" id="cfg-limiar-critico" class="form-control" min="1" value="3" style="max-width: 150px;">
+                <p style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.3rem;">Define a quantidade mínima em estoque para que o produto seja listado no painel de alertas do Dashboard.</p>
+              </div>
+
+              <div class="form-group" style="margin-bottom: 1.5rem;">
+                <label for="cfg-api-url" style="display: block; margin-bottom: 0.5rem; font-weight: 600;">URL da API de Integração</label>
+                <input type="text" id="cfg-api-url" class="form-control" placeholder="http://localhost:5000/api">
+              </div>
+
+              <button class="btn-gold" onclick="app.salvarConfiguracoes()" style="margin-top: 1rem;"><i class="fa-solid fa-floppy-disk"></i> Salvar Configurações</button>
+            </div>
+          </div>
+
+          <!-- Informações e Status -->
+          <div class="dashboard-panel" style="display: flex; flex-direction: column; justify-content: space-between;">
+            <div>
+              <div class="panel-header">
+                <h2><i class="fa-solid fa-circle-info"></i> Status do Sistema</h2>
+              </div>
+              <div style="margin-top: 1.5rem; font-size: 0.9rem; line-height: 1.6;">
+                <p style="margin: 0.4rem 0;"><strong>Versão:</strong> 1.0.0 (Premium)</p>
+                <p style="margin: 0.4rem 0;"><strong>Banco de Dados:</strong> SQLite (Local)</p>
+                <p style="margin: 0.4rem 0;"><strong>Status da Conexão:</strong> <span id="cfg-conexao-status" style="color: #66bb6a; font-weight: bold;">Conectado à API</span></p>
+                <p style="margin: 0.4rem 0;"><strong>Modo Fictício:</strong> <span id="cfg-modo-status" style="color: var(--gold-primary); font-weight: bold;">Inativo (Operação Real)</span></p>
+              </div>
+            </div>
+            <div style="border-top: 1px solid var(--border-color); padding-top: 1.5rem; margin-top: 1.5rem; font-size: 0.85rem; color: var(--text-secondary);">
+              <p>BelKlock Semijoias utiliza criptografia SSL ponta-a-ponta nas requisições da API e persistência reativa local para garantir a integridade dos seus dados em qualquer circunstância.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+  </div>
+
+  <!-- ==========================================
+       MODAL: CADASTRO DE PRODUTO & PRECIFICAÇÃO
+       ========================================== -->
+  <div class="modal-backdrop" id="modal-produto">
+    <div class="modal-card">
+      <div class="modal-title-row">
+        <h3>Nova Semijoia</h3>
+        <button class="btn-close-modal" id="btn-close-modal-produto"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <div class="form-grid">
+        <!-- Lado Esquerdo: Form -->
+        <div>
+          <div class="form-group">
+            <label for="prod-nome">Nome da Peça *</label>
+            <input type="text" id="prod-nome" class="form-control" placeholder="Ex: Anel Solitário Cravejado" required>
+          </div>
+
+          <div class="form-grid" style="grid-template-columns: 1fr 1fr; gap: 1rem;">
+            <div class="form-group">
+              <label for="prod-codigo">Ref / Código</label>
+              <input type="text" id="prod-codigo" class="form-control" placeholder="Ex: AN-102">
+            </div>
+            <div class="form-group">
+              <label for="prod-categoria">Categoria *</label>
+              <select id="prod-categoria" class="form-control" required>
+                <option value="Brincos">Brincos</option>
+                <option value="Colares">Colares</option>
+                <option value="Anéis">Anéis</option>
+                <option value="Pulseiras">Pulseiras</option>
+                <option value="Conjuntos">Conjuntos</option>
+                <option value="Outros">Outros</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-grid" style="grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.2rem;">
+            <div class="form-group" style="margin-bottom: 0;">
+              <label for="prod-quantidade">Qtd. Estoque Inicial</label>
+              <input type="number" id="prod-quantidade" class="form-control" value="5" min="0">
+            </div>
+            <div class="form-group" style="margin-bottom: 0;">
+              <label for="prod-defeito">Qtd. com Defeito</label>
+              <input type="number" id="prod-defeito" class="form-control" value="0" min="0">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="prod-bruto">Custo do Bruto (Unitário)</label>
+            <div class="input-icon-wrapper">
+              <span>R$</span>
+              <input type="number" id="prod-bruto" class="form-control" placeholder="0,00" step="0.01" value="0.00">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="prod-banho">Custo do Banho (Unitário)</label>
+            <div class="input-icon-wrapper">
+              <span>R$</span>
+              <input type="number" id="prod-banho" class="form-control" placeholder="0,00" step="0.01" value="0.00">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="prod-liquido">Custo Líquido/Operacional (Unitário)</label>
+            <div class="input-icon-wrapper">
+              <span>R$</span>
+              <input type="number" id="prod-liquido" class="form-control" placeholder="0,00" step="0.01" value="0.00">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="prod-markup">Markup Desejado</label>
+            <input type="number" id="prod-markup" class="form-control" step="0.1" value="3.0">
+          </div>
+
+          <div class="form-group">
+            <label for="prod-foto-url">URL da Foto do Produto</label>
+            <input type="text" id="prod-foto-url" class="form-control" placeholder="https://exemplo.com/foto.jpg" oninput="app.atualizarPreviewFotoProduto()">
+          </div>
+
+          <div class="form-group" id="prod-foto-preview-container" style="display: none; margin-top: 1rem; text-align: center;">
+            <label>Pré-visualização da Foto</label>
+            <div style="width: 100%; max-height: 150px; display: flex; justify-content: center; align-items: center; border: var(--border-gold); border-radius: var(--radius-md); padding: 0.5rem; overflow: hidden; background: #050505;">
+              <img id="prod-foto-preview" src="" alt="Preview da Foto" style="max-width: 100%; max-height: 130px; object-fit: contain; border-radius: var(--radius-sm);">
+            </div>
+          </div>
+        </div>
+
+        <!-- Lado Direito: Preview de Precificação Dinâmica -->
+        <div>
+          <div class="pricing-calculator-card">
+            <h3>Precificação Dinâmica</h3>
+            
+            <div class="pricing-row">
+              <span>Custo Bruto</span>
+              <span id="calc-bruto">R$ 0,00</span>
+            </div>
+            <div class="pricing-row">
+              <span>Custo Banho</span>
+              <span id="calc-banho">R$ 0,00</span>
+            </div>
+            <div class="pricing-row">
+              <span>Custo Operacional</span>
+              <span id="calc-liquido">R$ 0,00</span>
+            </div>
+            
+            <div class="pricing-row" style="font-weight: 600;">
+              <span>Custo Unitário Total</span>
+              <span id="calc-custo-total" style="color: var(--text-primary);">R$ 0,00</span>
+            </div>
+
+            <div class="pricing-row">
+              <span>Markup Aplicado</span>
+              <span id="calc-markup">3.0x</span>
+            </div>
+
+            <div class="pricing-row total">
+              <span>Preço Sugerido</span>
+              <span id="calc-preco-venda">R$ 0,00</span>
+            </div>
+
+            <div class="pricing-row profit">
+              <span>Lucro por Peça</span>
+              <span id="calc-lucro-liquido">R$ 0,00</span>
+            </div>
+
+            <div class="pricing-footer-tip">
+              * O cálculo é atualizado instantaneamente conforme você digita os valores à esquerda.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn-outline-gold" id="btn-cancelar-produto">Cancelar</button>
+        <button class="btn-gold" id="btn-salvar-produto"><i class="fa-solid fa-floppy-disk"></i> Salvar Produto</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================
+       MODAL: CADASTRO DE REVENDEDORA
+       ========================================== -->
+  <div class="modal-backdrop" id="modal-revendedora">
+    <div class="modal-card" style="width: 450px;">
+      <div class="modal-title-row">
+        <h3>Nova Revendedora</h3>
+        <button class="btn-close-modal" id="btn-close-modal-revendedora"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <div class="form-group">
+        <label for="rev-nome">Nome Completo *</label>
+        <input type="text" id="rev-nome" class="form-control" placeholder="Ex: Ana Souza Martins" required>
+      </div>
+
+      <div class="form-group">
+        <label for="rev-whatsapp">WhatsApp / Celular *</label>
+        <input type="text" id="rev-whatsapp" class="form-control" placeholder="Ex: (11) 99999-9999" required>
+      </div>
+
+      <div class="form-group">
+        <label for="rev-comissao">Comissão (%) *</label>
+        <input type="number" id="rev-comissao" class="form-control" value="30" min="0" max="100">
+      </div>
+
+      <div class="form-group" id="group-rev-senha">
+        <label for="rev-senha">Senha de Acesso *</label>
+        <input type="password" id="rev-senha" class="form-control" placeholder="Defina a senha da revendedora" required>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn-outline-gold" id="btn-cancelar-revendedora">Cancelar</button>
+        <button class="btn-gold" id="btn-salvar-revendedora"><i class="fa-solid fa-floppy-disk"></i> Cadastrar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================
+       MODAL: CONSIGNAR PEÇAS (MONTAR KITS)
+       ========================================== -->
+  <!-- ==========================================
+       MODAL: CONSIGNAR PEÇAS (MONTAR KITS)
+       ========================================== -->
+  <div class="modal-backdrop" id="modal-consignar">
+    <div class="modal-card" style="width: 900px; max-width: 95%;">
+      <div class="modal-title-row">
+        <h3>Consignar Semijoias</h3>
+        <button class="btn-close-modal" id="btn-close-modal-consignar"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      
+      <p style="color: var(--text-secondary); margin-bottom: 1.5rem; font-size: 0.9rem;">
+        Selecione e transfira peças do seu <strong>Estoque Central</strong> para a maleta em consignação de: <strong id="consignar-nome-revendedora" style="color: var(--gold-primary);">Revendedora</strong>.
+      </p>
+
+      <div class="form-grid" style="grid-template-columns: 2fr 1fr; gap: 1.5rem; align-items: start;">
+        <!-- Lado Esquerdo: Busca e Tabela -->
+        <div>
+          <!-- Barra de Busca e Filtro de Categoria -->
+          <div class="form-grid" style="grid-template-columns: 2fr 1fr; gap: 0.8rem; margin-bottom: 1rem;">
+            <div class="form-group" style="margin-bottom: 0;">
+              <input type="text" id="consignar-busca" class="form-control" placeholder="Buscar por código ou nome..." oninput="app.filtrarTabelaConsignar()">
+            </div>
+            <div class="form-group" style="margin-bottom: 0;">
+              <select id="consignar-filtro-categoria" class="form-control" onchange="app.filtrarTabelaConsignar()">
+                <option value="">Todas as Categorias</option>
+                <option value="Brincos">Brincos</option>
+                <option value="Colares">Colares</option>
+                <option value="Anéis">Anéis</option>
+                <option value="Pulseiras">Pulseiras</option>
+                <option value="Conjuntos">Conjuntos</option>
+                <option value="Outros">Outros</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="table-responsive" style="max-height: 45vh; border: 1px solid rgba(212, 175, 55, 0.15); border-radius: var(--radius-md); background: var(--bg-absolute);">
+            <table class="premium-table" id="table-selecionar-consignar">
+              <thead>
+                <tr>
+                  <th>Código</th>
+                  <th>Nome</th>
+                  <th>Preço Venda</th>
+                  <th>Disponível</th>
+                  <th>Consignar Qtd.</th>
+                </tr>
+              </thead>
+              <tbody>
+                <!-- Renderizado via JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Lado Direito: Resumo do Lote de Consignação -->
+        <div>
+          <div class="pricing-calculator-card" style="position: static; padding: 1.5rem; border-color: rgba(212, 175, 55, 0.45);">
+            <h3 style="font-size: 1.2rem; margin-bottom: 1.2rem; padding-bottom: 0.6rem;">Resumo do Envio</h3>
+            
+            <div class="pricing-row">
+              <span>Peças Selecionadas</span>
+              <span id="consignar-total-pecas" style="color: var(--text-primary); font-weight: 600;">0 pçs</span>
+            </div>
+            
+            <div class="pricing-row total" style="margin: 0.8rem 0; padding: 0.8rem 0; font-size: 1.1rem;">
+              <span>Valor Total Bruto</span>
+              <span id="consignar-valor-total">R$ 0,00</span>
+            </div>
+
+            <div class="pricing-footer-tip" style="margin-top: 1rem; font-size: 0.75rem;">
+              * As peças serão debitadas do Estoque Central e adicionadas à maleta da revendedora.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn-outline-gold" id="btn-cancelar-consignar">Cancelar</button>
+        <button class="btn-gold" id="btn-confirmar-consignar"><i class="fa-solid fa-briefcase"></i> Enviar para Maleta</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================
+       MODAL: REALIZAR ACERTO (FECHAMENTO DE CONTAS)
+       ========================================== -->
+  <div class="modal-backdrop" id="modal-acerto">
+    <div class="modal-card" style="width: 950px; max-width: 95%;">
+      <div class="modal-title-row">
+        <h3>Fechamento de Acerto Consignado</h3>
+        <button class="btn-close-modal" id="btn-close-modal-acerto"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <p style="color: var(--text-secondary); margin-bottom: 1.5rem; font-size: 0.9rem;">
+        Registrando devoluções e vendas da revendedora <strong id="acerto-nome-revendedora" style="color: var(--gold-primary);">Revendedora</strong>. Os itens devolvidos retornarão automaticamente para o Estoque Central.
+      </p>
+
+      <div class="form-grid" style="grid-template-columns: 2.2fr 1fr; gap: 1.5rem; align-items: start;">
+        <!-- Lado Esquerdo: Filtros e Tabela de Acerto -->
+        <div>
+          <!-- Barra de Busca Interna e Atalhos em Massa -->
+          <div style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap;">
+            <div class="form-group" style="margin-bottom: 0; flex-grow: 1; max-width: 300px;">
+              <input type="text" id="acerto-busca" class="form-control" placeholder="Buscar peça na maleta..." oninput="app.filtrarTabelaAcerto()">
+            </div>
+            
+            <div style="display: flex; gap: 0.5rem;">
+              <button class="btn-outline-gold" style="font-size: 0.8rem; padding: 0.5rem 0.8rem;" onclick="app.marcarAcertoEmMassa('vender_tudo')">
+                <i class="fa-solid fa-tags"></i> Vender Tudo
+              </button>
+              <button class="btn-outline-gold" style="font-size: 0.8rem; padding: 0.5rem 0.8rem; color: #ef9a9a; border-color: rgba(198, 40, 40, 0.2);" onclick="app.marcarAcertoEmMassa('devolver_tudo')">
+                <i class="fa-solid fa-rotate-left"></i> Devolver Tudo
+              </button>
+            </div>
+          </div>
+
+          <div class="table-responsive" style="max-height: 50vh; border: 1px solid rgba(212, 175, 55, 0.15); border-radius: var(--radius-md); background: var(--bg-absolute);">
+            <table class="premium-table" id="table-preencher-acerto">
+              <thead>
+                <tr>
+                  <th>Produto</th>
+                  <th>Preço Unit.</th>
+                  <th>Consignadas</th>
+                  <th style="width: 120px; text-align: center;">Vendas</th>
+                  <th style="width: 120px; text-align: center;">Devoluções</th>
+                  <th style="width: 120px; text-align: center; color: #ef9a9a;">Perdas/Danos</th>
+                  <th style="width: 120px; text-align: center; color: #ffb74d;">Defeitos</th>
+                  <th style="text-align: right;">Atalhos</th>
+                </tr>
+              </thead>
+              <tbody>
+                <!-- Inserido dinamicamente pelo JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Lado Direito: Calculadora e Resumo Financeiro do Fechamento -->
+        <div>
+          <div class="pricing-calculator-card" style="position: static; padding: 1.5rem; border-color: rgba(212, 175, 55, 0.45);">
+            <h3 style="font-size: 1.25rem; margin-bottom: 1.2rem; padding-bottom: 0.6rem;">Balanço do Fechamento</h3>
+            
+            <div class="pricing-row">
+              <span>Total Peças Levadas</span>
+              <span id="acerto-total-peças-levadas">0 pçs</span>
+            </div>
+            <div class="pricing-row">
+              <span>Faturamento Bruto</span>
+              <span id="acerto-total-faturamento-bruto" style="color: var(--gold-primary); font-weight: 700;">R$ 0,00</span>
+            </div>
+            <div class="pricing-row">
+              <span>Comissão (<span id="acerto-comissao-percent">30</span>%)</span>
+              <span id="acerto-comissao-valor" style="color: var(--text-secondary);">R$ 0,00</span>
+            </div>
+            <div class="pricing-row" style="color: #ef9a9a;">
+              <span><i class="fa-solid fa-triangle-exclamation"></i> Desconto Perdas/Danos</span>
+              <span id="acerto-desconto-perdas" style="color: #ef9a9a;">- R$ 0,00</span>
+            </div>
+
+            <div class="pricing-row total" style="margin: 0.8rem 0; padding: 0.8rem 0; font-size: 1.15rem; background: rgba(212, 175, 55, 0.05); padding-left: 0.5rem; padding-right: 0.5rem; border-radius: var(--radius-sm);">
+              <span>A pagar para BelKlock</span>
+              <span id="acerto-total-liquido-receber">R$ 0,00</span>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 0.8rem; margin-top: 1.5rem;">
+              <button class="btn-gold" id="btn-finalizar-acerto-whats" style="font-size: 0.85rem; padding: 0.75rem; justify-content: center;">
+                <i class="fa-brands fa-whatsapp"></i> WhatsApp e Fechar
+              </button>
+              <button class="btn-outline-gold" id="btn-finalizar-acerto-excel" style="font-size: 0.85rem; padding: 0.75rem; justify-content: center;">
+                <i class="fa-solid fa-file-excel"></i> Exportar Acerto Excel
+              </button>
+              <button class="btn-outline-gold" id="btn-finalizar-acerto-pdf" onclick="app.imprimirAcerto()" style="font-size: 0.85rem; padding: 0.75rem; justify-content: center;">
+                <i class="fa-solid fa-file-pdf"></i> Imprimir / Salvar PDF
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn-outline-gold" id="btn-cancelar-acerto">Cancelar Fechamento</button>
+        <button class="btn-gold" id="btn-salvar-acerto-apenas"><i class="fa-solid fa-check"></i> Apenas Concluir no Sistema</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================
+       MODAL: VENDA RÁPIDA WHATSAPP (CATÁLOGO AVULSO)
+       ========================================== -->
+  <div class="modal-backdrop" id="modal-venda-rapida">
+    <div class="modal-card" style="width: 500px;">
+      <div class="modal-title-row">
+        <h3>Venda Rápida WhatsApp</h3>
+        <button class="btn-close-modal" id="btn-close-modal-venda-rapida"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <div class="form-group">
+        <label for="vr-cliente-select">Selecionar Cliente</label>
+        <select id="vr-cliente-select" class="form-control">
+          <option value="">-- Cliente Avulsa (Não Registar) --</option>
+        </select>
+      </div>
+      <div class="form-group" id="vr-novo-cliente-box">
+        <label>Ou Registar Nova Cliente</label>
+        <input type="text" id="vr-cliente-nome" class="form-control" placeholder="Nome da Cliente" style="margin-bottom: 0.5rem;">
+        <input type="text" id="vr-cliente-whatsapp" class="form-control" placeholder="WhatsApp">
+      </div>
+
+      <div class="form-group">
+        <label>Selecione as Peças para o Catálogo / Cobrança</label>
+        <div class="table-responsive" style="max-height: 30vh; border: var(--border-gold); border-radius: var(--radius-md); background: var(--bg-absolute);">
+          <table class="premium-table" id="table-selecionar-venda-rapida" style="font-size: 0.8rem;">
+            <thead>
+              <tr>
+                <th style="padding: 0.5rem;">Sel.</th>
+                <th style="padding: 0.5rem;">Produto</th>
+                <th style="padding: 0.5rem;">Preço</th>
+              </tr>
+            </thead>
+            <tbody>
+              <!-- Renderizado via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn-outline-gold" id="btn-cancelar-venda-rapida">Cancelar</button>
+        <button class="btn-gold" id="btn-enviar-venda-rapida"><i class="fa-brands fa-whatsapp"></i> Gerar e Enviar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================
+       MODAL: FIZ UMA VENDA! (REVENDEDORA)
+       ========================================== -->
+  <div class="modal-backdrop" id="modal-venda-rev">
+    <div class="modal-card modal-venda-rev-card">
+      <div class="modal-title-row">
+        <h3><i class="fa-solid fa-cash-register logo-venda-rev"></i> Registrar Venda</h3>
+        <button class="btn-close-modal" id="btn-close-modal-venda-rev"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <div class="venda-rev-form-container">
+        <div class="form-group">
+          <label for="venda-rev-produto">Qual peça você vendeu? *</label>
+          <select id="venda-rev-produto" class="form-control" onchange="app.atualizarPreviewVendaRev()">
+            <option value="">— Selecione uma peça da sua maleta —</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="venda-rev-qtd">Quantidade vendida *</label>
+          <div class="acerto-input-wrapper">
+            <button class="btn-input-adjust" onclick="app.ajustarQtdVendaRev(-1)"><i class="fa-solid fa-minus"></i></button>
+            <input type="number" id="venda-rev-qtd" class="form-control input-venda-rev-qtd" value="1" min="1" max="99" oninput="app.atualizarPreviewVendaRev()">
+            <button class="btn-input-adjust" onclick="app.ajustarQtdVendaRev(1)"><i class="fa-solid fa-plus"></i></button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Preview do Cálculo -->
+      <div id="venda-rev-preview" class="venda-rev-preview-box" style="display:none;">
+        <h4 class="venda-rev-preview-title">📊 Resumo da Venda</h4>
+        <div class="pricing-row">
+          <span>Peça</span>
+          <span id="prev-venda-nome" class="venda-rev-preview-nome">—</span>
+        </div>
+        <div class="pricing-row">
+          <span>Quantidade</span>
+          <span id="prev-venda-qtd">1 unid.</span>
+        </div>
+        <div class="pricing-row">
+          <span>Preço por unidade</span>
+          <span id="prev-venda-preco-unit">R$ 0,00</span>
+        </div>
+        <div class="pricing-row total-venda-rev-row">
+          <span>Total da Venda</span>
+          <span id="prev-venda-total">R$ 0,00</span>
+        </div>
+        <div class="pricing-row profit profit-venda-rev-row">
+          <span>💰 Sua Comissão (<span id="prev-venda-comissao-pct">30</span>%)</span>
+          <span id="prev-venda-comissao-valor">R$ 0,00</span>
+        </div>
+      </div>
+
+      <div id="venda-rev-aviso" class="venda-rev-aviso-box" style="display:none;">
+        <i class="fa-solid fa-circle-exclamation"></i> <span id="venda-rev-aviso-texto"></span>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn-outline-gold" id="btn-cancelar-venda-rev">Cancelar</button>
+        <button class="btn-gold" id="btn-confirmar-venda-rev">
+          <i class="fa-solid fa-check"></i> Confirmar Venda
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================
+       MODAL: CADASTRO / EDIÇÃO DE CLIENTE
+       ========================================== -->
+  <div class="modal-backdrop" id="modal-cliente">
+    <div class="modal-card" style="width: 480px;">
+      <div class="modal-title-row">
+        <h3 id="modal-cliente-titulo"><i class="fa-solid fa-address-book"></i> Nova Cliente</h3>
+        <button class="btn-close-modal" id="btn-close-modal-cliente"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <div class="form-group">
+        <label for="cliente-nome">Nome Completo *</label>
+        <input type="text" id="cliente-nome" class="form-control" placeholder="Ex: Maria Fernanda Silva" required>
+      </div>
+
+      <div class="form-group">
+        <label for="cliente-whatsapp">WhatsApp *</label>
+        <input type="text" id="cliente-whatsapp" class="form-control" placeholder="Ex: (11) 99999-9999" required>
+      </div>
+
+      <div class="form-group">
+        <label for="cliente-nascimento">Data de Nascimento (para Aniversário)</label>
+        <input type="date" id="cliente-nascimento" class="form-control">
+      </div>
+
+      <div class="form-group">
+        <label for="cliente-observacoes">Observações / Preferências</label>
+        <textarea id="cliente-observacoes" class="form-control" placeholder="Ex: Prefere brincos, adora dourado..." rows="3" style="resize: vertical; font-family: inherit;"></textarea>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn-outline-gold" id="btn-cancelar-cliente">Cancelar</button>
+        <button class="btn-gold" id="btn-salvar-cliente"><i class="fa-solid fa-floppy-disk"></i> Salvar Cliente</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Container de Toasts Dinâmicos -->
+  <div id="toast-container"></div>
+
+  <!-- Modal de Confirmação Customizado -->
+  <div id="custom-confirm-modal">
+    <div class="confirm-card">
+      <div class="confirm-icon"><i class="fa-solid fa-circle-question"></i></div>
+      <h3 id="confirm-title">Confirmar Ação</h3>
+      <p id="confirm-message">Você tem certeza que deseja prosseguir?</p>
+      <div class="confirm-buttons">
+        <button class="btn-confirm-action btn-confirm-no" id="btn-confirm-no">Cancelar</button>
+        <button class="btn-confirm-action btn-confirm-yes" id="btn-confirm-yes">Confirmar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================
+       SCRIPTS JAVASCRIPT
+       ========================================== -->
+  <!-- 1. Dados Estáticos e Modelos de Marketing -->
+  <script src="marketing-data.js"></script>
+  <!-- 2. Biblioteca Robusta de CSV (PapaParse) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+  <!-- 3. Funções de Manipulação do Excel/CSV -->
+  <script src="excel-handler.js"></script>
+  <!-- 3. Lógica do Aplicativo Principal -->
+  <script src="vendedora.js"></script>
+
+  <!-- Registro do Service Worker para PWA -->
+  <script>
+    // Registra o Service Worker apenas fora do localhost para evitar problemas de cache em desenvolvimento
+    if ('serviceWorker' in navigator && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js')
+          .then(reg => console.log('Service Worker registrado com sucesso:', reg.scope))
+          .catch(err => console.error('Falha ao registrar Service Worker:', err));
+      });
+    }
+  </script>
+
+</body>
+</html>

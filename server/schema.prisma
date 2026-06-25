@@ -52,19 +52,20 @@ model Consignado {
 }
 
 model HistoricoAcerto {
-  id                String   @id @default(uuid())
-  usuarioId         String
-  data              DateTime @default(now())
-  totalConsignada   Int
-  totalVendida      Int
-  totalDevolvida    Int
-  totalPerdida      Int      @default(0)
-  totalDefeito      Int      @default(0)
-  faturamentoBruto  Float
-  valorDescontoPerda Float   @default(0.0)
-  comissaoPaga      Float
-  liquidoBelklock   Float
-  usuario           Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  id                 String   @id @default(uuid())
+  usuarioId          String
+  data               DateTime @default(now())
+  totalConsignada    Int
+  totalVendida       Int
+  totalDevolvida     Int
+  totalPerdida       Int      @default(0)
+  totalDefeito       Int      @default(0)
+  faturamentoBruto   Float
+  valorDescontoPerda Float    @default(0.0)
+  comissaoPaga       Float
+  liquidoBelklock    Float
+  formaPagamento     String?  @default("Pix")
+  usuario            Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
 }
 
 model VendaDireta {
@@ -103,4 +104,22 @@ model Cliente {
   vendas           VendaDireta[]
   vendasRevendedora VendaRevendedora[]
   createdAt        DateTime           @default(now())
+}
+
+model LogAcao {
+  id          String   @id @default(uuid())
+  usuarioId   String?
+  usuarioNome String?
+  acao        String
+  detalhes    String
+  data        DateTime @default(now())
+}
+
+model Notificacao {
+  id        String   @id @default(uuid())
+  tipo      String   // "venda_revendedora", "acerto", etc.
+  mensagem  String
+  detalhes  String?  // JSON string contendo detalhes
+  lida      Boolean  @default(false)
+  createdAt DateTime @default(now())
 }

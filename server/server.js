@@ -5,14 +5,32 @@ const bcrypt = require('bcryptjs');
 const multer = require('multer');
 const { PrismaClient } = require('@prisma/client');
 const { BlobServiceClient } = require('@azure/storage-blob');
+const rateLimit = require('express-rate-limit');
 require('dotenv').config();
 
 const app = express();
 const prisma = new PrismaClient();
 const PORT = process.env.PORT || 5000;
-const JWT_SECRET = process.env.JWT_SECRET || 'belklock_super_secret_key_2026';
 
-app.use(cors());
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET || JWT_SECRET === 'belklock_super_secret_key_2026') {
+  console.error("ERRO CRÍTICO: A variável de ambiente JWT_SECRET não está definida ou é a chave padrão insegura!");
+  process.exit(1);
+}
+
+// Configuração de CORS restrita ao frontend (inclui as portas de desenvolvimento local 5500 e 8080)
+const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5500';
+app.use(cors({
+  origin: [
+    frontendUrl, 
+    'http://localhost:5500', 
+    'http://127.0.0.1:5500',
+    'http://localhost:8080',
+    'http://127.0.0.1:8080'
+  ],
+  credentials: true
+}));
+
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
@@ -63,9 +81,47 @@ const autorizarRole = (rolesAutorizadas) => {
   };
 };
 
+// Gravação de Logs de Auditoria
+async function registrarLog(req, acao, detalhes, usuarioInfo = null) {
+  try {
+    let usuarioId = usuarioInfo ? usuarioInfo.id : (req.user ? req.user.id : null);
+    let usuarioNome = usuarioInfo ? usuarioInfo.nome : (req.user ? req.user.nome : null);
+    
+    await prisma.logAcao.create({
+      data: {
+        usuarioId,
+        usuarioNome,
+        acao,
+        detalhes
+      }
+    });
+  } catch (error) {
+    console.error("Erro ao gravar log de auditoria:", error);
+  }
+}
+
 // ==========================================
 // ROTAS DE AUTENTICAÇÃO (LOGIN / REGISTRO)
 // ==========================================
+
+// Limiter para rota de login (máximo 10 tentativas a cada 15 minutos por IP)
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: { error: 'Muitas tentativas de login. Tente novamente em 15 minutos.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Função para gerar uma senha aleatória de 8 caracteres
+function gerarSenhaAleatoria(tamanho = 8) {
+  const caracteres = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%&*';
+  let senha = '';
+  for (let i = 0; i < tamanho; i++) {
+    senha += caracteres.charAt(Math.floor(Math.random() * caracteres.length));
+  }
+  return senha;
+}
 
 // Função para gerar um PIN de 4 dígitos único
 async function gerarPinUnico() {
@@ -82,7 +138,7 @@ async function gerarPinUnico() {
 }
 
 // Login Geral (E-mail ou PIN)
-app.post('/api/auth/login', async (req, res) => {
+app.post('/api/auth/login', loginLimiter, async (req, res) => {
   const { email, senha } = req.body; // 'email' aqui pode ser o E-mail (Admin) ou PIN (Revendedora)
   if (!email || !senha) {
     return res.status(400).json({ error: 'Preencha todos os campos.' });
@@ -112,6 +168,9 @@ app.post('/api/auth/login', async (req, res) => {
       JWT_SECRET,
       { expiresIn: '7d' }
     );
+
+    // Registra log de auditoria
+    registrarLog(req, "LOGIN", `Usuário realizou login com sucesso usando ${usuario.pin ? 'PIN' : 'E-mail'}.`, usuario);
 
     res.json({
       token,
@@ -212,9 +271,27 @@ app.get('/api/produtos', autenticarJWT, async (req, res) => {
   }
 });
 
+// Listar Produtos com Defeito (Admin)
+app.get('/api/produtos/defeitos', autenticarJWT, autorizarRole(['admin']), async (req, res) => {
+  try {
+    const produtosComDefeito = await prisma.produto.findMany({
+      where: {
+        quantidadeDefeito: {
+          gt: 0
+        }
+      },
+      orderBy: { nome: 'asc' }
+    });
+    res.json(produtosComDefeito);
+  } catch (error) {
+    console.error("Erro ao listar produtos com defeito:", error);
+    res.status(500).json({ error: 'Erro ao listar produtos com defeito.' });
+  }
+});
+
 // Criar Produto (Admin)
 app.post('/api/produtos', autenticarJWT, autorizarRole(['admin']), async (req, res) => {
-  const { codigo, nome, categoria, quantidade, custoBruto, custoBanho, custoLiquido, markup, fotoUrl } = req.body;
+  const { codigo, nome, categoria, quantidade, custoBruto, custoBanho, custoLiquido, markup, fotoUrl, quantidadeDefeito } = req.body;
   if (!nome || !categoria) {
     return res.status(400).json({ error: 'Nome e categoria são obrigatórios.' });
   }
@@ -232,9 +309,13 @@ app.post('/api/produtos', autenticarJWT, autorizarRole(['admin']), async (req, r
         custoBanho: parseFloat(custoBanho) || 0.0,
         custoLiquido: parseFloat(custoLiquido) || 0.0,
         markup: parseFloat(markup) || 3.0,
-        fotoUrl
+        fotoUrl,
+        quantidadeDefeito: parseInt(quantidadeDefeito) || 0
       }
     });
+
+    registrarLog(req, "PRODUTO_CRIAR", `Criou o produto ${novoProduto.nome} (${novoProduto.codigo}) com estoque inicial de ${novoProduto.quantidade}.`);
+
     res.status(201).json(novoProduto);
   } catch (error) {
     if (error.code === 'P2002') {
@@ -247,7 +328,7 @@ app.post('/api/produtos', autenticarJWT, autorizarRole(['admin']), async (req, r
 // Editar Produto (Admin)
 app.put('/api/produtos/:id', autenticarJWT, autorizarRole(['admin']), async (req, res) => {
   const { id } = req.params;
-  const { codigo, nome, categoria, quantidade, custoBruto, custoBanho, custoLiquido, markup, fotoUrl } = req.body;
+  const { codigo, nome, categoria, quantidade, custoBruto, custoBanho, custoLiquido, markup, fotoUrl, quantidadeDefeito } = req.body;
 
   try {
     const produtoAtualizado = await prisma.produto.update({
@@ -261,9 +342,13 @@ app.put('/api/produtos/:id', autenticarJWT, autorizarRole(['admin']), async (req
         custoBanho: parseFloat(custoBanho) || 0.0,
         custoLiquido: parseFloat(custoLiquido) || 0.0,
         markup: parseFloat(markup) || 3.0,
-        fotoUrl
+        fotoUrl,
+        quantidadeDefeito: parseInt(quantidadeDefeito) || 0
       }
     });
+
+    registrarLog(req, "PRODUTO_EDITAR", `Atualizou dados do produto ${produtoAtualizado.nome} (${produtoAtualizado.codigo}). Estoque: ${produtoAtualizado.quantidade}, Defeitos: ${produtoAtualizado.quantidadeDefeito}.`);
+
     res.json(produtoAtualizado);
   } catch (error) {
     res.status(500).json({ error: 'Erro ao atualizar produto.' });
@@ -274,7 +359,15 @@ app.put('/api/produtos/:id', autenticarJWT, autorizarRole(['admin']), async (req
 app.delete('/api/produtos/:id', autenticarJWT, autorizarRole(['admin']), async (req, res) => {
   const { id } = req.params;
   try {
+    const prod = await prisma.produto.findUnique({ where: { id } });
     await prisma.produto.delete({ where: { id } });
+    
+    if (prod) {
+      registrarLog(req, "PRODUTO_EXCLUIR", `Excluiu o produto ${prod.nome} (${prod.codigo}).`);
+    } else {
+      registrarLog(req, "PRODUTO_EXCLUIR", `Excluiu o produto com ID ${id}.`);
+    }
+
     res.json({ message: 'Produto removido com sucesso!' });
   } catch (error) {
     res.status(500).json({ error: 'Erro ao excluir produto.' });
@@ -345,6 +438,74 @@ app.put('/api/revendedoras/:id', autenticarJWT, autorizarRole(['admin']), async 
     res.json(revendedoraAtualizada);
   } catch (error) {
     res.status(500).json({ error: 'Erro ao atualizar dados da revendedora.' });
+  }
+});
+
+// Regenerar PIN e Senha da Revendedora (Admin)
+app.put('/api/revendedoras/:id/reset-pin', autenticarJWT, autorizarRole(['admin']), async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const usuario = await prisma.usuario.findFirst({
+      where: { id, role: 'revendedora' }
+    });
+
+    if (!usuario) {
+      return res.status(404).json({ error: 'Revendedora não encontrada.' });
+    }
+
+    const novoPin = await gerarPinUnico();
+    const novaSenha = gerarSenhaAleatoria(8);
+    const senhaHash = await bcrypt.hash(novaSenha, 10);
+
+    await prisma.usuario.update({
+      where: { id },
+      data: {
+        pin: novoPin,
+        senhaHash: senhaHash
+      }
+    });
+
+    res.json({
+      message: 'PIN e senha temporária regenerados com sucesso!',
+      pin: novoPin,
+      senha: novaSenha
+    });
+  } catch (error) {
+    console.error("Erro ao regenerar PIN/senha:", error);
+    res.status(500).json({ error: 'Erro ao tentar regenerar PIN e senha da revendedora.' });
+  }
+});
+
+// Excluir uma Revendedora (Admin)
+app.delete('/api/revendedoras/:id', autenticarJWT, autorizarRole(['admin']), async (req, res) => {
+  const { id } = req.params;
+  try {
+    await prisma.usuario.delete({
+      where: {
+        id,
+        role: 'revendedora'
+      }
+    });
+    res.json({ message: 'Revendedora excluída com sucesso!' });
+  } catch (error) {
+    console.error("Erro ao excluir revendedora:", error);
+    res.status(500).json({ error: 'Erro ao excluir revendedora.' });
+  }
+});
+
+// Excluir todas as Revendedoras (Admin)
+app.delete('/api/revendedoras', autenticarJWT, autorizarRole(['admin']), async (req, res) => {
+  try {
+    await prisma.usuario.deleteMany({
+      where: {
+        role: 'revendedora'
+      }
+    });
+    res.json({ message: 'Todas as revendedoras foram excluídas com sucesso!' });
+  } catch (error) {
+    console.error("Erro ao excluir todas as revendedoras:", error);
+    res.status(500).json({ error: 'Erro ao excluir todas as revendedoras.' });
   }
 });
 
@@ -435,6 +596,10 @@ app.post('/api/consignacoes', autenticarJWT, autorizarRole(['admin']), async (re
       });
     }
 
+    const revendedora = await prisma.usuario.findUnique({ where: { id: usuarioId } });
+    const nomeRevendedora = revendedora ? revendedora.nome : `Revendedora ID ${usuarioId}`;
+    registrarLog(req, "CONSIGNACAO_CRIAR", `Consignou ${quantidade} unidades do produto ${produto.nome} (${produto.codigo}) para a revendedora ${nomeRevendedora}.`);
+
     res.json(consignacao);
   } catch (error) {
     res.status(500).json({ error: 'Erro ao registrar consignação.' });
@@ -444,7 +609,7 @@ app.post('/api/consignacoes', autenticarJWT, autorizarRole(['admin']), async (re
 // Finalizar Acerto de Contas (Admin)
 app.post('/api/acertos', autenticarJWT, autorizarRole(['admin']), async (req, res) => {
   // itensAcerto: [{ produtoId, quantidadeVendida, quantidadeDevolvida, quantidadePerdida, quantidadeDefeito }]
-  const { usuarioId, itensAcerto } = req.body;
+  const { usuarioId, itensAcerto, formaPagamento } = req.body;
   
   if (!usuarioId || !itensAcerto || itensAcerto.length === 0) {
     return res.status(400).json({ error: 'Falta dados para o fechamento.' });
@@ -522,9 +687,12 @@ app.post('/api/acertos', autenticarJWT, autorizarRole(['admin']), async (req, re
         faturamentoBruto,
         valorDescontoPerda,
         comissaoPaga,
-        liquidoBelklock
+        liquidoBelklock,
+        formaPagamento: formaPagamento || "Pix"
       }
     });
+
+    registrarLog(req, "ACERTO_CONCLUIR", `Concluiu acerto de contas com a revendedora ${revendedora.nome}. Pagamento: ${formaPagamento || "Pix"}. Vendido: ${totalVendida}, Devolvido: ${totalDevolvida}, Perda: ${totalPerdida}, Defeito: ${totalDefeito}. Faturamento Bruto: R$ ${faturamentoBruto.toFixed(2)}, Líquido Belklock: R$ ${liquidoBelklock.toFixed(2)}.`);
 
     res.json({
       message: 'Acerto concluído com sucesso!',
@@ -564,33 +732,58 @@ app.get('/api/acertos/historico', autenticarJWT, async (req, res) => {
 // ==========================================
 
 app.post('/api/vendas-diretas', autenticarJWT, autorizarRole(['admin']), async (req, res) => {
-  const { codigo, nome, preco, whatsappCliente, nomeCliente } = req.body;
+  let { codigo, nome, preco, whatsappCliente, nomeCliente, clienteId, quantidade, produtoId } = req.body;
+
+  // Se veio produtoId e não veio codigo/nome, busca no estoque central
+  if (produtoId && (!codigo || !nome)) {
+    try {
+      const prod = await prisma.produto.findUnique({ where: { id: produtoId } });
+      if (prod) {
+        codigo = prod.codigo;
+        nome = prod.nome;
+      }
+    } catch (e) {
+      console.error("Erro ao buscar produto por ID na venda direta:", e);
+    }
+  }
+
   if (!codigo || !nome || !preco) {
     return res.status(400).json({ error: 'Informações da venda incompletas.' });
   }
 
-  try {
-    const venda = await prisma.vendaDireta.create({
-      data: {
-        codigo,
-        nome,
-        preco: parseFloat(preco),
-        whatsappCliente,
-        nomeCliente
-      }
-    });
+  const qtd = parseInt(quantidade) || 1;
 
-    // Deduz 1 unidade do estoque central se houver essa peça disponível
+  try {
+    let ultimaVendaCreated = null;
+    
+    // Cria tantas vendas diretas quanto a quantidade especificada
+    for (let i = 0; i < qtd; i++) {
+      const venda = await prisma.vendaDireta.create({
+        data: {
+          codigo,
+          nome,
+          preco: parseFloat(preco),
+          whatsappCliente,
+          nomeCliente,
+          clienteId: clienteId || null
+        }
+      });
+      ultimaVendaCreated = venda;
+    }
+
+    // Deduz a quantidade do estoque central se houver essa peça disponível
     const produto = await prisma.produto.findUnique({ where: { codigo } });
-    if (produto && produto.quantidade > 0) {
+    if (produto) {
+      const novaQtd = Math.max(0, produto.quantidade - qtd);
       await prisma.produto.update({
         where: { codigo },
-        data: { quantidade: produto.quantidade - 1 }
+        data: { quantidade: novaQtd }
       });
     }
 
-    res.status(201).json(venda);
+    res.status(201).json(ultimaVendaCreated);
   } catch (error) {
+    console.error("Erro ao registrar venda direta:", error);
     res.status(500).json({ error: 'Erro ao registrar venda direta.' });
   }
 });
@@ -603,6 +796,160 @@ app.get('/api/vendas-diretas', autenticarJWT, autorizarRole(['admin']), async (r
     res.json(vendas);
   } catch (error) {
     res.status(500).json({ error: 'Erro ao obter vendas diretas.' });
+  }
+});
+
+// Excluir uma venda (Admin)
+app.delete('/api/vendas/:tipo/:id', autenticarJWT, autorizarRole(['admin']), async (req, res) => {
+  const { tipo, id } = req.params;
+  try {
+    if (tipo === 'direta') {
+      await prisma.vendaDireta.delete({ where: { id } });
+    } else if (tipo === 'revendedora') {
+      await prisma.vendaRevendedora.delete({ where: { id } });
+    } else {
+      return res.status(400).json({ error: 'Tipo de venda inválido.' });
+    }
+    res.json({ message: 'Venda excluída com sucesso!' });
+  } catch (error) {
+    console.error("Erro ao excluir venda:", error);
+    res.status(500).json({ error: 'Erro ao excluir venda.' });
+  }
+});
+
+// Excluir todas as vendas (Admin)
+app.delete('/api/vendas', autenticarJWT, autorizarRole(['admin']), async (req, res) => {
+  try {
+    await prisma.$transaction([
+      prisma.vendaDireta.deleteMany(),
+      prisma.vendaRevendedora.deleteMany()
+    ]);
+    res.json({ message: 'Todo o histórico de vendas foi excluído com sucesso!' });
+  } catch (error) {
+    console.error("Erro ao excluir todo o histórico de vendas:", error);
+    res.status(500).json({ error: 'Erro ao excluir todo o histórico de vendas.' });
+  }
+});
+
+// Relatório DRE Simplificado (Admin)
+app.get('/api/relatorios/dre', autenticarJWT, autorizarRole(['admin']), async (req, res) => {
+  const { inicio, fim } = req.query;
+  const cmvEstimado = parseFloat(req.query.cmvEstimado) || 33.0;
+
+  try {
+    // Validação robusta de datas para evitar erros no banco de dados se forem strings inválidas
+    let dataInicio = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+    if (inicio && inicio !== 'undefined' && inicio !== 'null' && inicio.trim() !== '') {
+      const parsedInicio = new Date(inicio);
+      if (!isNaN(parsedInicio.getTime())) {
+        dataInicio = parsedInicio;
+      }
+    }
+
+    let dataFim = new Date();
+    if (fim && fim !== 'undefined' && fim !== 'null' && fim.trim() !== '') {
+      const parsedFim = new Date(fim);
+      if (!isNaN(parsedFim.getTime())) {
+        dataFim = parsedFim;
+      }
+    }
+    dataFim.setHours(23, 59, 59, 999);
+
+    const vendasDiretas = await prisma.vendaDireta.findMany({
+      where: {
+        data: {
+          gte: dataInicio,
+          lte: dataFim
+        }
+      }
+    });
+
+    const acertos = await prisma.historicoAcerto.findMany({
+      where: {
+        data: {
+          gte: dataInicio,
+          lte: dataFim
+        }
+      }
+    });
+
+    const vendasRevendedora = await prisma.vendaRevendedora.findMany({
+      where: {
+        data: {
+          gte: dataInicio,
+          lte: dataFim
+        }
+      }
+    });
+
+    const produtos = await prisma.produto.findMany();
+    const produtosMap = new Map(produtos.map(p => [p.codigo, p]));
+    const produtosIdMap = new Map(produtos.map(p => [p.id, p]));
+
+    let faturamentoVendasDiretas = 0;
+    let custoVendasDiretas = 0;
+
+    vendasDiretas.forEach(v => {
+      faturamentoVendasDiretas += v.preco;
+      const prod = produtosMap.get(v.codigo);
+      const custoReal = prod ? (prod.custoBruto + prod.custoBanho + prod.custoLiquido) : 0;
+      if (custoReal > 0) {
+        custoVendasDiretas += custoReal;
+      } else {
+        custoVendasDiretas += v.preco * (cmvEstimado / 100);
+      }
+    });
+
+    let faturamentoAcertos = 0;
+    let comissoesPagas = 0;
+    let descontoPerdas = 0;
+
+    acertos.forEach(a => {
+      faturamentoAcertos += a.faturamentoBruto;
+      comissoesPagas += a.comissaoPaga;
+      descontoPerdas += a.valorDescontoPerda;
+    });
+
+    let custoVendasConsignado = 0;
+    vendasRevendedora.forEach(vr => {
+      const prod = produtosIdMap.get(vr.produtoId) || produtosMap.get(vr.codigoProduto);
+      const custoReal = prod ? (prod.custoBruto + prod.custoBanho + prod.custoLiquido) : 0;
+      if (custoReal > 0) {
+        custoVendasConsignado += custoReal * vr.quantidade;
+      } else {
+        custoVendasConsignado += vr.precoVenda * (cmvEstimado / 100) * vr.quantidade;
+      }
+    });
+
+    if (custoVendasConsignado === 0 && faturamentoAcertos > 0) {
+      custoVendasConsignado = faturamentoAcertos * (cmvEstimado / 100);
+    }
+
+    const faturamentoBrutoTotal = faturamentoVendasDiretas + faturamentoAcertos;
+    const custoTotalMercadorias = custoVendasDiretas + custoVendasConsignado;
+    const lucroLiquidoEstimado = faturamentoBrutoTotal - comissoesPagas - custoTotalMercadorias;
+
+    res.json({
+      periodo: {
+        inicio: dataInicio,
+        fim: dataFim
+      },
+      resumo: {
+        faturamentoVendasDiretas,
+        faturamentoAcertos,
+        faturamentoBrutoTotal,
+        comissoesPagas,
+        descontoPerdas,
+        custoVendasDiretas,
+        custoVendasConsignado,
+        custoTotalMercadorias,
+        lucroLiquidoEstimado
+      }
+    });
+
+  } catch (error) {
+    console.error("Erro ao gerar DRE:", error);
+    res.status(500).json({ error: 'Erro ao gerar o relatório DRE.' });
   }
 });
 
@@ -660,6 +1007,30 @@ app.post('/api/vendas-revendedora', autenticarJWT, autorizarRole(['revendedora']
       }
     });
 
+    // Cria notificação de venda para o Admin
+    try {
+      const valorTotal = consignado.precoVenda * quantidade;
+      await prisma.notificacao.create({
+        data: {
+          tipo: 'venda_revendedora',
+          mensagem: `A revendedora ${consignado.usuario.nome} vendeu ${quantidade}x ${consignado.produto.nome} (Código: ${consignado.produto.codigo}) no valor total de R$ ${valorTotal.toFixed(2).replace('.', ',')}.`,
+          detalhes: JSON.stringify({
+            vendaId: venda.id,
+            revendedoraNome: consignado.usuario.nome,
+            produtoNome: consignado.produto.nome,
+            produtoCodigo: consignado.produto.codigo,
+            quantidade,
+            precoVenda: consignado.precoVenda,
+            valorTotal,
+            comissaoValor,
+            data: venda.data
+          })
+        }
+      });
+    } catch (notifErr) {
+      console.error("Erro ao gerar notificação de venda no backend:", notifErr);
+    }
+
     res.status(201).json({
       venda,
       resumo: {
@@ -679,19 +1050,38 @@ app.post('/api/vendas-revendedora', autenticarJWT, autorizarRole(['revendedora']
 // Listar vendas da revendedora logada
 app.get('/api/vendas-revendedora', autenticarJWT, async (req, res) => {
   try {
-    const where = req.user.role === 'admin'
-      ? {}
-      : { usuarioId: req.user.id };
+    let where = {};
+    if (req.user.role !== 'admin') {
+      where.usuarioId = req.user.id;
+    } else if (req.query.usuarioId) {
+      where.usuarioId = req.query.usuarioId;
+    }
+
+    // Se solicitado apenas pendentes e temos um usuarioId definido
+    if (req.query.apenasPendentes === 'true' && where.usuarioId) {
+      // Busca o último acerto deste usuário
+      const ultimoAcerto = await prisma.historicoAcerto.findFirst({
+        where: { usuarioId: where.usuarioId },
+        orderBy: { data: 'desc' }
+      });
+      if (ultimoAcerto) {
+        where.data = {
+          gt: ultimoAcerto.data
+        };
+      }
+    }
 
     const vendas = await prisma.vendaRevendedora.findMany({
       where,
       orderBy: { data: 'desc' },
       include: {
-        usuario: { select: { nome: true, whatsapp: true } }
+        usuario: { select: { nome: true, whatsapp: true } },
+        cliente: { select: { nome: true, whatsapp: true } }
       }
     });
     res.json(vendas);
   } catch (error) {
+    console.error('Erro ao listar vendas:', error);
     res.status(500).json({ error: 'Erro ao listar vendas.' });
   }
 });
@@ -788,6 +1178,7 @@ app.post('/api/importar', autenticarJWT, autorizarRole(['admin']), async (req, r
     }
 
     // Importa Revendedoras
+    const novasRevendedorasSenhas = [];
     if (revendedoras && revendedoras.length > 0) {
       for (const r of revendedoras) {
         const emailTemporario = r.email || (r.nome.toLowerCase().replace(/\s+/g, '') + "_" + Math.floor(Math.random() * 1000) + "@belklock.com");
@@ -815,7 +1206,8 @@ app.post('/api/importar', autenticarJWT, autorizarRole(['admin']), async (req, r
             });
           }
         } else {
-          const senhaHash = await bcrypt.hash("belklock123", 10);
+          const senhaGerada = gerarSenhaAleatoria(8);
+          const senhaHash = await bcrypt.hash(senhaGerada, 10);
           const pin = r.pin || Math.floor(1000 + Math.random() * 9000).toString();
           
           const novaRev = await prisma.usuario.create({
@@ -831,6 +1223,12 @@ app.post('/api/importar', autenticarJWT, autorizarRole(['admin']), async (req, r
             }
           });
           revendedoraId = novaRev.id;
+          novasRevendedorasSenhas.push({
+            nome: r.nome,
+            email: emailTemporario,
+            pin: pin,
+            senha: senhaGerada
+          });
         }
 
         // Importa itens consignados da maleta
@@ -868,7 +1266,10 @@ app.post('/api/importar', autenticarJWT, autorizarRole(['admin']), async (req, r
       }
     }
 
-    res.json({ message: 'Dados importados e sincronizados com sucesso no banco de dados SQLite!' });
+    res.json({ 
+      message: 'Dados importados e sincronizados com sucesso no banco de dados SQLite!',
+      novasRevendedoras: novasRevendedorasSenhas
+    });
   } catch (error) {
     console.error("Erro na importação em massa:", error);
     res.status(500).json({ error: 'Erro ao processar importação no banco de dados.' });
@@ -936,6 +1337,56 @@ app.delete('/api/clientes/:id', autenticarJWT, autorizarRole(['admin']), async (
     res.json({ message: 'Cliente removida com sucesso!' });
   } catch (error) {
     res.status(500).json({ error: 'Erro ao excluir cliente.' });
+  }
+});
+
+// Excluir todas as clientes
+app.delete('/api/clientes', autenticarJWT, autorizarRole(['admin']), async (req, res) => {
+  try {
+    await prisma.cliente.deleteMany();
+    res.json({ message: 'Todas as clientes foram removidas com sucesso!' });
+  } catch (error) {
+    res.status(500).json({ error: 'Erro ao excluir todas as clientes.' });
+  }
+});
+
+// ==========================================
+// ROTAS DE NOTIFICAÇÕES (ADMIN)
+// ==========================================
+
+// Listar notificações não lidas
+app.get('/api/notificacoes', autenticarJWT, autorizarRole(['admin']), async (req, res) => {
+  try {
+    const notificacoes = await prisma.notificacao.findMany({
+      where: { lida: false },
+      orderBy: { createdAt: 'desc' }
+    });
+    res.json(notificacoes);
+  } catch (error) {
+    console.error('Erro ao buscar notificações:', error);
+    res.status(500).json({ error: 'Erro ao buscar notificações.' });
+  }
+});
+
+// Marcar notificações como lidas
+app.put('/api/notificacoes/ler', autenticarJWT, autorizarRole(['admin']), async (req, res) => {
+  const { ids } = req.body;
+  try {
+    if (ids && Array.isArray(ids) && ids.length > 0) {
+      await prisma.notificacao.updateMany({
+        where: { id: { in: ids } },
+        data: { lida: true }
+      });
+    } else {
+      await prisma.notificacao.updateMany({
+        where: { lida: false },
+        data: { lida: true }
+      });
+    }
+    res.json({ message: 'Notificações marcadas como lidas!' });
+  } catch (error) {
+    console.error('Erro ao marcar notificações como lidas:', error);
+    res.status(500).json({ error: 'Erro ao marcar notificações.' });
   }
 });
 
