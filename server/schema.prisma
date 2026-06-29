@@ -7,13 +7,31 @@ generator client {
   provider = "prisma-client-js"
 }
 
+model Loja {
+  id           String             @id @default("default-loja")
+  nome         String             @default("Loja Padrão")
+  cnpj         String?            @unique
+  createdAt    DateTime           @default(now())
+  usuarios     Usuario[]
+  produtos     Produto[]
+  consignados  Consignado[]
+  historicos   HistoricoAcerto[]
+  vendasDireta VendaDireta[]
+  vendasRev    VendaRevendedora[]
+  clientes     Cliente[]
+  configuracao Configuracao[]
+  notificacoes Notificacao[]
+}
+
 model Usuario {
   id           String             @id @default(uuid())
+  lojaId       String?            // Opcional: SUPER_ADMIN não pertence a nenhuma loja específica
+  loja         Loja?              @relation(fields: [lojaId], references: [id], onDelete: Cascade)
   nome         String
   email        String             @unique
   pin          String?            @unique // Código PIN de 4 dígitos para revendedoras
   senhaHash    String
-  role         String             // "admin" ou "revendedora"
+  role         String             // Roles: "SUPER_ADMIN" | "ADMIN_LOJA" | "VENDEDORA"
   whatsapp     String?
   comissao     Float              @default(30.0) // padrão 30%
   consignados  Consignado[]
@@ -24,6 +42,8 @@ model Usuario {
 
 model Produto {
   id                 String        @id @default(uuid())
+  lojaId             String        @default("default-loja")
+  loja               Loja          @relation(fields: [lojaId], references: [id], onDelete: Cascade)
   codigo             String        @unique
   nome               String
   categoria          String
@@ -40,6 +60,8 @@ model Produto {
 
 model Consignado {
   id                   String   @id @default(uuid())
+  lojaId               String   @default("default-loja")
+  loja                 Loja     @relation(fields: [lojaId], references: [id], onDelete: Cascade)
   usuarioId            String
   produtoId            String
   quantidadeConsignada Int
@@ -53,6 +75,8 @@ model Consignado {
 
 model HistoricoAcerto {
   id                 String   @id @default(uuid())
+  lojaId             String   @default("default-loja")
+  loja               Loja     @relation(fields: [lojaId], references: [id], onDelete: Cascade)
   usuarioId          String
   data               DateTime @default(now())
   totalConsignada    Int
@@ -70,6 +94,8 @@ model HistoricoAcerto {
 
 model VendaDireta {
   id              String   @id @default(uuid())
+  lojaId          String   @default("default-loja")
+  loja            Loja     @relation(fields: [lojaId], references: [id], onDelete: Cascade)
   data            DateTime @default(now())
   codigo          String
   nome            String
@@ -82,6 +108,8 @@ model VendaDireta {
 
 model VendaRevendedora {
   id            String   @id @default(uuid())
+  lojaId        String   @default("default-loja")
+  loja          Loja     @relation(fields: [lojaId], references: [id], onDelete: Cascade)
   data          DateTime @default(now())
   usuarioId     String
   produtoId     String
@@ -97,6 +125,8 @@ model VendaRevendedora {
 
 model Cliente {
   id               String             @id @default(uuid())
+  lojaId           String             @default("default-loja")
+  loja             Loja               @relation(fields: [lojaId], references: [id], onDelete: Cascade)
   nome             String
   whatsapp         String             @unique
   dataNascimento   String?
@@ -117,9 +147,25 @@ model LogAcao {
 
 model Notificacao {
   id        String   @id @default(uuid())
+  lojaId    String   @default("default-loja")
+  loja      Loja     @relation(fields: [lojaId], references: [id], onDelete: Cascade)
   tipo      String   // "venda_revendedora", "acerto", etc.
   mensagem  String
   detalhes  String?  // JSON string contendo detalhes
   lida      Boolean  @default(false)
   createdAt DateTime @default(now())
+}
+
+model Configuracao {
+  id            String   @id @default(uuid())
+  lojaId        String   @default("default-loja")
+  loja          Loja     @relation(fields: [lojaId], references: [id], onDelete: Cascade)
+  nomeEmpresa   String   @default("BelKlock Semijoias")
+  logoUrl       String   @default("")
+  corPrimaria   String   @default("#d4af37")
+  corSecundaria String   @default("#111111")
+  bgPrimary     String   @default("#0a0a0a")
+  bgCard        String   @default("#121212")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 }

@@ -24,7 +24,9 @@ async function main() {
       where: { email: emailAdmin },
       data: {
         pin: pinAdmin,
-        senhaHash: senhaHash
+        senhaHash: senhaHash,
+        role: "ADMIN_LOJA",
+        lojaId: "default-loja"
       }
     });
     console.log("=========================================");
@@ -43,7 +45,8 @@ async function main() {
       email: emailAdmin,
       pin: pinAdmin,
       senhaHash: senhaHash,
-      role: "admin",
+      role: "ADMIN_LOJA",
+      lojaId: "default-loja",
       whatsapp: "(11) 99999-9999",
       comissao: 0.0 // admin não recebe comissão
     }

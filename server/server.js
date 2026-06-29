@@ -81,6 +81,29 @@ const autorizarRole = (rolesAutorizadas) => {
   };
 };
 
+const identificarLoja = (req, res, next) => {
+  // SUPER_ADMIN não exige lojaId fixo — pode operar em nome de qualquer loja via header
+  if (req.user && req.user.role === 'SUPER_ADMIN') {
+    // Aceita o lojaId do token (se tiver) ou do header (para operar como uma loja específica)
+    req.lojaId = req.user.lojaId || req.headers['x-loja-id'] || null;
+    return next();
+  }
+
+  // Para ADMIN_LOJA e VENDEDORA: lojaId é obrigatório e vem do token
+  let lojaId = req.headers['x-loja-id'];
+  if (req.user && req.user.lojaId) {
+    lojaId = req.user.lojaId; // Token tem prioridade sobre o header
+  }
+
+  // Tratamento defensivo contra null ou "null" enviado pelo frontend
+  if (!lojaId || lojaId === 'null' || lojaId === 'undefined') {
+    lojaId = 'default-loja';
+  }
+
+  req.lojaId = lojaId;
+  next();
+};
+
 // Gravação de Logs de Auditoria
 async function registrarLog(req, acao, detalhes, usuarioInfo = null) {
   try {
@@ -164,7 +187,7 @@ app.post('/api/auth/login', loginLimiter, async (req, res) => {
 
     // Gera Token JWT
     const token = jwt.sign(
-      { id: usuario.id, nome: usuario.nome, email: usuario.email, pin: usuario.pin, role: usuario.role },
+      { id: usuario.id, nome: usuario.nome, email: usuario.email, pin: usuario.pin, role: usuario.role, lojaId: usuario.lojaId },
       JWT_SECRET,
       { expiresIn: '7d' }
     );
@@ -180,7 +203,8 @@ app.post('/api/auth/login', loginLimiter, async (req, res) => {
         email: usuario.email,
         pin: usuario.pin,
         role: usuario.role,
-        comissao: usuario.comissao
+        comissao: usuario.comissao,
+        lojaId: usuario.lojaId
       }
     });
   } catch (error) {
@@ -189,10 +213,18 @@ app.post('/api/auth/login', loginLimiter, async (req, res) => {
 });
 
 // Admin cria novos usuários (Revendedoras ou outros Admins)
-app.post('/api/auth/register', autenticarJWT, autorizarRole(['admin']), async (req, res) => {
+app.post('/api/auth/register', autenticarJWT, autorizarRole(['ADMIN_LOJA', 'SUPER_ADMIN']), identificarLoja, async (req, res) => {
   const { nome, email, senha, role, whatsapp, comissao } = req.body;
   if (!nome || !email || !senha || !role) {
     return res.status(400).json({ error: 'Campos obrigatórios ausentes.' });
+  }
+
+  // Normaliza a role para maiúsculas e mapeia valores antigos
+  let normalizedRole = role.toUpperCase();
+  if (normalizedRole === 'REVENDEDORA') {
+    normalizedRole = 'VENDEDORA';
+  } else if (normalizedRole === 'ADMIN') {
+    normalizedRole = 'ADMIN_LOJA';
   }
 
   try {
@@ -204,7 +236,7 @@ app.post('/api/auth/register', autenticarJWT, autorizarRole(['admin']), async (r
     const senhaHash = await bcrypt.hash(senha, 10);
     
     let pin = null;
-    if (role === 'revendedora') {
+    if (normalizedRole === 'VENDEDORA') {
       pin = await gerarPinUnico();
     }
 
@@ -214,9 +246,10 @@ app.post('/api/auth/register', autenticarJWT, autorizarRole(['admin']), async (r
         email,
         pin,
         senhaHash,
-        role,
+        role: normalizedRole,
         whatsapp,
-        comissao: parseFloat(comissao) || 30.0
+        comissao: parseFloat(comissao) || 30.0,
+        lojaId: req.lojaId
       }
     });
 
@@ -240,14 +273,15 @@ app.post('/api/auth/register', autenticarJWT, autorizarRole(['admin']), async (r
 // ==========================================
 
 // Listar Produtos (com filtro de segurança para revendedoras)
-app.get('/api/produtos', autenticarJWT, async (req, res) => {
+app.get('/api/produtos', autenticarJWT, identificarLoja, async (req, res) => {
   try {
     const produtos = await prisma.produto.findMany({
+      where: { lojaId: req.lojaId },
       orderBy: { nome: 'asc' }
     });
 
     // Se o usuário logado for revendedora, removemos os custos por segurança comercial
-    if (req.user.role === 'revendedora') {
+    if (req.user.role === 'VENDEDORA') {
       const produtosPublicos = produtos.map(p => {
         const custoTotal = p.custoBruto + p.custoBanho + p.custoLiquido;
         const precoVenda = custoTotal * p.markup;
@@ -272,10 +306,11 @@ app.get('/api/produtos', autenticarJWT, async (req, res) => {
 });
 
 // Listar Produtos com Defeito (Admin)
-app.get('/api/produtos/defeitos', autenticarJWT, autorizarRole(['admin']), async (req, res) => {
+app.get('/api/produtos/defeitos', autenticarJWT, autorizarRole(['ADMIN_LOJA', 'SUPER_ADMIN']), identificarLoja, async (req, res) => {
   try {
     const produtosComDefeito = await prisma.produto.findMany({
       where: {
+        lojaId: req.lojaId,
         quantidadeDefeito: {
           gt: 0
         }
@@ -290,7 +325,7 @@ app.get('/api/produtos/defeitos', autenticarJWT, autorizarRole(['admin']), async
 });
 
 // Criar Produto (Admin)
-app.post('/api/produtos', autenticarJWT, autorizarRole(['admin']), async (req, res) => {
+app.post('/api/produtos', autenticarJWT, autorizarRole(['ADMIN_LOJA', 'SUPER_ADMIN']), identificarLoja, async (req, res) => {
   const { codigo, nome, categoria, quantidade, custoBruto, custoBanho, custoLiquido, markup, fotoUrl, quantidadeDefeito } = req.body;
   if (!nome || !categoria) {
     return res.status(400).json({ error: 'Nome e categoria são obrigatórios.' });
@@ -310,7 +345,8 @@ app.post('/api/produtos', autenticarJWT, autorizarRole(['admin']), async (req, r
         custoLiquido: parseFloat(custoLiquido) || 0.0,
         markup: parseFloat(markup) || 3.0,
         fotoUrl,
-        quantidadeDefeito: parseInt(quantidadeDefeito) || 0
+        quantidadeDefeito: parseInt(quantidadeDefeito) || 0,
+        lojaId: req.lojaId
       }
     });
 
@@ -326,11 +362,16 @@ app.post('/api/produtos', autenticarJWT, autorizarRole(['admin']), async (req, r
 });
 
 // Editar Produto (Admin)
-app.put('/api/produtos/:id', autenticarJWT, autorizarRole(['admin']), async (req, res) => {
+app.put('/api/produtos/:id', autenticarJWT, autorizarRole(['ADMIN_LOJA', 'SUPER_ADMIN']), identificarLoja, async (req, res) => {
   const { id } = req.params;
   const { codigo, nome, categoria, quantidade, custoBruto, custoBanho, custoLiquido, markup, fotoUrl, quantidadeDefeito } = req.body;
 
   try {
+    const prod = await prisma.produto.findFirst({ where: { id, lojaId: req.lojaId } });
+    if (!prod) {
+      return res.status(403).json({ error: 'Acesso negado ou produto não encontrado nesta loja.' });
+    }
+
     const produtoAtualizado = await prisma.produto.update({
       where: { id },
       data: {
@@ -356,17 +397,17 @@ app.put('/api/produtos/:id', autenticarJWT, autorizarRole(['admin']), async (req
 });
 
 // Excluir Produto (Admin)
-app.delete('/api/produtos/:id', autenticarJWT, autorizarRole(['admin']), async (req, res) => {
+app.delete('/api/produtos/:id', autenticarJWT, autorizarRole(['ADMIN_LOJA', 'SUPER_ADMIN']), identificarLoja, async (req, res) => {
   const { id } = req.params;
   try {
-    const prod = await prisma.produto.findUnique({ where: { id } });
+    const prod = await prisma.produto.findFirst({ where: { id, lojaId: req.lojaId } });
+    if (!prod) {
+      return res.status(403).json({ error: 'Acesso negado ou produto não encontrado nesta loja.' });
+    }
+
     await prisma.produto.delete({ where: { id } });
     
-    if (prod) {
-      registrarLog(req, "PRODUTO_EXCLUIR", `Excluiu o produto ${prod.nome} (${prod.codigo}).`);
-    } else {
-      registrarLog(req, "PRODUTO_EXCLUIR", `Excluiu o produto com ID ${id}.`);
-    }
+    registrarLog(req, "PRODUTO_EXCLUIR", `Excluiu o produto ${prod.nome} (${prod.codigo}).`);
 
     res.json({ message: 'Produto removido com sucesso!' });
   } catch (error) {
@@ -375,11 +416,11 @@ app.delete('/api/produtos/:id', autenticarJWT, autorizarRole(['admin']), async (
 });
 
 // Excluir Todos os Produtos (Admin)
-app.delete('/api/produtos', autenticarJWT, autorizarRole(['admin']), async (req, res) => {
+app.delete('/api/produtos', autenticarJWT, autorizarRole(['ADMIN_LOJA', 'SUPER_ADMIN']), identificarLoja, async (req, res) => {
   try {
     await prisma.$transaction([
-      prisma.consignado.deleteMany(), // Limpa os consignados relacionados
-      prisma.produto.deleteMany()
+      prisma.consignado.deleteMany({ where: { lojaId: req.lojaId } }), // Limpa os consignados relacionados desta loja
+      prisma.produto.deleteMany({ where: { lojaId: req.lojaId } })
     ]);
     res.json({ message: 'Todo o estoque e os consignados associados foram excluídos com sucesso!' });
   } catch (error) {
@@ -393,10 +434,10 @@ app.delete('/api/produtos', autenticarJWT, autorizarRole(['admin']), async (req,
 // ==========================================
 
 // Listar Revendedoras (Admin)
-app.get('/api/revendedoras', autenticarJWT, autorizarRole(['admin']), async (req, res) => {
+app.get('/api/revendedoras', autenticarJWT, autorizarRole(['ADMIN_LOJA', 'SUPER_ADMIN']), identificarLoja, async (req, res) => {
   try {
     const revendedoras = await prisma.usuario.findMany({
-      where: { role: 'revendedora' },
+      where: { role: 'VENDEDORA', lojaId: req.lojaId },
       select: {
         id: true,
         nome: true,
@@ -406,11 +447,14 @@ app.get('/api/revendedoras', autenticarJWT, autorizarRole(['admin']), async (req
         comissao: true,
         createdAt: true,
         consignados: {
+          where: { lojaId: req.lojaId },
           include: {
             produto: true
           }
         },
-        historico: true
+        historico: {
+          where: { lojaId: req.lojaId }
+        }
       },
       orderBy: { nome: 'asc' }
     });
@@ -421,11 +465,19 @@ app.get('/api/revendedoras', autenticarJWT, autorizarRole(['admin']), async (req
 });
 
 // Editar Revendedora (Admin)
-app.put('/api/revendedoras/:id', autenticarJWT, autorizarRole(['admin']), async (req, res) => {
+app.put('/api/revendedoras/:id', autenticarJWT, autorizarRole(['ADMIN_LOJA', 'SUPER_ADMIN']), identificarLoja, async (req, res) => {
   const { id } = req.params;
   const { nome, email, whatsapp, comissao } = req.body;
 
   try {
+    const revendedora = await prisma.usuario.findFirst({
+      where: { id, role: 'VENDEDORA', lojaId: req.lojaId }
+    });
+
+    if (!revendedora) {
+      return res.status(403).json({ error: 'Acesso negado ou revendedora não encontrada nesta loja.' });
+    }
+
     const revendedoraAtualizada = await prisma.usuario.update({
       where: { id },
       data: {
@@ -442,16 +494,16 @@ app.put('/api/revendedoras/:id', autenticarJWT, autorizarRole(['admin']), async 
 });
 
 // Regenerar PIN e Senha da Revendedora (Admin)
-app.put('/api/revendedoras/:id/reset-pin', autenticarJWT, autorizarRole(['admin']), async (req, res) => {
+app.put('/api/revendedoras/:id/reset-pin', autenticarJWT, autorizarRole(['ADMIN_LOJA', 'SUPER_ADMIN']), identificarLoja, async (req, res) => {
   const { id } = req.params;
 
   try {
     const usuario = await prisma.usuario.findFirst({
-      where: { id, role: 'revendedora' }
+      where: { id, role: 'VENDEDORA', lojaId: req.lojaId }
     });
 
     if (!usuario) {
-      return res.status(404).json({ error: 'Revendedora não encontrada.' });
+      return res.status(404).json({ error: 'Revendedora não encontrada nesta loja.' });
     }
 
     const novoPin = await gerarPinUnico();
@@ -478,14 +530,19 @@ app.put('/api/revendedoras/:id/reset-pin', autenticarJWT, autorizarRole(['admin'
 });
 
 // Excluir uma Revendedora (Admin)
-app.delete('/api/revendedoras/:id', autenticarJWT, autorizarRole(['admin']), async (req, res) => {
+app.delete('/api/revendedoras/:id', autenticarJWT, autorizarRole(['ADMIN_LOJA', 'SUPER_ADMIN']), identificarLoja, async (req, res) => {
   const { id } = req.params;
   try {
+    const revendedora = await prisma.usuario.findFirst({
+      where: { id, role: 'VENDEDORA', lojaId: req.lojaId }
+    });
+
+    if (!revendedora) {
+      return res.status(403).json({ error: 'Acesso negado ou revendedora não encontrada nesta loja.' });
+    }
+
     await prisma.usuario.delete({
-      where: {
-        id,
-        role: 'revendedora'
-      }
+      where: { id }
     });
     res.json({ message: 'Revendedora excluída com sucesso!' });
   } catch (error) {
@@ -495,11 +552,12 @@ app.delete('/api/revendedoras/:id', autenticarJWT, autorizarRole(['admin']), asy
 });
 
 // Excluir todas as Revendedoras (Admin)
-app.delete('/api/revendedoras', autenticarJWT, autorizarRole(['admin']), async (req, res) => {
+app.delete('/api/revendedoras', autenticarJWT, autorizarRole(['ADMIN_LOJA', 'SUPER_ADMIN']), identificarLoja, async (req, res) => {
   try {
     await prisma.usuario.deleteMany({
       where: {
-        role: 'revendedora'
+        role: 'VENDEDORA',
+        lojaId: req.lojaId
       }
     });
     res.json({ message: 'Todas as revendedoras foram excluídas com sucesso!' });
@@ -510,10 +568,10 @@ app.delete('/api/revendedoras', autenticarJWT, autorizarRole(['admin']), async (
 });
 
 // Obter Maleta Própria (Revendedora logada)
-app.get('/api/revendedoras/minha-maleta', autenticarJWT, async (req, res) => {
+app.get('/api/revendedoras/minha-maleta', autenticarJWT, identificarLoja, async (req, res) => {
   try {
     const consignados = await prisma.consignado.findMany({
-      where: { usuarioId: req.user.id },
+      where: { usuarioId: req.user.id, lojaId: req.lojaId },
       include: {
         produto: {
           select: {
@@ -547,16 +605,24 @@ app.get('/api/revendedoras/minha-maleta', autenticarJWT, async (req, res) => {
 // ==========================================
 
 // Enviar Peças para a Maleta (Consignar - Admin)
-app.post('/api/consignacoes', autenticarJWT, autorizarRole(['admin']), async (req, res) => {
+app.post('/api/consignacoes', autenticarJWT, autorizarRole(['ADMIN_LOJA', 'SUPER_ADMIN']), identificarLoja, async (req, res) => {
   const { usuarioId, produtoId, quantidade } = req.body;
   if (!usuarioId || !produtoId || !quantidade || quantidade <= 0) {
     return res.status(400).json({ error: 'Dados incompletos para consignação.' });
   }
 
   try {
-    const produto = await prisma.produto.findUnique({ where: { id: produtoId } });
-    if (!produto || produto.quantidade < quantidade) {
+    const produto = await prisma.produto.findFirst({ where: { id: produtoId, lojaId: req.lojaId } });
+    if (!produto) {
+      return res.status(404).json({ error: 'Produto não encontrado nesta loja.' });
+    }
+    if (produto.quantidade < quantidade) {
       return res.status(400).json({ error: 'Estoque central insuficiente para esta semijoia.' });
+    }
+
+    const revendedora = await prisma.usuario.findFirst({ where: { id: usuarioId, role: 'VENDEDORA', lojaId: req.lojaId } });
+    if (!revendedora) {
+      return res.status(404).json({ error: 'Revendedora não encontrada nesta loja.' });
     }
 
     // Calcula preço de venda atualizado com base nos custos e markup
@@ -570,9 +636,11 @@ app.post('/api/consignacoes', autenticarJWT, autorizarRole(['admin']), async (re
     });
 
     // Cria ou atualiza o registro de consignação
-    const consignadoExistente = await prisma.consignado.findUnique({
+    const consignadoExistente = await prisma.consignado.findFirst({
       where: {
-        usuarioId_produtoId: { usuarioId, produtoId }
+        usuarioId,
+        produtoId,
+        lojaId: req.lojaId
       }
     });
 
@@ -591,23 +659,24 @@ app.post('/api/consignacoes', autenticarJWT, autorizarRole(['admin']), async (re
           usuarioId,
           produtoId,
           quantidadeConsignada: quantidade,
-          precoVenda: precoVendaCalculado
+          precoVenda: precoVendaCalculado,
+          lojaId: req.lojaId
         }
       });
     }
 
-    const revendedora = await prisma.usuario.findUnique({ where: { id: usuarioId } });
-    const nomeRevendedora = revendedora ? revendedora.nome : `Revendedora ID ${usuarioId}`;
+    const nomeRevendedora = revendedora.nome;
     registrarLog(req, "CONSIGNACAO_CRIAR", `Consignou ${quantidade} unidades do produto ${produto.nome} (${produto.codigo}) para a revendedora ${nomeRevendedora}.`);
 
     res.json(consignacao);
   } catch (error) {
+    console.error('Erro ao consignar:', error);
     res.status(500).json({ error: 'Erro ao registrar consignação.' });
   }
 });
 
 // Finalizar Acerto de Contas (Admin)
-app.post('/api/acertos', autenticarJWT, autorizarRole(['admin']), async (req, res) => {
+app.post('/api/acertos', autenticarJWT, autorizarRole(['ADMIN_LOJA', 'SUPER_ADMIN']), identificarLoja, async (req, res) => {
   // itensAcerto: [{ produtoId, quantidadeVendida, quantidadeDevolvida, quantidadePerdida, quantidadeDefeito }]
   const { usuarioId, itensAcerto, formaPagamento } = req.body;
   
@@ -616,8 +685,10 @@ app.post('/api/acertos', autenticarJWT, autorizarRole(['admin']), async (req, re
   }
 
   try {
-    const revendedora = await prisma.usuario.findUnique({ where: { id: usuarioId } });
-    if (!revendedora) return res.status(404).json({ error: 'Revendedora não encontrada.' });
+    const revendedora = await prisma.usuario.findFirst({
+      where: { id: usuarioId, role: 'VENDEDORA', lojaId: req.lojaId }
+    });
+    if (!revendedora) return res.status(404).json({ error: 'Revendedora não encontrada nesta loja.' });
 
     let faturamentoBruto = 0;
     let totalConsignada = 0;
@@ -628,9 +699,11 @@ app.post('/api/acertos', autenticarJWT, autorizarRole(['admin']), async (req, re
     let valorDescontoPerda = 0;
 
     for (const item of itensAcerto) {
-      const consignado = await prisma.consignado.findUnique({
+      const consignado = await prisma.consignado.findFirst({
         where: {
-          usuarioId_produtoId: { usuarioId, produtoId: item.produtoId }
+          usuarioId,
+          produtoId: item.produtoId,
+          lojaId: req.lojaId
         }
       });
 
@@ -688,7 +761,8 @@ app.post('/api/acertos', autenticarJWT, autorizarRole(['admin']), async (req, re
         valorDescontoPerda,
         comissaoPaga,
         liquidoBelklock,
-        formaPagamento: formaPagamento || "Pix"
+        formaPagamento: formaPagamento || "Pix",
+        lojaId: req.lojaId
       }
     });
 
@@ -705,15 +779,16 @@ app.post('/api/acertos', autenticarJWT, autorizarRole(['admin']), async (req, re
 });
 
 // Listar Histórico de Acertos
-app.get('/api/acertos/historico', autenticarJWT, async (req, res) => {
+app.get('/api/acertos/historico', autenticarJWT, identificarLoja, async (req, res) => {
   try {
     let queryOptions = {
+      where: { lojaId: req.lojaId },
       orderBy: { data: 'desc' }
     };
 
     // Revendedoras só veem o seu próprio histórico. Admins veem tudo.
-    if (req.user.role === 'revendedora') {
-      queryOptions.where = { usuarioId: req.user.id };
+    if (req.user.role === 'VENDEDORA') {
+      queryOptions.where.usuarioId = req.user.id;
     } else {
       queryOptions.include = {
         usuario: { select: { nome: true } }
@@ -731,13 +806,13 @@ app.get('/api/acertos/historico', autenticarJWT, async (req, res) => {
 // ROTAS DE VENDAS DIRETAS (ADMIN)
 // ==========================================
 
-app.post('/api/vendas-diretas', autenticarJWT, autorizarRole(['admin']), async (req, res) => {
+app.post('/api/vendas-diretas', autenticarJWT, autorizarRole(['ADMIN_LOJA', 'SUPER_ADMIN']), identificarLoja, async (req, res) => {
   let { codigo, nome, preco, whatsappCliente, nomeCliente, clienteId, quantidade, produtoId } = req.body;
 
   // Se veio produtoId e não veio codigo/nome, busca no estoque central
   if (produtoId && (!codigo || !nome)) {
     try {
-      const prod = await prisma.produto.findUnique({ where: { id: produtoId } });
+      const prod = await prisma.produto.findFirst({ where: { id: produtoId, lojaId: req.lojaId } });
       if (prod) {
         codigo = prod.codigo;
         nome = prod.nome;
@@ -749,6 +824,17 @@ app.post('/api/vendas-diretas', autenticarJWT, autorizarRole(['admin']), async (
 
   if (!codigo || !nome || !preco) {
     return res.status(400).json({ error: 'Informações da venda incompletas.' });
+  }
+
+  if (clienteId) {
+    try {
+      const cliente = await prisma.cliente.findFirst({ where: { id: clienteId, lojaId: req.lojaId } });
+      if (!cliente) {
+        return res.status(403).json({ error: 'Cliente não encontrado nesta loja.' });
+      }
+    } catch (e) {
+      console.error("Erro ao buscar cliente na venda direta:", e);
+    }
   }
 
   const qtd = parseInt(quantidade) || 1;
@@ -765,18 +851,19 @@ app.post('/api/vendas-diretas', autenticarJWT, autorizarRole(['admin']), async (
           preco: parseFloat(preco),
           whatsappCliente,
           nomeCliente,
-          clienteId: clienteId || null
+          clienteId: clienteId || null,
+          lojaId: req.lojaId
         }
       });
       ultimaVendaCreated = venda;
     }
 
     // Deduz a quantidade do estoque central se houver essa peça disponível
-    const produto = await prisma.produto.findUnique({ where: { codigo } });
+    const produto = await prisma.produto.findFirst({ where: { codigo, lojaId: req.lojaId } });
     if (produto) {
       const novaQtd = Math.max(0, produto.quantidade - qtd);
       await prisma.produto.update({
-        where: { codigo },
+        where: { id: produto.id },
         data: { quantidade: novaQtd }
       });
     }
@@ -788,9 +875,10 @@ app.post('/api/vendas-diretas', autenticarJWT, autorizarRole(['admin']), async (
   }
 });
 
-app.get('/api/vendas-diretas', autenticarJWT, autorizarRole(['admin']), async (req, res) => {
+app.get('/api/vendas-diretas', autenticarJWT, autorizarRole(['ADMIN_LOJA', 'SUPER_ADMIN']), identificarLoja, async (req, res) => {
   try {
     const vendas = await prisma.vendaDireta.findMany({
+      where: { lojaId: req.lojaId },
       orderBy: { data: 'desc' }
     });
     res.json(vendas);
@@ -800,12 +888,16 @@ app.get('/api/vendas-diretas', autenticarJWT, autorizarRole(['admin']), async (r
 });
 
 // Excluir uma venda (Admin)
-app.delete('/api/vendas/:tipo/:id', autenticarJWT, autorizarRole(['admin']), async (req, res) => {
+app.delete('/api/vendas/:tipo/:id', autenticarJWT, autorizarRole(['ADMIN_LOJA', 'SUPER_ADMIN']), identificarLoja, async (req, res) => {
   const { tipo, id } = req.params;
   try {
     if (tipo === 'direta') {
+      const venda = await prisma.vendaDireta.findFirst({ where: { id, lojaId: req.lojaId } });
+      if (!venda) return res.status(403).json({ error: 'Venda direta não encontrada nesta loja.' });
       await prisma.vendaDireta.delete({ where: { id } });
     } else if (tipo === 'revendedora') {
+      const venda = await prisma.vendaRevendedora.findFirst({ where: { id, lojaId: req.lojaId } });
+      if (!venda) return res.status(403).json({ error: 'Venda de revendedora não encontrada nesta loja.' });
       await prisma.vendaRevendedora.delete({ where: { id } });
     } else {
       return res.status(400).json({ error: 'Tipo de venda inválido.' });
@@ -818,11 +910,11 @@ app.delete('/api/vendas/:tipo/:id', autenticarJWT, autorizarRole(['admin']), asy
 });
 
 // Excluir todas as vendas (Admin)
-app.delete('/api/vendas', autenticarJWT, autorizarRole(['admin']), async (req, res) => {
+app.delete('/api/vendas', autenticarJWT, autorizarRole(['ADMIN_LOJA', 'SUPER_ADMIN']), identificarLoja, async (req, res) => {
   try {
     await prisma.$transaction([
-      prisma.vendaDireta.deleteMany(),
-      prisma.vendaRevendedora.deleteMany()
+      prisma.vendaDireta.deleteMany({ where: { lojaId: req.lojaId } }),
+      prisma.vendaRevendedora.deleteMany({ where: { lojaId: req.lojaId } })
     ]);
     res.json({ message: 'Todo o histórico de vendas foi excluído com sucesso!' });
   } catch (error) {
@@ -832,7 +924,7 @@ app.delete('/api/vendas', autenticarJWT, autorizarRole(['admin']), async (req, r
 });
 
 // Relatório DRE Simplificado (Admin)
-app.get('/api/relatorios/dre', autenticarJWT, autorizarRole(['admin']), async (req, res) => {
+app.get('/api/relatorios/dre', autenticarJWT, autorizarRole(['ADMIN_LOJA', 'SUPER_ADMIN']), identificarLoja, async (req, res) => {
   const { inicio, fim } = req.query;
   const cmvEstimado = parseFloat(req.query.cmvEstimado) || 33.0;
 
@@ -857,6 +949,7 @@ app.get('/api/relatorios/dre', autenticarJWT, autorizarRole(['admin']), async (r
 
     const vendasDiretas = await prisma.vendaDireta.findMany({
       where: {
+        lojaId: req.lojaId,
         data: {
           gte: dataInicio,
           lte: dataFim
@@ -866,6 +959,7 @@ app.get('/api/relatorios/dre', autenticarJWT, autorizarRole(['admin']), async (r
 
     const acertos = await prisma.historicoAcerto.findMany({
       where: {
+        lojaId: req.lojaId,
         data: {
           gte: dataInicio,
           lte: dataFim
@@ -875,6 +969,7 @@ app.get('/api/relatorios/dre', autenticarJWT, autorizarRole(['admin']), async (r
 
     const vendasRevendedora = await prisma.vendaRevendedora.findMany({
       where: {
+        lojaId: req.lojaId,
         data: {
           gte: dataInicio,
           lte: dataFim
@@ -882,7 +977,9 @@ app.get('/api/relatorios/dre', autenticarJWT, autorizarRole(['admin']), async (r
       }
     });
 
-    const produtos = await prisma.produto.findMany();
+    const produtos = await prisma.produto.findMany({
+      where: { lojaId: req.lojaId }
+    });
     const produtosMap = new Map(produtos.map(p => [p.codigo, p]));
     const produtosIdMap = new Map(produtos.map(p => [p.id, p]));
 
@@ -958,7 +1055,7 @@ app.get('/api/relatorios/dre', autenticarJWT, autorizarRole(['admin']), async (r
 // ==========================================
 
 // Registrar venda (Revendedora registra venda de item da maleta)
-app.post('/api/vendas-revendedora', autenticarJWT, autorizarRole(['revendedora']), async (req, res) => {
+app.post('/api/vendas-revendedora', autenticarJWT, autorizarRole(['VENDEDORA']), identificarLoja, async (req, res) => {
   const { produtoId, quantidade } = req.body;
   const usuarioId = req.user.id;
 
@@ -968,8 +1065,12 @@ app.post('/api/vendas-revendedora', autenticarJWT, autorizarRole(['revendedora']
 
   try {
     // Busca o item consignado desta revendedora
-    const consignado = await prisma.consignado.findUnique({
-      where: { usuarioId_produtoId: { usuarioId, produtoId } },
+    const consignado = await prisma.consignado.findFirst({
+      where: {
+        usuarioId,
+        produtoId,
+        lojaId: req.lojaId
+      },
       include: { produto: true, usuario: true }
     });
 
@@ -1003,7 +1104,8 @@ app.post('/api/vendas-revendedora', autenticarJWT, autorizarRole(['revendedora']
         codigoProduto: consignado.produto.codigo,
         quantidade,
         precoVenda: consignado.precoVenda,
-        comissaoValor
+        comissaoValor,
+        lojaId: req.lojaId
       }
     });
 
@@ -1024,7 +1126,8 @@ app.post('/api/vendas-revendedora', autenticarJWT, autorizarRole(['revendedora']
             valorTotal,
             comissaoValor,
             data: venda.data
-          })
+          }),
+          lojaId: req.lojaId
         }
       });
     } catch (notifErr) {
@@ -1048,12 +1151,18 @@ app.post('/api/vendas-revendedora', autenticarJWT, autorizarRole(['revendedora']
 });
 
 // Listar vendas da revendedora logada
-app.get('/api/vendas-revendedora', autenticarJWT, async (req, res) => {
+app.get('/api/vendas-revendedora', autenticarJWT, identificarLoja, async (req, res) => {
   try {
-    let where = {};
-    if (req.user.role !== 'admin') {
+    let where = { lojaId: req.lojaId };
+    if (!['ADMIN_LOJA', 'SUPER_ADMIN'].includes(req.user.role)) {
       where.usuarioId = req.user.id;
     } else if (req.query.usuarioId) {
+      const revendedora = await prisma.usuario.findFirst({
+        where: { id: req.query.usuarioId, lojaId: req.lojaId }
+      });
+      if (!revendedora) {
+        return res.status(403).json({ error: 'Usuário não encontrado nesta loja.' });
+      }
       where.usuarioId = req.query.usuarioId;
     }
 
@@ -1061,7 +1170,7 @@ app.get('/api/vendas-revendedora', autenticarJWT, async (req, res) => {
     if (req.query.apenasPendentes === 'true' && where.usuarioId) {
       // Busca o último acerto deste usuário
       const ultimoAcerto = await prisma.historicoAcerto.findFirst({
-        where: { usuarioId: where.usuarioId },
+        where: { usuarioId: where.usuarioId, lojaId: req.lojaId },
         orderBy: { data: 'desc' }
       });
       if (ultimoAcerto) {
@@ -1126,25 +1235,26 @@ app.post('/api/uploads', autenticarJWT, upload.single('imagem'), async (req, res
 // ROTA DE IMPORTAÇÃO EM MASSA (EXCEL/CSV)
 // ==========================================
 
-app.post('/api/importar', autenticarJWT, autorizarRole(['admin']), async (req, res) => {
+app.post('/api/importar', autenticarJWT, autorizarRole(['ADMIN_LOJA', 'SUPER_ADMIN']), identificarLoja, async (req, res) => {
   const { produtos, revendedoras, substituirTudo } = req.body;
   
   try {
     if (substituirTudo) {
-      // Limpa todas as tabelas (exceto administradores)
+      // Limpa todas as tabelas (exceto administradores) da loja atual
       await prisma.$transaction([
-        prisma.consignado.deleteMany(),
-        prisma.historicoAcerto.deleteMany(),
-        prisma.vendaDireta.deleteMany(),
-        prisma.produto.deleteMany(),
-        prisma.usuario.deleteMany({ where: { role: 'revendedora' } })
+        prisma.consignado.deleteMany({ where: { lojaId: req.lojaId } }),
+        prisma.historicoAcerto.deleteMany({ where: { lojaId: req.lojaId } }),
+        prisma.vendaDireta.deleteMany({ where: { lojaId: req.lojaId } }),
+        prisma.vendaRevendedora.deleteMany({ where: { lojaId: req.lojaId } }),
+        prisma.produto.deleteMany({ where: { lojaId: req.lojaId } }),
+        prisma.usuario.deleteMany({ where: { role: 'VENDEDORA', lojaId: req.lojaId } })
       ]);
     }
 
     // Importa Produtos
     if (produtos && produtos.length > 0) {
       for (const p of produtos) {
-        const existente = await prisma.produto.findUnique({ where: { codigo: p.codigo } });
+        const existente = await prisma.produto.findFirst({ where: { codigo: p.codigo, lojaId: req.lojaId } });
         
         if (existente) {
           if (!substituirTudo) {
@@ -1170,7 +1280,8 @@ app.post('/api/importar', autenticarJWT, autorizarRole(['admin']), async (req, r
               custoBruto: parseFloat(p.custoBruto) || 0.0,
               custoBanho: parseFloat(p.custoBanho) || 0.0,
               custoLiquido: parseFloat(p.custoLiquido) || 0.0,
-              markup: parseFloat(p.markup) || 3.0
+              markup: parseFloat(p.markup) || 3.0,
+              lojaId: req.lojaId
             }
           });
         }
@@ -1185,6 +1296,7 @@ app.post('/api/importar', autenticarJWT, autorizarRole(['admin']), async (req, r
         
         let existente = await prisma.usuario.findFirst({
           where: {
+            lojaId: req.lojaId,
             OR: [
               { email: emailTemporario },
               { nome: { equals: r.nome } }
@@ -1217,9 +1329,10 @@ app.post('/api/importar', autenticarJWT, autorizarRole(['admin']), async (req, r
               email: emailTemporario,
               pin: pin,
               senhaHash: senhaHash,
-              role: 'revendedora',
+              role: 'VENDEDORA',
               whatsapp: r.whatsapp,
-              comissao: parseFloat(r.comissao) || 30.0
+              comissao: parseFloat(r.comissao) || 30.0,
+              lojaId: req.lojaId
             }
           });
           revendedoraId = novaRev.id;
@@ -1234,11 +1347,13 @@ app.post('/api/importar', autenticarJWT, autorizarRole(['admin']), async (req, r
         // Importa itens consignados da maleta
         if (r.consignado && r.consignado.length > 0) {
           for (const c of r.consignado) {
-            const prod = await prisma.produto.findUnique({ where: { codigo: c.codigo } });
+            const prod = await prisma.produto.findFirst({ where: { codigo: c.codigo, lojaId: req.lojaId } });
             if (prod) {
-              const consExistente = await prisma.consignado.findUnique({
+              const consExistente = await prisma.consignado.findFirst({
                 where: {
-                  usuarioId_produtoId: { usuarioId: revendedoraId, produtoId: prod.id }
+                  usuarioId: revendedoraId,
+                  produtoId: prod.id,
+                  lojaId: req.lojaId
                 }
               });
 
@@ -1256,7 +1371,8 @@ app.post('/api/importar', autenticarJWT, autorizarRole(['admin']), async (req, r
                     usuarioId: revendedoraId,
                     produtoId: prod.id,
                     quantidadeConsignada: parseInt(c.quantidadeConsignada) || 0,
-                    precoVenda: parseFloat(c.precoVenda) || (prod.custoBruto + prod.custoBanho + prod.custoLiquido) * prod.markup
+                    precoVenda: parseFloat(c.precoVenda) || (prod.custoBruto + prod.custoBanho + prod.custoLiquido) * prod.markup,
+                    lojaId: req.lojaId
                   }
                 });
               }
@@ -1281,9 +1397,10 @@ app.post('/api/importar', autenticarJWT, autorizarRole(['admin']), async (req, r
 // ==========================================
 
 // Listar Clientes
-app.get('/api/clientes', autenticarJWT, autorizarRole(['admin']), async (req, res) => {
+app.get('/api/clientes', autenticarJWT, autorizarRole(['ADMIN_LOJA', 'SUPER_ADMIN']), identificarLoja, async (req, res) => {
   try {
     const clientes = await prisma.cliente.findMany({
+      where: { lojaId: req.lojaId },
       orderBy: { nome: 'asc' }
     });
     res.json(clientes);
@@ -1293,46 +1410,62 @@ app.get('/api/clientes', autenticarJWT, autorizarRole(['admin']), async (req, re
 });
 
 // Criar Cliente
-app.post('/api/clientes', autenticarJWT, autorizarRole(['admin']), async (req, res) => {
+app.post('/api/clientes', autenticarJWT, autorizarRole(['ADMIN_LOJA', 'SUPER_ADMIN']), identificarLoja, async (req, res) => {
   const { nome, whatsapp, dataNascimento, observacoes } = req.body;
   if (!nome || !whatsapp) {
     return res.status(400).json({ error: 'Nome e WhatsApp são obrigatórios.' });
   }
   try {
     const cliente = await prisma.cliente.create({
-      data: { nome, whatsapp, dataNascimento: dataNascimento || null, observacoes: observacoes || null }
+      data: { 
+        nome, 
+        whatsapp, 
+        dataNascimento: dataNascimento || null, 
+        observacoes: observacoes || null,
+        lojaId: req.lojaId
+      }
     });
     res.status(201).json(cliente);
   } catch (error) {
     if (error.code === 'P2002') {
-      return res.status(400).json({ error: 'Já existe uma cliente cadastrada com este WhatsApp.' });
+      return res.status(400).json({ error: 'Já existe uma cliente cadastrada com este WhatsApp nesta loja.' });
     }
     res.status(500).json({ error: 'Erro ao cadastrar cliente.' });
   }
 });
 
 // Editar Cliente
-app.put('/api/clientes/:id', autenticarJWT, autorizarRole(['admin']), async (req, res) => {
+app.put('/api/clientes/:id', autenticarJWT, autorizarRole(['ADMIN_LOJA', 'SUPER_ADMIN']), identificarLoja, async (req, res) => {
   const { id } = req.params;
   const { nome, whatsapp, dataNascimento, observacoes } = req.body;
   try {
-    const cliente = await prisma.cliente.update({
+    const cliente = await prisma.cliente.findFirst({ where: { id, lojaId: req.lojaId } });
+    if (!cliente) {
+      return res.status(403).json({ error: 'Acesso negado ou cliente não encontrada nesta loja.' });
+    }
+
+    const clienteAtualizado = await prisma.cliente.update({
       where: { id },
       data: { nome, whatsapp, dataNascimento: dataNascimento || null, observacoes: observacoes || null }
     });
-    res.json(cliente);
+    res.json(clienteAtualizado);
   } catch (error) {
     if (error.code === 'P2002') {
-      return res.status(400).json({ error: 'Já existe uma cliente cadastrada com este WhatsApp.' });
+      return res.status(400).json({ error: 'Já existe uma cliente cadastrada com este WhatsApp nesta loja.' });
     }
     res.status(500).json({ error: 'Erro ao atualizar cliente.' });
   }
 });
 
 // Excluir Cliente
-app.delete('/api/clientes/:id', autenticarJWT, autorizarRole(['admin']), async (req, res) => {
+app.delete('/api/clientes/:id', autenticarJWT, autorizarRole(['ADMIN_LOJA', 'SUPER_ADMIN']), identificarLoja, async (req, res) => {
   const { id } = req.params;
   try {
+    const cliente = await prisma.cliente.findFirst({ where: { id, lojaId: req.lojaId } });
+    if (!cliente) {
+      return res.status(403).json({ error: 'Acesso negado ou cliente não encontrada nesta loja.' });
+    }
+
     await prisma.cliente.delete({ where: { id } });
     res.json({ message: 'Cliente removida com sucesso!' });
   } catch (error) {
@@ -1341,9 +1474,11 @@ app.delete('/api/clientes/:id', autenticarJWT, autorizarRole(['admin']), async (
 });
 
 // Excluir todas as clientes
-app.delete('/api/clientes', autenticarJWT, autorizarRole(['admin']), async (req, res) => {
+app.delete('/api/clientes', autenticarJWT, autorizarRole(['ADMIN_LOJA', 'SUPER_ADMIN']), identificarLoja, async (req, res) => {
   try {
-    await prisma.cliente.deleteMany();
+    await prisma.cliente.deleteMany({
+      where: { lojaId: req.lojaId }
+    });
     res.json({ message: 'Todas as clientes foram removidas com sucesso!' });
   } catch (error) {
     res.status(500).json({ error: 'Erro ao excluir todas as clientes.' });
@@ -1355,10 +1490,10 @@ app.delete('/api/clientes', autenticarJWT, autorizarRole(['admin']), async (req,
 // ==========================================
 
 // Listar notificações não lidas
-app.get('/api/notificacoes', autenticarJWT, autorizarRole(['admin']), async (req, res) => {
+app.get('/api/notificacoes', autenticarJWT, autorizarRole(['ADMIN_LOJA', 'SUPER_ADMIN']), identificarLoja, async (req, res) => {
   try {
     const notificacoes = await prisma.notificacao.findMany({
-      where: { lida: false },
+      where: { lida: false, lojaId: req.lojaId },
       orderBy: { createdAt: 'desc' }
     });
     res.json(notificacoes);
@@ -1369,17 +1504,17 @@ app.get('/api/notificacoes', autenticarJWT, autorizarRole(['admin']), async (req
 });
 
 // Marcar notificações como lidas
-app.put('/api/notificacoes/ler', autenticarJWT, autorizarRole(['admin']), async (req, res) => {
+app.put('/api/notificacoes/ler', autenticarJWT, autorizarRole(['ADMIN_LOJA', 'SUPER_ADMIN']), identificarLoja, async (req, res) => {
   const { ids } = req.body;
   try {
     if (ids && Array.isArray(ids) && ids.length > 0) {
       await prisma.notificacao.updateMany({
-        where: { id: { in: ids } },
+        where: { id: { in: ids }, lojaId: req.lojaId },
         data: { lida: true }
       });
     } else {
       await prisma.notificacao.updateMany({
-        where: { lida: false },
+        where: { lida: false, lojaId: req.lojaId },
         data: { lida: true }
       });
     }
@@ -1391,8 +1526,217 @@ app.put('/api/notificacoes/ler', autenticarJWT, autorizarRole(['admin']), async 
 });
 
 // ==========================================
+// ROTAS DE CONFIGURAÇÃO (WHITE-LABEL)
+// ==========================================
+
+// GET /api/config - Buscar configuração pública da loja
+app.get('/api/config', identificarLoja, async (req, res) => {
+  try {
+    let config = await prisma.configuracao.findFirst({
+      where: { lojaId: req.lojaId }
+    });
+    if (!config) {
+      config = await prisma.configuracao.create({
+        data: {
+          lojaId: req.lojaId,
+          nomeEmpresa: 'BelKlock Semijoias',
+          logoUrl: '',
+          corPrimaria: '#d4af37',
+          corSecundaria: '#111111',
+          bgPrimary: '#0a0a0a',
+          bgCard: '#121212',
+        }
+      });
+    }
+    res.json(config);
+  } catch (error) {
+    console.error('Erro ao buscar configuração:', error);
+    res.status(500).json({ error: 'Erro ao carregar configurações da loja.' });
+  }
+});
+
+// PUT /api/config - Atualizar configuração da loja (Somente Admin)
+app.put('/api/config', autenticarJWT, autorizarRole(['ADMIN_LOJA', 'SUPER_ADMIN']), identificarLoja, async (req, res) => {
+  const { nomeEmpresa, logoUrl, corPrimaria, corSecundaria, bgPrimary, bgCard } = req.body;
+  try {
+    let config = await prisma.configuracao.findFirst({
+      where: { lojaId: req.lojaId }
+    });
+    if (!config) {
+      config = await prisma.configuracao.create({
+        data: {
+          lojaId: req.lojaId,
+          nomeEmpresa: nomeEmpresa || 'BelKlock Semijoias',
+          logoUrl: logoUrl || '',
+          corPrimaria: corPrimaria || '#d4af37',
+          corSecundaria: corSecundaria || '#111111',
+          bgPrimary: bgPrimary || '#0a0a0a',
+          bgCard: bgCard || '#121212',
+        }
+      });
+    } else {
+      config = await prisma.configuracao.update({
+        where: { id: config.id },
+        data: {
+          nomeEmpresa: nomeEmpresa !== undefined ? nomeEmpresa : config.nomeEmpresa,
+          logoUrl: logoUrl !== undefined ? logoUrl : config.logoUrl,
+          corPrimaria: corPrimaria !== undefined ? corPrimaria : config.corPrimaria,
+          corSecundaria: corSecundaria !== undefined ? corSecundaria : config.corSecundaria,
+          bgPrimary: bgPrimary !== undefined ? bgPrimary : config.bgPrimary,
+          bgCard: bgCard !== undefined ? bgCard : config.bgCard,
+        }
+      });
+    }
+    await registrarLog(req, 'Atualizar Configurações', `Configuração alterada: ${JSON.stringify(config)}`);
+    res.json(config);
+  } catch (error) {
+    console.error('Erro ao atualizar configuração:', error);
+    res.status(500).json({ error: 'Erro ao atualizar configurações da loja.' });
+  }
+});
+
+// ==========================================
+// ROTAS EXCLUSIVAS DO SUPER_ADMIN (Gestão Global de Lojas)
+// ==========================================
+
+// Listar todas as lojas (apenas SUPER_ADMIN)
+app.get('/api/admin/lojas', autenticarJWT, autorizarRole(['SUPER_ADMIN']), async (req, res) => {
+  try {
+    const lojas = await prisma.loja.findMany({
+      orderBy: { createdAt: 'desc' },
+      include: {
+        _count: {
+          select: { usuarios: true, produtos: true }
+        }
+      }
+    });
+    res.json(lojas);
+  } catch (error) {
+    console.error('Erro ao listar lojas:', error);
+    res.status(500).json({ error: 'Erro ao listar lojas.' });
+  }
+});
+
+// Criar nova loja (apenas SUPER_ADMIN)
+app.post('/api/admin/lojas', autenticarJWT, autorizarRole(['SUPER_ADMIN']), async (req, res) => {
+  const { nome, cnpj } = req.body;
+  if (!nome) {
+    return res.status(400).json({ error: 'O nome da loja é obrigatório.' });
+  }
+  try {
+    const novaLoja = await prisma.loja.create({
+      data: { nome, cnpj: cnpj || null }
+    });
+    // Cria a configuração padrão da nova loja
+    await prisma.configuracao.create({
+      data: {
+        lojaId: novaLoja.id,
+        nomeEmpresa: nome,
+        logoUrl: '',
+        corPrimaria: '#d4af37',
+        corSecundaria: '#111111',
+        bgPrimary: '#0a0a0a',
+        bgCard: '#121212',
+      }
+    });
+    await registrarLog(req, 'CRIAR_LOJA', `SUPER_ADMIN criou a loja: ${nome} (ID: ${novaLoja.id})`);
+    res.status(201).json(novaLoja);
+  } catch (error) {
+    console.error('Erro ao criar loja:', error);
+    if (error.code === 'P2002') {
+      return res.status(400).json({ error: 'Já existe uma loja com este CNPJ.' });
+    }
+    res.status(500).json({ error: 'Erro ao criar loja.' });
+  }
+});
+
+// Obter detalhes de uma loja específica (SUPER_ADMIN)
+app.get('/api/admin/lojas/:id', autenticarJWT, autorizarRole(['SUPER_ADMIN']), async (req, res) => {
+  const { id } = req.params;
+  try {
+    const loja = await prisma.loja.findUnique({
+      where: { id },
+      include: {
+        configuracao: true,
+        _count: { select: { usuarios: true, produtos: true, vendasDireta: true } }
+      }
+    });
+    if (!loja) {
+      return res.status(404).json({ error: 'Loja não encontrada.' });
+    }
+    res.json(loja);
+  } catch (error) {
+    console.error('Erro ao buscar loja:', error);
+    res.status(500).json({ error: 'Erro ao buscar loja.' });
+  }
+});
+
+
+// Função para garantir que a loja padrão, a configuração padrão e o SUPER_ADMIN existam no banco
+async function inicializarLojaPadrao() {
+  try {
+    let loja = await prisma.loja.findUnique({ where: { id: 'default-loja' } });
+    if (!loja) {
+      loja = await prisma.loja.create({
+        data: {
+          id: 'default-loja',
+          nome: process.env.NOME_EMPRESA_PADRAO || 'Loja Padrão',
+          cnpj: '00000000000000'
+        }
+      });
+      console.log('Loja padrão criada com sucesso!');
+    }
+
+    // Garante que a configuração da loja padrão exista
+    const config = await prisma.configuracao.findFirst({ where: { lojaId: 'default-loja' } });
+    if (!config) {
+      await prisma.configuracao.create({
+        data: {
+          lojaId: 'default-loja',
+          nomeEmpresa: process.env.NOME_EMPRESA_PADRAO || 'Minha Loja',
+          logoUrl: '',
+          corPrimaria: '#d4af37',
+          corSecundaria: '#111111',
+          bgPrimary: '#0a0a0a',
+          bgCard: '#121212',
+        }
+      });
+      console.log('Configuração da loja padrão criada com sucesso!');
+    }
+
+    // Garante que o SUPER_ADMIN global exista
+    const superAdminEmail = process.env.SUPER_ADMIN_EMAIL;
+    const superAdminSenha = process.env.SUPER_ADMIN_SENHA;
+
+    if (superAdminEmail && superAdminSenha) {
+      const superAdminExiste = await prisma.usuario.findUnique({ where: { email: superAdminEmail } });
+      if (!superAdminExiste) {
+        const senhaHash = await bcrypt.hash(superAdminSenha, 10);
+        await prisma.usuario.create({
+          data: {
+            nome: 'Super Admin',
+            email: superAdminEmail,
+            senhaHash,
+            role: 'SUPER_ADMIN',
+            lojaId: null, // SUPER_ADMIN não pertence a nenhuma loja específica
+            comissao: 0.0
+          }
+        });
+        console.log(`SUPER_ADMIN criado: ${superAdminEmail}`);
+      }
+    } else {
+      console.warn('AVISO: SUPER_ADMIN_EMAIL e/ou SUPER_ADMIN_SENHA não definidos no .env. O SUPER_ADMIN não foi criado automaticamente.');
+    }
+  } catch (error) {
+    console.error('Erro ao inicializar loja/configuração padrão:', error);
+  }
+}
+
+// ==========================================
 // INICIALIZAÇÃO
 // ==========================================
 app.listen(PORT, () => {
-  console.log(`Servidor BelKlock rodando com sucesso na porta ${PORT}`);
+  console.log(`Servidor rodando com sucesso na porta ${PORT}`);
+  inicializarLojaPadrao();
 });
+

@@ -102,6 +102,25 @@ body {
   height: 100vh;
   z-index: 100;
   box-shadow: 10px 0 30px rgba(0, 0, 0, 0.5);
+  overflow-y: auto;
+}
+
+/* Custom Scrollbar Premium para a Sidebar */
+.sidebar::-webkit-scrollbar {
+  width: 5px;
+}
+
+.sidebar::-webkit-scrollbar-track {
+  background: var(--bg-absolute);
+}
+
+.sidebar::-webkit-scrollbar-thumb {
+  background-color: rgba(212, 175, 55, 0.2);
+  border-radius: 10px;
+}
+
+.sidebar::-webkit-scrollbar-thumb:hover {
+  background-color: var(--gold-primary);
 }
 
 .brand {
@@ -1821,6 +1840,20 @@ body {
 
 #print-receipt-container {
   display: none;
+}
+
+.brand-text {
+  display: block;
+  font-family: 'Outfit', 'Inter', sans-serif;
+  font-size: 1.1rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--gold-primary, #d4af37);
+  text-align: center;
+  padding: 0.5rem 0;
+  border-bottom: 2px solid var(--gold-primary, #d4af37);
+  word-break: break-word;
 }
 
 

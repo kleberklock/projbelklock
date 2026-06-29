@@ -24,29 +24,29 @@
   <div class="login-container" id="login-container" style="display: flex; position: relative; z-index: 10;">
     <div class="login-card">
       <div class="login-logo">
-        <img src="assets/logo.svg" alt="BelKlock Semijoias">
+        <img src="assets/logo.svg" alt="BelKlock Semijoias" id="login-logo-img">
       </div>
       <h2>Gestão Premium</h2>
       <p>Insira suas credenciais de acesso</p>
       
       <div id="login-error-msg" class="login-error-box" style="display: none;">E-mail ou senha inválidos.</div>
-
+ 
       <div class="form-group">
         <label for="login-email">E-mail ou PIN (4 dígitos) *</label>
         <input type="text" id="login-email" class="form-control" placeholder="exemplo@belklock.com ou 1234" required>
       </div>
-
+ 
       <div class="form-group">
         <label for="login-senha">Senha de Acesso</label>
         <input type="password" id="login-senha" class="form-control" placeholder="••••••••" required>
       </div>
-
+ 
       <button class="btn-gold" id="btn-executar-login" style="width: 100%; justify-content: center; padding: 1.1rem; margin-top: 1.2rem; font-size: 1rem;">
         <i class="fa-solid fa-right-to-bracket"></i> Entrar na Plataforma
       </button>
       
       <div class="login-footer">
-        <p>BelKlock Semijoias &copy; 2026 - Controle de Luxo</p>
+        <p id="login-footer-text">BelKlock Semijoias &copy; 2026 - Controle de Luxo</p>
       </div>
     </div>
   </div>

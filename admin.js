@@ -21,6 +21,11 @@ const app = {
     produtosComDefeito: [],
     limiarEstoqueCritico: 3,
     nomeEmpresa: "BelKlock Semijoias",
+    logoUrl: "",
+    corPrimaria: "#d4af37",
+    corSecundaria: "#111111",
+    bgPrimary: "#0a0a0a",
+    bgCard: "#121212",
     revendedoraSelecionadaId: null,
     usandoFicticio: true,
     dreImposto: 0.0,
@@ -172,14 +177,20 @@ const app = {
     
     try {
       const usuario = JSON.parse(usuarioJson);
-      if (usuario.role !== 'admin') {
+      const roleUpper = (usuario.role || "").toUpperCase();
+      
+      // Permitir ADMIN_LOJA, SUPER_ADMIN e legado "ADMIN" na página admin.html
+      if (roleUpper === 'ADMIN_LOJA' || roleUpper === 'SUPER_ADMIN' || roleUpper === 'ADMIN') {
+        this.state.token = token;
+        this.state.usuarioLogado = usuario;
+        this.exibirInterfacePosLogin();
+        this.carregarDadosIniciais();
+      } else if (roleUpper === 'VENDEDORA' || roleUpper === 'REVENDEDORA') {
         window.location.href = "vendedora.html";
-        return;
+      } else {
+        console.warn("Role desconhecida ou inválida:", usuario.role);
+        this.fazerLogout();
       }
-      this.state.token = token;
-      this.state.usuarioLogado = usuario;
-      this.exibirInterfacePosLogin();
-      this.carregarDadosIniciais();
     } catch (e) {
       console.error("Erro na inicialização do Admin:", e);
       this.fazerLogout();
@@ -263,10 +274,10 @@ const app = {
           this.state.token = "mock_admin_token_" + Date.now();
           this.state.usuarioLogado = {
             id: "admin_local",
-            nome: "Bel Klock Admin (Local)",
+            nome: "Admin Local",
             email: "admin@belklock.com",
             pin: "0001",
-            role: "admin",
+            role: "ADMIN_LOJA",
             comissao: 0.0
           };
           localStorage.setItem("belklock_token", this.state.token);
@@ -285,9 +296,9 @@ const app = {
             this.state.usuarioLogado = {
               id: revLocal.id,
               nome: revLocal.nome,
-              email: revLocal.email || (revLocal.pin + "@belklock.com"),
+              email: revLocal.email || (revLocal.pin + "@loja.com"),
               pin: revLocal.pin,
-              role: "revendedora",
+              role: "VENDEDORA",
               comissao: revLocal.comissao
             };
             localStorage.setItem("belklock_token", this.state.token);
@@ -334,6 +345,101 @@ const app = {
     this.aplicarRestricoesPerfil();
   },
 
+  carregarConfiguracaoAPI: async function() {
+    try {
+      const lojaId = localStorage.getItem("belklock_loja_id") || "default-loja";
+      const response = await fetch(`${this.state.apiUrl}/config`, {
+        headers: { "x-loja-id": lojaId }
+      });
+      if (response.ok) {
+        const config = await response.json();
+        this.aplicarConfiguracoes(config);
+        return;
+      }
+    } catch (error) {
+      console.warn("Não foi possível buscar as configurações do servidor. Usando fallback local.", error);
+    }
+    // Fallback local do state / localStorage
+    const configLocal = {
+      nomeEmpresa: this.state.nomeEmpresa || "BelKlock Semijoias",
+      logoUrl: this.state.logoUrl || "",
+      corPrimaria: this.state.corPrimaria || "#d4af37",
+      corSecundaria: this.state.corSecundaria || "#111111",
+      bgPrimary: this.state.bgPrimary || "#0a0a0a",
+      bgCard: this.state.bgCard || "#121212"
+    };
+    this.aplicarConfiguracoes(configLocal);
+  },
+
+  aplicarConfiguracoes: function(config) {
+    if (!config) return;
+    
+    // Atualizar no estado da aplicação
+    this.state.nomeEmpresa = config.nomeEmpresa;
+    this.state.logoUrl = config.logoUrl || "";
+    this.state.corPrimaria = config.corPrimaria;
+    this.state.corSecundaria = config.corSecundaria;
+    this.state.bgPrimary = config.bgPrimary;
+    this.state.bgCard = config.bgCard;
+    
+    // Salvar localmente no localStorage
+    localStorage.setItem("belklock_nome_empresa", config.nomeEmpresa);
+    localStorage.setItem("belklock_logo_url", config.logoUrl || "");
+    localStorage.setItem("belklock_cor_primaria", config.corPrimaria);
+    localStorage.setItem("belklock_cor_secundaria", config.corSecundaria);
+    localStorage.setItem("belklock_bg_primary", config.bgPrimary);
+    localStorage.setItem("belklock_bg_card", config.bgCard);
+
+    // Atualizar Title
+    document.title = `${config.nomeEmpresa} - Gestão Premium`;
+    
+    // Atualizar Logo da sidebar
+    const logoBrand = document.getElementById("logo-brand");
+    const brandTextSpan = document.getElementById("brand-text-span");
+    if (logoBrand) {
+      if (config.logoUrl && config.logoUrl !== "" && !config.logoUrl.includes("logo.svg")) {
+        logoBrand.src = config.logoUrl;
+        logoBrand.alt = config.nomeEmpresa;
+        logoBrand.style.display = "block";
+        if (brandTextSpan) brandTextSpan.style.display = "none";
+      } else {
+        if (config.nomeEmpresa && config.nomeEmpresa !== "BelKlock Semijoias" && config.nomeEmpresa !== "") {
+          logoBrand.style.display = "none";
+          if (brandTextSpan) {
+            brandTextSpan.innerText = config.nomeEmpresa;
+            brandTextSpan.style.display = "block";
+          }
+        } else {
+          logoBrand.src = "assets/logo.svg";
+          logoBrand.alt = "BelKlock Semijoias";
+          logoBrand.style.display = "block";
+          if (brandTextSpan) brandTextSpan.style.display = "none";
+        }
+      }
+    }
+    
+    // Atualizar main H1
+    const mainH1 = document.getElementById("main-h1");
+    if (mainH1) mainH1.innerText = config.nomeEmpresa;
+    
+    // Atualizar outros rodapés e notas com IDs
+    const sidebarVer = document.getElementById("sidebar-footer-version");
+    if (sidebarVer) sidebarVer.innerText = `${config.nomeEmpresa} v1.0`;
+    
+    const sidebarCopy = document.getElementById("sidebar-footer-copy");
+    if (sidebarCopy) sidebarCopy.innerHTML = `&copy; 2026 ${config.nomeEmpresa}`;
+    
+    const secNote = document.getElementById("cfg-security-note");
+    if (secNote) secNote.innerText = `${config.nomeEmpresa} utiliza criptografia SSL ponta-a-ponta nas requisições da API e persistência reativa local para garantir a integridade dos seus dados em qualquer circunstância.`;
+    
+    // Atualizar o placeholder do input de configurações se ele existir
+    const inputNome = document.getElementById("cfg-nome-empresa");
+    if (inputNome) inputNome.placeholder = config.nomeEmpresa;
+
+    // Aplicar CSS
+    aplicarTemaLoja(config);
+  },
+
   atualizarInfoUsuarioSidebar: function() {
     const infoContainer = document.getElementById("sidebar-user-info");
     const avatarEl = document.getElementById("sidebar-user-avatar");
@@ -343,7 +449,17 @@ const app = {
     if (this.state.usuarioLogado) {
       const usuario = this.state.usuarioLogado;
       nameEl.innerText = usuario.nome || "Usuário";
-      roleEl.innerText = usuario.role === "admin" ? "Administrador" : "Revendedora";
+      
+      // Mapeia os roles para labels amigáveis
+      const roleLabels = {
+        'SUPER_ADMIN': 'Super Admin',
+        'ADMIN_LOJA': 'Administrador',
+        'VENDEDORA': 'Revendedora',
+        // Compatibilidade com roles antigos (fallback offline)
+        'admin': 'Administrador',
+        'revendedora': 'Revendedora'
+      };
+      roleEl.innerText = roleLabels[usuario.role] || usuario.role;
       const inicial = usuario.nome ? usuario.nome.charAt(0) : "U";
       avatarEl.innerText = inicial;
       infoContainer.style.display = "flex";
@@ -353,7 +469,9 @@ const app = {
   },
 
   aplicarRestricoesPerfil: function() {
-    const role = this.state.usuarioLogado ? this.state.usuarioLogado.role : "revendedora";
+    const role = this.state.usuarioLogado ? this.state.usuarioLogado.role : "VENDEDORA";
+    const isAdmin = ['ADMIN_LOJA', 'SUPER_ADMIN', 'admin'].includes(role);
+    const isSuperAdmin = role === 'SUPER_ADMIN';
     
     const menuPlanilhas = document.querySelector('.nav-item[data-target="planilhas"]');
     const menuRevendedoras = document.querySelector('.nav-item[data-target="revendedoras"]');
@@ -366,8 +484,10 @@ const app = {
     const divHeaderActions = document.querySelector("#dashboard .header-actions");
     const menuVendasGeral = document.getElementById("menu-vendas-geral");
     const menuConfiguracoes = document.getElementById("menu-configuracoes");
+    const btnCriarNovaLoja = document.getElementById("btn-criar-nova-loja");
  
-    if (role === "revendedora") {
+    if (!isAdmin) {
+      // VENDEDORA: oculta todos os menus administrativos
       if (menuPlanilhas) menuPlanilhas.style.display = "none";
       if (menuRevendedoras) menuRevendedoras.style.display = "none";
       if (menuEstoque) menuEstoque.style.display = "none";
@@ -379,8 +499,10 @@ const app = {
       if (btnCadastrarProduto) btnCadastrarProduto.style.display = "none";
       if (divHeaderActions) divHeaderActions.style.display = "none";
       if (menuMinhaMaleta) menuMinhaMaleta.style.display = "block";
+      if (btnCriarNovaLoja) btnCriarNovaLoja.style.display = "none";
       this.state.abaAtiva = "minha-maleta";
     } else {
+      // ADMIN_LOJA ou SUPER_ADMIN: exibe menus administrativos
       if (menuPlanilhas) menuPlanilhas.style.display = "block";
       if (menuRevendedoras) menuRevendedoras.style.display = "block";
       if (menuEstoque) menuEstoque.style.display = "block";
@@ -392,6 +514,8 @@ const app = {
       if (menuMinhaMaleta) menuMinhaMaleta.style.display = "none";
       if (btnCadastrarProduto) btnCadastrarProduto.style.display = "inline-flex";
       if (divHeaderActions) divHeaderActions.style.display = "block";
+      // Botão 'Criar Nova Loja' só visível para SUPER_ADMIN
+      if (btnCriarNovaLoja) btnCriarNovaLoja.style.display = isSuperAdmin ? "inline-flex" : "none";
       if (this.state.abaAtiva === "minha-maleta") {
         this.state.abaAtiva = "dashboard";
       }
@@ -402,10 +526,16 @@ const app = {
     this.registrarEventosUI();
     this.inicializarFeedPadrao();
     
+    // Carrega a configuração da marca e tema do backend
+    await this.carregarConfiguracaoAPI();
+
     // Dispara carregamento assíncrono dos dados da API
     await this.carregarProdutosDaAPI();
     
-    if (this.state.usuarioLogado.role === 'admin') {
+    const role = this.state.usuarioLogado ? this.state.usuarioLogado.role : 'VENDEDORA';
+    const isAdmin = ['ADMIN_LOJA', 'SUPER_ADMIN', 'admin'].includes(role);
+
+    if (isAdmin) {
       await this.carregarRevendedorasDaAPI();
       await this.carregarClientesDaAPI();
       await this.carregarVendasConsolidadas();
@@ -438,8 +568,10 @@ const app = {
   // ==========================================
 
   requisitarAPI: async function(endpoint, metodo = "GET", body = null) {
+    const lojaId = localStorage.getItem("belklock_loja_id") || "default-loja";
     const headers = {
-      "Authorization": `Bearer ${this.state.token}`
+      "Authorization": `Bearer ${this.state.token}`,
+      "x-loja-id": lojaId
     };
 
     if (body && !(body instanceof FormData)) {
@@ -889,12 +1021,22 @@ const app = {
       const colunasSalvas = localStorage.getItem("belklock_colunas");
       const limiarSalvo = localStorage.getItem("belklock_limiar_critico");
       const nomeEmpresaSalvo = localStorage.getItem("belklock_nome_empresa");
+      const logoUrlSalvo = localStorage.getItem("belklock_logo_url");
+      const corPrimariaSalva = localStorage.getItem("belklock_cor_primaria");
+      const corSecundariaSalva = localStorage.getItem("belklock_cor_secundaria");
+      const bgPrimarySalvo = localStorage.getItem("belklock_bg_primary");
+      const bgCardSalvo = localStorage.getItem("belklock_bg_card");
       const apiUrlSalva = localStorage.getItem("belklock_api_url");
 
       this.state.usandoFicticio = ficticioSalvo ? JSON.parse(ficticioSalvo) : true;
       this.state.colunasEstoque = colunasSalvas ? JSON.parse(colunasSalvas) : ["Código", "Nome do Produto", "Categoria", "Estoque Central", "Custo Bruto", "Custo Banho", "Custo Oper.", "Markup", "Preço Venda"];
       this.state.limiarEstoqueCritico = limiarSalvo ? parseInt(limiarSalvo) : 3;
       this.state.nomeEmpresa = nomeEmpresaSalvo ? nomeEmpresaSalvo : "BelKlock Semijoias";
+      this.state.logoUrl = logoUrlSalvo || "";
+      this.state.corPrimaria = corPrimariaSalva || "#d4af37";
+      this.state.corSecundaria = corSecundariaSalva || "#111111";
+      this.state.bgPrimary = bgPrimarySalvo || "#0a0a0a";
+      this.state.bgCard = bgCardSalvo || "#121212";
       if (apiUrlSalva) {
         this.state.apiUrl = apiUrlSalva;
       }
@@ -947,6 +1089,11 @@ const app = {
     localStorage.setItem("belklock_colunas", JSON.stringify(this.state.colunasEstoque));
     localStorage.setItem("belklock_limiar_critico", this.state.limiarEstoqueCritico || 3);
     localStorage.setItem("belklock_nome_empresa", this.state.nomeEmpresa || "BelKlock Semijoias");
+    localStorage.setItem("belklock_logo_url", this.state.logoUrl || "");
+    localStorage.setItem("belklock_cor_primaria", this.state.corPrimaria || "#d4af37");
+    localStorage.setItem("belklock_cor_secundaria", this.state.corSecundaria || "#111111");
+    localStorage.setItem("belklock_bg_primary", this.state.bgPrimary || "#0a0a0a");
+    localStorage.setItem("belklock_bg_card", this.state.bgCard || "#121212");
     localStorage.setItem("belklock_api_url", this.state.apiUrl || "http://localhost:5000/api");
     localStorage.setItem("belklock_dre_imposto", this.state.dreImposto);
     localStorage.setItem("belklock_dre_despesa_fixa", this.state.dreDespesaFixa);
@@ -1060,6 +1207,12 @@ const app = {
 
   // 5. Registro e escuta de eventos na UI
   registrarEventosUI: function() {
+    // Botão de Logout na Sidebar
+    const btnLogout = document.getElementById("btn-logout");
+    if (btnLogout) {
+      btnLogout.addEventListener("click", () => this.fazerLogout());
+    }
+
     // Cliques na navegação da Sidebar
     document.querySelectorAll(".nav-item").forEach(item => {
       item.addEventListener("click", () => {
@@ -1095,6 +1248,27 @@ const app = {
     this.configurarModal("modal-venda-rapida", null, "btn-close-modal-venda-rapida", "btn-cancelar-venda-rapida");
     this.configurarModal("modal-todos-alertas", null, "btn-close-modal-todos-alertas", "btn-fechar-todos-alertas");
     this.configurarModal("modal-notificacoes", "notification-bell-container", "btn-close-modal-notificacoes", "btn-fechar-notificacoes");
+
+    // Sincronização e eventos bidirecionais de Cores nas configurações
+    const syncColor = (colorId, hexId) => {
+      const colorInput = document.getElementById(colorId);
+      const hexInput = document.getElementById(hexId);
+      if (colorInput && hexInput) {
+        colorInput.addEventListener("input", (e) => {
+          hexInput.value = e.target.value;
+        });
+        hexInput.addEventListener("input", (e) => {
+          let val = e.target.value.trim();
+          if (/^#[0-9A-F]{6}$/i.test(val)) {
+            colorInput.value = val;
+          }
+        });
+      }
+    };
+    syncColor("cfg-cor-primaria", "cfg-cor-primaria-hex");
+    syncColor("cfg-cor-secundaria", "cfg-cor-secundaria-hex");
+    syncColor("cfg-bg-primary", "cfg-bg-primary-hex");
+    syncColor("cfg-bg-card", "cfg-bg-card-hex");
 
     // Modal de Venda Direta da Administradora
     const addListenerSafe = (id, event, callback) => {
@@ -2517,7 +2691,7 @@ const app = {
             nome,
             email: emailTemporario,
             senha: senhaInput,
-            role: "revendedora",
+            role: "VENDEDORA",
             whatsapp,
             comissao
           });
@@ -4303,12 +4477,32 @@ const app = {
   // ==========================================
   renderizarConfiguracoes: function() {
     const inputNome = document.getElementById("cfg-nome-empresa");
+    const inputLogo = document.getElementById("cfg-logo-url");
+    const inputCorPrimaria = document.getElementById("cfg-cor-primaria");
+    const inputCorPrimariaHex = document.getElementById("cfg-cor-primaria-hex");
+    const inputCorSecundaria = document.getElementById("cfg-cor-secundaria");
+    const inputCorSecundariaHex = document.getElementById("cfg-cor-secundaria-hex");
+    const inputBgPrimary = document.getElementById("cfg-bg-primary");
+    const inputBgPrimaryHex = document.getElementById("cfg-bg-primary-hex");
+    const inputBgCard = document.getElementById("cfg-bg-card");
+    const inputBgCardHex = document.getElementById("cfg-bg-card-hex");
+    
     const inputLimiar = document.getElementById("cfg-limiar-critico");
     const inputApi = document.getElementById("cfg-api-url");
     const statusConexao = document.getElementById("cfg-conexao-status");
     const statusModo = document.getElementById("cfg-modo-status");
 
     if (inputNome) inputNome.value = this.state.nomeEmpresa || "BelKlock Semijoias";
+    if (inputLogo) inputLogo.value = this.state.logoUrl || "";
+    if (inputCorPrimaria) inputCorPrimaria.value = this.state.corPrimaria || "#d4af37";
+    if (inputCorPrimariaHex) inputCorPrimariaHex.value = this.state.corPrimaria || "#d4af37";
+    if (inputCorSecundaria) inputCorSecundaria.value = this.state.corSecundaria || "#111111";
+    if (inputCorSecundariaHex) inputCorSecundariaHex.value = this.state.corSecundaria || "#111111";
+    if (inputBgPrimary) inputBgPrimary.value = this.state.bgPrimary || "#0a0a0a";
+    if (inputBgPrimaryHex) inputBgPrimaryHex.value = this.state.bgPrimary || "#0a0a0a";
+    if (inputBgCard) inputBgCard.value = this.state.bgCard || "#121212";
+    if (inputBgCardHex) inputBgCardHex.value = this.state.bgCard || "#121212";
+    
     if (inputLimiar) inputLimiar.value = this.state.limiarEstoqueCritico || 3;
     if (inputApi) inputApi.value = this.state.apiUrl || "http://localhost:5000/api";
 
@@ -4340,8 +4534,14 @@ const app = {
     }
   },
 
-  salvarConfiguracoes: function() {
+  salvarConfiguracoes: async function() {
     const inputNome = document.getElementById("cfg-nome-empresa").value.trim();
+    const inputLogo = document.getElementById("cfg-logo-url").value.trim();
+    const inputCorPrimaria = document.getElementById("cfg-cor-primaria").value;
+    const inputCorSecundaria = document.getElementById("cfg-cor-secundaria").value;
+    const inputBgPrimary = document.getElementById("cfg-bg-primary").value;
+    const inputBgCard = document.getElementById("cfg-bg-card").value;
+    
     const inputLimiar = parseInt(document.getElementById("cfg-limiar-critico").value) || 3;
     const inputApi = document.getElementById("cfg-api-url").value.trim();
     const inputImposto = parseFloat(document.getElementById("cfg-dre-imposto").value) || 0.0;
@@ -4353,15 +4553,33 @@ const app = {
       return;
     }
 
-    this.state.nomeEmpresa = inputNome;
+    const configData = {
+      nomeEmpresa: inputNome,
+      logoUrl: inputLogo,
+      corPrimaria: inputCorPrimaria,
+      corSecundaria: inputCorSecundaria,
+      bgPrimary: inputBgPrimary,
+      bgCard: inputBgCard
+    };
+
+    // Salva no backend
+    try {
+      if (this.state.token && !this.state.token.startsWith("mock_")) {
+        await this.requisitarAPI("/config", "PUT", configData);
+      }
+    } catch (err) {
+      console.warn("Erro ao salvar configurações na API:", err.message);
+      this.toast("Salvo localmente (Servidor offline/indisponível).", "info");
+    }
+
+    // Aplica na interface imediatamente
+    this.aplicarConfiguracoes(configData);
+
     this.state.limiarEstoqueCritico = inputLimiar;
     this.state.apiUrl = inputApi;
     this.state.dreImposto = inputImposto;
     this.state.dreDespesaFixa = inputDespesa;
     this.state.dreCmvEstimado = inputCmv;
-
-    const mainH1 = document.getElementById("main-h1");
-    if (mainH1) mainH1.innerText = inputNome;
 
     this.salvarDadosNoLocalStorage();
     this.toast("Configurações salvas com sucesso!", "success");
@@ -4860,6 +5078,57 @@ const app = {
   }
 
 };
+
+// Funções auxiliares para manipulação de cores HEX e aplicação de tema visual white-label
+function aplicarTemaLoja(tema) {
+  if (!tema) return;
+  if (tema.corPrimaria) {
+    document.documentElement.style.setProperty('--gold-primary', tema.corPrimaria);
+    document.documentElement.style.setProperty('--gold-light', alterarBrilhoHex(tema.corPrimaria, 30));
+    document.documentElement.style.setProperty('--gold-dark', alterarBrilhoHex(tema.corPrimaria, -30));
+    document.documentElement.style.setProperty('--gold-gradient', `linear-gradient(135deg, ${alterarBrilhoHex(tema.corPrimaria, -30)} 0%, ${tema.corPrimaria} 40%, ${alterarBrilhoHex(tema.corPrimaria, 30)} 75%, ${alterarBrilhoHex(tema.corPrimaria, -30)} 100%)`);
+    document.documentElement.style.setProperty('--gold-translucent', hexToRgbA(tema.corPrimaria, 0.15));
+    document.documentElement.style.setProperty('--gold-translucent-hover', hexToRgbA(tema.corPrimaria, 0.25));
+    document.documentElement.style.setProperty('--border-gold', `1px solid ${hexToRgbA(tema.corPrimaria, 0.2)}`);
+    document.documentElement.style.setProperty('--border-gold-focus', `1px solid ${hexToRgbA(tema.corPrimaria, 0.7)}`);
+    
+    document.documentElement.style.setProperty('--shadow-premium', `0 10px 30px rgba(0, 0, 0, 0.7), 0 0 15px ${hexToRgbA(tema.corPrimaria, 0.05)}`);
+    document.documentElement.style.setProperty('--shadow-glow', `0 0 15px ${hexToRgbA(tema.corPrimaria, 0.25)}`);
+  }
+  
+  if (tema.bgPrimary) {
+    document.documentElement.style.setProperty('--bg-primary', tema.bgPrimary);
+    document.documentElement.style.setProperty('--bg-absolute', alterarBrilhoHex(tema.bgPrimary, -10));
+  }
+  
+  if (tema.bgCard) {
+    document.documentElement.style.setProperty('--bg-card', tema.bgCard);
+    document.documentElement.style.setProperty('--bg-card-hover', alterarBrilhoHex(tema.bgCard, 10));
+    document.documentElement.style.setProperty('--bg-modal', alterarBrilhoHex(tema.bgCard, 5));
+  }
+}
+
+function alterarBrilhoHex(hex, percent) {
+  let num = parseInt(hex.replace("#",""), 16),
+  amt = Math.round(2.55 * percent),
+  R = (num >> 16) + amt,
+  G = (num >> 8 & 0x00FF) + amt,
+  B = (num & 0x0000FF) + amt;
+  return "#" + (0x1000000 + (R<255?R<0?0:R:255)*0x10000 + (G<255?G<0?0:G:255)*0x100 + (B<255?B<0?0:B:255)).toString(16).slice(1);
+}
+
+function hexToRgbA(hex, alpha){
+  let c;
+  if(/^#([A-Fa-f0-9]{3}){1,2}$/.test(hex)){
+    c= hex.substring(1).split('');
+    if(c.length== 3){
+      c= [c[0], c[0], c[1], c[1], c[2], c[2]];
+    }
+    c= '0x' + c.join('');
+    return 'rgba('+[(c>>16)&255, (c>>8)&255, c&255].join(',')+','+alpha+')';
+  }
+  return hex;
+}
 
 // Inicializa a aplicação ao carregar a página
 window.addEventListener("DOMContentLoaded", () => {

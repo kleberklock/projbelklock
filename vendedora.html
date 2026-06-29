@@ -39,6 +39,7 @@
       <div class="brand">
         <!-- Inclusão do logotipo SVG premium criado previamente -->
         <img src="assets/logo.svg" alt="BelKlock Semijoias" id="logo-brand">
+        <span id="brand-text-span" class="brand-text" style="display: none;"></span>
       </div>
       
       <nav class="nav-container">
@@ -67,8 +68,8 @@
           </div>
         </div>
         <button id="btn-logout" class="btn-danger" style="width: 100%; justify-content: center; margin-bottom: 1rem; padding: 0.5rem;"><i class="fa-solid fa-right-from-bracket"></i> Sair da Conta</button>
-        <p>BelKlock Semijoias v1.0</p>
-        <p>&copy; 2026 BelKlock</p>
+        <p id="sidebar-footer-version">BelKlock Semijoias v1.0</p>
+        <p id="sidebar-footer-copy">&copy; 2026 BelKlock</p>
       </div>
     </aside>
 
@@ -677,9 +678,9 @@
                       <th>Data do Fechamento</th>
                       <th>Peças (Consig/Vend/Devol)</th>
                       <th>Faturamento Bruto</th>
-                      <th>Comissão Paga</th>
-                      <th>Líquido BelKlock</th>
-                      <th>Ações</th>
+                       <th>Comissão Paga</th>
+                       <th class="lbl-liquido-empresa">Líquido BelKlock</th>
+                       <th>Ações</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1088,6 +1089,45 @@
               </div>
 
               <div class="form-group" style="margin-bottom: 1.5rem;">
+                <label for="cfg-logo-url" style="display: block; margin-bottom: 0.5rem; font-weight: 600;">URL do Logotipo (Logo)</label>
+                <input type="text" id="cfg-logo-url" class="form-control" placeholder="Ex: assets/logo.svg ou link externo">
+              </div>
+
+              <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; margin-bottom: 1.5rem;">
+                <div class="form-group">
+                  <label for="cfg-cor-primaria" style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Cor Primária (Dourado)</label>
+                  <div style="display: flex; gap: 0.5rem;">
+                    <input type="color" id="cfg-cor-primaria" class="form-control" value="#d4af37" style="width: 50px; padding: 0; height: 38px; cursor: pointer;">
+                    <input type="text" id="cfg-cor-primaria-hex" class="form-control" value="#d4af37" style="font-family: monospace;">
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label for="cfg-cor-secundaria" style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Cor Secundária</label>
+                  <div style="display: flex; gap: 0.5rem;">
+                    <input type="color" id="cfg-cor-secundaria" class="form-control" value="#111111" style="width: 50px; padding: 0; height: 38px; cursor: pointer;">
+                    <input type="text" id="cfg-cor-secundaria-hex" class="form-control" value="#111111" style="font-family: monospace;">
+                  </div>
+                </div>
+              </div>
+
+              <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; margin-bottom: 1.5rem;">
+                <div class="form-group">
+                  <label for="cfg-bg-primary" style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Cor de Fundo (Geral)</label>
+                  <div style="display: flex; gap: 0.5rem;">
+                    <input type="color" id="cfg-bg-primary" class="form-control" value="#0a0a0a" style="width: 50px; padding: 0; height: 38px; cursor: pointer;">
+                    <input type="text" id="cfg-bg-primary-hex" class="form-control" value="#0a0a0a" style="font-family: monospace;">
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label for="cfg-bg-card" style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Cor do Card/Painel</label>
+                  <div style="display: flex; gap: 0.5rem;">
+                    <input type="color" id="cfg-bg-card" class="form-control" value="#121212" style="width: 50px; padding: 0; height: 38px; cursor: pointer;">
+                    <input type="text" id="cfg-bg-card-hex" class="form-control" value="#121212" style="font-family: monospace;">
+                  </div>
+                </div>
+              </div>
+
+              <div class="form-group" style="margin-bottom: 1.5rem;">
                 <label for="cfg-limiar-critico" style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Limiar de Estoque Crítico (Alerta)</label>
                 <input type="number" id="cfg-limiar-critico" class="form-control" min="1" value="3" style="max-width: 150px;">
                 <p style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.3rem;">Define a quantidade mínima em estoque para que o produto seja listado no painel de alertas do Dashboard.</p>
@@ -1116,7 +1156,7 @@
               </div>
             </div>
             <div style="border-top: 1px solid var(--border-color); padding-top: 1.5rem; margin-top: 1.5rem; font-size: 0.85rem; color: var(--text-secondary);">
-              <p>BelKlock Semijoias utiliza criptografia SSL ponta-a-ponta nas requisições da API e persistência reativa local para garantir a integridade dos seus dados em qualquer circunstância.</p>
+              <p id="cfg-security-note">BelKlock Semijoias utiliza criptografia SSL ponta-a-ponta nas requisições da API e persistência reativa local para garantir a integridade dos seus dados em qualquer circunstância.</p>
             </div>
           </div>
         </div>
@@ -1466,7 +1506,7 @@
             </div>
 
             <div class="pricing-row total" style="margin: 0.8rem 0; padding: 0.8rem 0; font-size: 1.15rem; background: rgba(212, 175, 55, 0.05); padding-left: 0.5rem; padding-right: 0.5rem; border-radius: var(--radius-sm);">
-              <span>A pagar para BelKlock</span>
+              <span class="lbl-a-pagar-empresa">A pagar para BelKlock</span>
               <span id="acerto-total-liquido-receber">R$ 0,00</span>
             </div>
 
