@@ -160,6 +160,12 @@ async function gerarPinUnico() {
   return pin;
 }
 
+// Função para encontrar a faixa de comissão onde o faturamento se encaixa
+function encontrarFaixaComissao(faturamentoBruto, faixas) {
+  if (!faixas || !Array.isArray(faixas)) return null;
+  return faixas.find(f => faturamentoBruto >= f.valorMin && faturamentoBruto <= f.valorMax);
+}
+
 // Login Geral (E-mail ou PIN)
 app.post('/api/auth/login', loginLimiter, async (req, res) => {
   const { email, senha } = req.body; // 'email' aqui pode ser o E-mail (Admin) ou PIN (Revendedora)
@@ -214,7 +220,7 @@ app.post('/api/auth/login', loginLimiter, async (req, res) => {
 
 // Admin cria novos usuários (Revendedoras ou outros Admins)
 app.post('/api/auth/register', autenticarJWT, autorizarRole(['ADMIN_LOJA', 'SUPER_ADMIN']), identificarLoja, async (req, res) => {
-  const { nome, email, senha, role, whatsapp, comissao } = req.body;
+  const { nome, email, senha, role, whatsapp, comissao, faixasComissao, tipoComissao, metaUnicaValor, metaUnicaBonus, metaUnicaTipoBonus, baseCalculo, regraPerda, limiteIsencaoPerda, periodoAcumulo } = req.body;
   if (!nome || !email || !senha || !role) {
     return res.status(400).json({ error: 'Campos obrigatórios ausentes.' });
   }
@@ -249,7 +255,26 @@ app.post('/api/auth/register', autenticarJWT, autorizarRole(['ADMIN_LOJA', 'SUPE
         role: normalizedRole,
         whatsapp,
         comissao: parseFloat(comissao) || 30.0,
-        lojaId: req.lojaId
+        tipoComissao: tipoComissao || "FIXA",
+        metaUnicaValor: parseFloat(metaUnicaValor) || 0.0,
+        metaUnicaBonus: parseFloat(metaUnicaBonus) || 0.0,
+        metaUnicaTipoBonus: metaUnicaTipoBonus || "PERCENTUAL",
+        baseCalculo: baseCalculo || "BRUTO",
+        regraPerda: regraPerda || "VALOR_VENDA",
+        limiteIsencaoPerda: parseInt(limiteIsencaoPerda) || 0,
+        periodoAcumulo: periodoAcumulo || "MANUAL",
+        lojaId: req.lojaId,
+        faixasComissao: faixasComissao && Array.isArray(faixasComissao) ? {
+          create: faixasComissao.map(f => ({
+            valorMin: parseFloat(f.valorMin) || 0.0,
+            valorMax: parseFloat(f.valorMax) || 0.0,
+            percentual: parseFloat(f.percentual) || 0.0,
+            lojaId: req.lojaId
+          }))
+        } : undefined
+      },
+      include: {
+        faixasComissao: true
       }
     });
 
@@ -260,11 +285,22 @@ app.post('/api/auth/register', autenticarJWT, autorizarRole(['ADMIN_LOJA', 'SUPE
         nome: novoUsuario.nome, 
         email: novoUsuario.email, 
         pin: novoUsuario.pin, 
-        role: novoUsuario.role 
+        role: novoUsuario.role,
+        comissao: novoUsuario.comissao,
+        faixasComissao: novoUsuario.faixasComissao,
+        tipoComissao: novoUsuario.tipoComissao,
+        metaUnicaValor: novoUsuario.metaUnicaValor,
+        metaUnicaBonus: novoUsuario.metaUnicaBonus,
+        metaUnicaTipoBonus: novoUsuario.metaUnicaTipoBonus,
+        baseCalculo: novoUsuario.baseCalculo,
+        regraPerda: novoUsuario.regraPerda,
+        limiteIsencaoPerda: novoUsuario.limiteIsencaoPerda,
+        periodoAcumulo: novoUsuario.periodoAcumulo
       }
     });
   } catch (error) {
-    res.status(500).json({ error: 'Erro ao cadastrar usuário.' });
+    console.error("Erro detalhado ao cadastrar usuário:", error);
+    res.status(500).json({ error: `Erro ao cadastrar usuário: ${error.message}` });
   }
 });
 
@@ -445,11 +481,28 @@ app.get('/api/revendedoras', autenticarJWT, autorizarRole(['ADMIN_LOJA', 'SUPER_
         pin: true,
         whatsapp: true,
         comissao: true,
+        faixasComissao: true,
+        tipoComissao: true,
+        metaUnicaValor: true,
+        metaUnicaBonus: true,
+        metaUnicaTipoBonus: true,
+        baseCalculo: true,
+        regraPerda: true,
+        limiteIsencaoPerda: true,
+        periodoAcumulo: true,
         createdAt: true,
         consignados: {
           where: { lojaId: req.lojaId },
           include: {
             produto: true
+          }
+        },
+        vendas: {
+          where: { lojaId: req.lojaId },
+          select: {
+            data: true,
+            precoVenda: true,
+            quantidade: true
           }
         },
         historico: {
@@ -467,7 +520,7 @@ app.get('/api/revendedoras', autenticarJWT, autorizarRole(['ADMIN_LOJA', 'SUPER_
 // Editar Revendedora (Admin)
 app.put('/api/revendedoras/:id', autenticarJWT, autorizarRole(['ADMIN_LOJA', 'SUPER_ADMIN']), identificarLoja, async (req, res) => {
   const { id } = req.params;
-  const { nome, email, whatsapp, comissao } = req.body;
+  const { nome, email, whatsapp, comissao, faixasComissao, tipoComissao, metaUnicaValor, metaUnicaBonus, metaUnicaTipoBonus, baseCalculo, regraPerda, limiteIsencaoPerda, periodoAcumulo, senha } = req.body;
 
   try {
     const revendedora = await prisma.usuario.findFirst({
@@ -478,18 +531,48 @@ app.put('/api/revendedoras/:id', autenticarJWT, autorizarRole(['ADMIN_LOJA', 'SU
       return res.status(403).json({ error: 'Acesso negado ou revendedora não encontrada nesta loja.' });
     }
 
+    const updateData = {
+      nome,
+      email,
+      whatsapp,
+      comissao: parseFloat(comissao) || 30.0,
+      tipoComissao: tipoComissao || "FIXA",
+      metaUnicaValor: parseFloat(metaUnicaValor) || 0.0,
+      metaUnicaBonus: parseFloat(metaUnicaBonus) || 0.0,
+      metaUnicaTipoBonus: metaUnicaTipoBonus || "PERCENTUAL",
+      baseCalculo: baseCalculo || "BRUTO",
+      regraPerda: regraPerda || "VALOR_VENDA",
+      limiteIsencaoPerda: parseInt(limiteIsencaoPerda) || 0,
+      periodoAcumulo: periodoAcumulo || "MANUAL"
+    };
+
+    if (senha && senha.trim() !== '') {
+      updateData.senhaHash = await bcrypt.hash(senha, 10);
+    }
+
+    if (faixasComissao && Array.isArray(faixasComissao)) {
+      updateData.faixasComissao = {
+        deleteMany: {},
+        create: faixasComissao.map(f => ({
+          valorMin: parseFloat(f.valorMin) || 0.0,
+          valorMax: parseFloat(f.valorMax) || 0.0,
+          percentual: parseFloat(f.percentual) || 0.0,
+          lojaId: req.lojaId
+        }))
+      };
+    }
+
     const revendedoraAtualizada = await prisma.usuario.update({
       where: { id },
-      data: {
-        nome,
-        email,
-        whatsapp,
-        comissao: parseFloat(comissao) || 30.0
+      data: updateData,
+      include: {
+        faixasComissao: true
       }
     });
     res.json(revendedoraAtualizada);
   } catch (error) {
-    res.status(500).json({ error: 'Erro ao atualizar dados da revendedora.' });
+    console.error("Erro detalhado ao atualizar dados da revendedora:", error);
+    res.status(500).json({ error: `Erro ao atualizar dados da revendedora: ${error.message}` });
   }
 });
 
@@ -594,8 +677,42 @@ app.get('/api/revendedoras/minha-maleta', autenticarJWT, identificarLoja, async 
       fotoUrl: c.produto.fotoUrl
     }));
 
-    res.json(maletaFormatada);
+    // Busca faixas de comissão da revendedora
+    let faixas = await prisma.faixaComissao.findMany({
+      where: { usuarioId: req.user.id },
+      orderBy: { valorMin: 'asc' }
+    });
+
+    // Fallback: busca faixas da loja se a revendedora não tiver faixas específicas
+    if (faixas.length === 0) {
+      faixas = await prisma.faixaComissao.findMany({
+        where: { lojaId: req.lojaId, usuarioId: null },
+        orderBy: { valorMin: 'asc' }
+      });
+    }
+
+    // Busca configurações adicionais do usuário
+    const usuarioConfig = await prisma.usuario.findUnique({
+      where: { id: req.user.id },
+      select: {
+        tipoComissao: true,
+        metaUnicaValor: true,
+        metaUnicaBonus: true,
+        metaUnicaTipoBonus: true,
+        baseCalculo: true,
+        regraPerda: true,
+        limiteIsencaoPerda: true,
+        periodoAcumulo: true
+      }
+    });
+
+    res.json({
+      consignado: maletaFormatada,
+      faixasComissao: faixas,
+      config: usuarioConfig
+    });
   } catch (error) {
+    console.error("Erro ao carregar maleta própria:", error);
     res.status(500).json({ error: 'Erro ao carregar dados da maleta.' });
   }
 });
@@ -686,7 +803,15 @@ app.post('/api/acertos', autenticarJWT, autorizarRole(['ADMIN_LOJA', 'SUPER_ADMI
 
   try {
     const revendedora = await prisma.usuario.findFirst({
-      where: { id: usuarioId, role: 'VENDEDORA', lojaId: req.lojaId }
+      where: { id: usuarioId, role: 'VENDEDORA', lojaId: req.lojaId },
+      include: {
+        faixasComissao: true,
+        loja: {
+          include: {
+            faixasComissao: true
+          }
+        }
+      }
     });
     if (!revendedora) return res.status(404).json({ error: 'Revendedora não encontrada nesta loja.' });
 
@@ -697,6 +822,7 @@ app.post('/api/acertos', autenticarJWT, autorizarRole(['ADMIN_LOJA', 'SUPER_ADMI
     let totalPerdida = 0;
     let totalDefeito = 0;
     let valorDescontoPerda = 0;
+    let lostPiecesCounter = 0;
 
     for (const item of itensAcerto) {
       const consignado = await prisma.consignado.findFirst({
@@ -718,8 +844,27 @@ app.post('/api/acertos', autenticarJWT, autorizarRole(['ADMIN_LOJA', 'SUPER_ADMI
         totalDefeito += qtdDefeito;
         faturamentoBruto += consignado.precoVenda * (parseInt(item.quantidadeVendida) || 0);
 
-        // Valor das perdas: responsabilidade financeira da revendedora
-        valorDescontoPerda += consignado.precoVenda * qtdPerdida;
+        // Valor das perdas: calcula com base na regra de perda personalizada da revendedora
+        let itemPerdaValor = 0;
+        if (qtdPerdida > 0) {
+          let custoLiquido = 0;
+          if (revendedora.regraPerda === 'VALOR_CUSTO') {
+            const produto = await prisma.produto.findUnique({ where: { id: item.produtoId } });
+            custoLiquido = produto ? (produto.custoLiquido || 0) : 0;
+          }
+
+          for (let i = 0; i < qtdPerdida; i++) {
+            lostPiecesCounter++;
+            if (revendedora.regraPerda === 'ISENTO' && lostPiecesCounter <= (revendedora.limiteIsencaoPerda || 0)) {
+              itemPerdaValor += 0;
+            } else if (revendedora.regraPerda === 'VALOR_CUSTO') {
+              itemPerdaValor += custoLiquido;
+            } else {
+              itemPerdaValor += consignado.precoVenda;
+            }
+          }
+        }
+        valorDescontoPerda += itemPerdaValor;
 
         // 1. As devoluções normais retornam ao Estoque Central
         if (parseInt(item.quantidadeDevolvida) > 0) {
@@ -742,11 +887,64 @@ app.post('/api/acertos', autenticarJWT, autorizarRole(['ADMIN_LOJA', 'SUPER_ADMI
       }
     }
 
-    // A comissão é calculada sobre o faturamento bruto das vendas
-    // O valor das perdas é descontado da comissão (a revendedora cobre o prejuízo)
-    const comissaoBruta = faturamentoBruto * (revendedora.comissao / 100);
+    // 1. Base de cálculo da comissão: Bruto vs Líquido
+    const valorBaseComissao = (revendedora.baseCalculo === 'LIQUIDO')
+      ? Math.max(0, faturamentoBruto - valorDescontoPerda)
+      : faturamentoBruto;
+
+    // 2. Determinação da comissão e bônus conforme o tipo de comissão
+    let percentualComissao = revendedora.comissao;
+    let comissaoBruta = 0;
+
+    // Volume de faturamento para fins de enquadramento de faixa ou meta
+    let faturamentoVolumeParaFaixa = faturamentoBruto;
+    if (revendedora.periodoAcumulo === 'MENSAL') {
+      const agora = new Date();
+      const inicioMes = new Date(agora.getFullYear(), agora.getMonth(), 1, 0, 0, 0, 0);
+      const vendasMes = await prisma.vendaRevendedora.findMany({
+        where: {
+          usuarioId,
+          lojaId: req.lojaId,
+          data: {
+            gte: inicioMes
+          }
+        }
+      });
+      faturamentoVolumeParaFaixa = vendasMes.reduce((acc, v) => acc + (v.precoVenda * v.quantidade), 0);
+      // Garante que inclua o faturamento do acerto atual se alguma venda ainda não tiver sido salva
+      if (faturamentoVolumeParaFaixa < faturamentoBruto) {
+        faturamentoVolumeParaFaixa = faturamentoBruto;
+      }
+    }
+
+    if (revendedora.tipoComissao === 'PROGRESSIVA') {
+      const faixas = (revendedora.faixasComissao && revendedora.faixasComissao.length > 0)
+        ? revendedora.faixasComissao
+        : (revendedora.loja && revendedora.loja.faixasComissao ? revendedora.loja.faixasComissao : []);
+      const faixa = encontrarFaixaComissao(faturamentoVolumeParaFaixa, faixas);
+      percentualComissao = faixa ? faixa.percentual : revendedora.comissao;
+      comissaoBruta = valorBaseComissao * (percentualComissao / 100);
+    } else if (revendedora.tipoComissao === 'META_UNICA') {
+      const atingiuMeta = faturamentoVolumeParaFaixa >= (revendedora.metaUnicaValor || 0);
+      if (atingiuMeta) {
+        if (revendedora.metaUnicaTipoBonus === 'PERCENTUAL') {
+          percentualComissao = revendedora.comissao + (revendedora.metaUnicaBonus || 0);
+          comissaoBruta = valorBaseComissao * (percentualComissao / 100);
+        } else { // Bônus Fixo em Dinheiro
+          percentualComissao = revendedora.comissao;
+          comissaoBruta = (valorBaseComissao * (percentualComissao / 100)) + (revendedora.metaUnicaBonus || 0);
+        }
+      } else {
+        percentualComissao = revendedora.comissao;
+        comissaoBruta = valorBaseComissao * (percentualComissao / 100);
+      }
+    } else { // FIXA
+      percentualComissao = revendedora.comissao;
+      comissaoBruta = valorBaseComissao * (percentualComissao / 100);
+    }
+
     const comissaoPaga = Math.max(0, comissaoBruta - valorDescontoPerda);
-    const liquidoBelklock = faturamentoBruto - comissaoBruta + valorDescontoPerda;
+    const liquidoBelklock = faturamentoBruto - comissaoPaga;
 
     // Salva o histórico de acerto
     const acerto = await prisma.historicoAcerto.create({

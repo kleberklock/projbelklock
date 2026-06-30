@@ -21,6 +21,7 @@ model Loja {
   clientes     Cliente[]
   configuracao Configuracao[]
   notificacoes Notificacao[]
+  faixasComissao FaixaComissao[]
 }
 
 model Usuario {
@@ -34,10 +35,22 @@ model Usuario {
   role         String             // Roles: "SUPER_ADMIN" | "ADMIN_LOJA" | "VENDEDORA"
   whatsapp     String?
   comissao     Float              @default(30.0) // padrão 30%
+  
+  // Novas configurações de comissão e regras personalizadas
+  tipoComissao   String             @default("FIXA") // "FIXA" | "PROGRESSIVA" | "META_UNICA"
+  metaUnicaValor Float              @default(0.0)
+  metaUnicaBonus Float              @default(0.0) 
+  metaUnicaTipoBonus String         @default("PERCENTUAL") // "PERCENTUAL" | "FIXO"
+  baseCalculo    String             @default("BRUTO") // "BRUTO" | "LIQUIDO"
+  regraPerda     String             @default("VALOR_VENDA") // "VALOR_VENDA" | "VALOR_CUSTO" | "ISENTO"
+  limiteIsencaoPerda Int            @default(0)
+  periodoAcumulo String             @default("MANUAL") // "MANUAL" | "MENSAL"
+
   consignados  Consignado[]
   historico    HistoricoAcerto[]
   vendas       VendaRevendedora[]
   createdAt    DateTime           @default(now())
+  faixasComissao FaixaComissao[]
 }
 
 model Produto {
@@ -168,4 +181,15 @@ model Configuracao {
   bgCard        String   @default("#121212")
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+}
+
+model FaixaComissao {
+  id         String   @id @default(uuid())
+  lojaId     String?
+  loja       Loja?    @relation(fields: [lojaId], references: [id], onDelete: Cascade)
+  usuarioId  String?
+  usuario    Usuario? @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  valorMin   Float    @default(0.0)
+  valorMax   Float
+  percentual Float
 }

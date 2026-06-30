@@ -294,9 +294,9 @@ body {
 }
 
 .btn-danger {
-  background: transparent;
-  color: #ef9a9a;
-  border: 1px solid rgba(198, 40, 40, 0.4);
+  background: rgba(239, 83, 80, 0.1);
+  color: #ff8a80;
+  border: 1px solid rgba(239, 83, 80, 0.25);
   font-family: var(--font-body);
   font-weight: 500;
   font-size: 0.85rem;
@@ -306,13 +306,39 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
-  transition: var(--transition);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .btn-danger:hover {
-  background: rgba(198, 40, 40, 0.15);
-  border-color: var(--danger);
-  color: #ffcdd2;
+  background: #ef5350;
+  color: #ffffff;
+  border-color: #ef5350;
+  box-shadow: 0 0 10px rgba(239, 83, 80, 0.4);
+  transform: translateY(-2px) scale(1.02);
+}
+
+.btn-danger-outline {
+  background: transparent;
+  color: #ff8a80;
+  border: 1px solid rgba(239, 83, 80, 0.25);
+  font-family: var(--font-body);
+  font-weight: 500;
+  font-size: 0.85rem;
+  padding: 0.6rem 1.2rem;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.btn-danger-outline:hover {
+  background: #ef5350;
+  color: #ffffff;
+  border-color: #ef5350;
+  box-shadow: 0 0 10px rgba(239, 83, 80, 0.4);
+  transform: translateY(-2px) scale(1.02);
 }
 
 /* ==========================================================================
@@ -1854,6 +1880,32 @@ body {
   padding: 0.5rem 0;
   border-bottom: 2px solid var(--gold-primary, #d4af37);
   word-break: break-word;
+}
+
+/* ==========================================
+   ESTILOS PREMIUM DO ACERTO CONSIGNADO
+   ========================================== */
+.btn-excecoes-trigger:hover {
+  background: rgba(255, 183, 77, 0.15) !important;
+  border-color: #ffb74d !important;
+  box-shadow: 0 0 8px rgba(255, 183, 77, 0.2);
+}
+
+.btn-shortcut-venda:hover {
+  background: #2e7d32 !important;
+  color: #ffffff !important;
+  border-color: #2e7d32 !important;
+  box-shadow: 0 0 8px rgba(46, 125, 50, 0.3);
+}
+
+.btn-shortcut-devolucao:hover {
+  background: rgba(255, 255, 255, 0.08) !important;
+  color: #ffffff !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+}
+
+.btn-input-adjust:hover {
+  color: var(--gold-primary) !important;
 }
 
 

@@ -520,6 +520,12 @@ const app = {
       // Revendedora: carrega maleta e navega direto para Minha Maleta
       await this.carregarMaletaPropriaDaAPI();
       await this.carregarVendasRevendedora();
+      try {
+        this.state.vendasPendentes = await this.requisitarAPI("/vendas-revendedora?apenasPendentes=true");
+      } catch (err) {
+        console.warn("Falha ao carregar vendas pendentes:", err.message);
+        this.state.vendasPendentes = [];
+      }
       this.aplicarRestricoesPerfil();
       this.renderizarAbas();
       this.renderizarMinhaMaleta();
@@ -621,13 +627,26 @@ const app = {
 
   carregarMaletaPropriaDaAPI: async function() {
     try {
-      const maleta = await this.requisitarAPI("/revendedoras/minha-maleta");
+      const res = await this.requisitarAPI("/revendedoras/minha-maleta");
+      const maleta = res && res.consignado ? res.consignado : (Array.isArray(res) ? res : []);
+      const faixas = res && res.faixasComissao ? res.faixasComissao : [];
+      const config = res && res.config ? res.config : {};
+
       this.state.revendedoras = [{
         id: this.state.usuarioLogado.id,
         nome: this.state.usuarioLogado.nome,
         whatsapp: this.state.usuarioLogado.whatsapp || "",
         comissao: this.state.usuarioLogado.comissao,
-        consignado: maleta
+        consignado: maleta,
+        faixasComissao: faixas,
+        tipoComissao: config.tipoComissao || "FIXA",
+        metaUnicaValor: config.metaUnicaValor || 0.0,
+        metaUnicaBonus: config.metaUnicaBonus || 0.0,
+        metaUnicaTipoBonus: config.metaUnicaTipoBonus || "PERCENTUAL",
+        baseCalculo: config.baseCalculo || "BRUTO",
+        regraPerda: config.regraPerda || "VALOR_VENDA",
+        limiteIsencaoPerda: config.limiteIsencaoPerda || 0,
+        periodoAcumulo: config.periodoAcumulo || "MANUAL"
       }];
       this.state.revendedoraSelecionadaId = this.state.usuarioLogado.id;
     } catch (error) {
@@ -681,6 +700,12 @@ const app = {
     if (elComissao) elComissao.innerText = `R$ ${comissaoProjetada.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
     if (elVendas) elVendas.innerText = this.state.vendasSessao.length;
 
+    // Renderiza tabela de histórico de vendas
+    this.renderizarHistoricoVendasRev();
+    
+    // Atualiza a barra de comissão progressiva da revendedora
+    this.atualizarProgressaoComissaoVendedora();
+
     // Renderiza tabela de peças
     const tbody = document.getElementById("tbody-minha-maleta");
     if (!tbody) return;
@@ -718,9 +743,130 @@ const app = {
         </td>`;
       tbody.appendChild(tr);
     });
+  },
 
-    // Renderiza tabela de histórico de vendas
-    this.renderizarHistoricoVendasRev();
+  atualizarProgressaoComissaoVendedora: function() {
+    const card = document.getElementById("vendedora-progressao-card");
+    const progressBar = document.getElementById("vendedora-progressao-barra");
+    const statusText = document.getElementById("vendedora-proxima-faixa-status");
+    const infoText = document.getElementById("vendedora-progressao-info");
+
+    if (!card) return;
+
+    const rev = this.state.revendedoras.find(r => r.id === this.state.usuarioLogado.id);
+    if (!rev) {
+      card.style.display = "none";
+      return;
+    }
+
+    // Calcula o total de vendas pendentes no período atual
+    let totalVendidoPeriodo = 0;
+    const vendasPendentes = this.state.vendasPendentes || [];
+    vendasPendentes.forEach(v => {
+      totalVendidoPeriodo += Number(v.precoVenda || 0) * Number(v.quantidade || 1);
+    });
+
+    card.style.display = "block";
+
+    // Cenário 1: COMISSÃO FIXA
+    if (!rev.tipoComissao || rev.tipoComissao === "FIXA") {
+      // Para comissão fixa, mostramos o progresso de vendas em relação ao valor total da maleta (consignado + vendido)
+      let totalConsignadoRestante = 0;
+      const consignados = rev.consignado || [];
+      consignados.forEach(c => {
+        totalConsignadoRestante += Number(c.precoVenda || 0) * Number(c.quantidadeConsignada || 0);
+      });
+
+      const totalMaletaOriginal = totalVendidoPeriodo + totalConsignadoRestante;
+      const pct = totalMaletaOriginal > 0 ? Math.min(100, Math.max(0, (totalVendidoPeriodo / totalMaletaOriginal) * 100)) : 0;
+      
+      progressBar.style.width = `${pct}%`;
+      statusText.innerHTML = `Comissão Fixa: <strong>${rev.comissao || 30}%</strong>`;
+      infoText.innerHTML = `Você já vendeu <strong>R$ ${totalVendidoPeriodo.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</strong> do total de <strong>R$ ${totalMaletaOriginal.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</strong> da sua maleta atual (<strong>${pct.toFixed(1)}%</strong> da maleta vendida).`;
+      return;
+    }
+
+    // Cenário 2: META ÚNICA
+    if (rev.tipoComissao === "META_UNICA") {
+      const meta = rev.metaUnicaValor || 5000;
+      const bonus = rev.metaUnicaBonus || 5;
+      const tipoBonus = rev.metaUnicaTipoBonus || "PERCENTUAL";
+      
+      const atingiu = totalVendidoPeriodo >= meta;
+      const pct = Math.min(100, Math.max(0, (totalVendidoPeriodo / meta) * 100));
+      progressBar.style.width = `${pct}%`;
+
+      if (atingiu) {
+        statusText.innerHTML = `Meta Atingida! <strong>Parabéns!</strong>`;
+        if (tipoBonus === "PERCENTUAL") {
+          infoText.innerHTML = `<strong style="color: #81c784;"><i class="fa-solid fa-crown"></i> Meta de R$ ${meta.toLocaleString('pt-BR', {minimumFractionDigits: 2})} Superada!</strong> Sua comissão neste acerto subiu para <strong>${Number(rev.comissao || 30) + bonus}%</strong> (+${bonus}% de bônus).`;
+        } else {
+          infoText.innerHTML = `<strong style="color: #81c784;"><i class="fa-solid fa-crown"></i> Meta de R$ ${meta.toLocaleString('pt-BR', {minimumFractionDigits: 2})} Superada!</strong> Você garantiu um bônus extra de <strong>R$ ${bonus.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</strong> em dinheiro além da comissão de ${rev.comissao || 30}%.`;
+        }
+      } else {
+        const faltam = meta - totalVendidoPeriodo;
+        statusText.innerHTML = `Meta de Vendas: <strong>R$ ${meta.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</strong>`;
+        if (tipoBonus === "PERCENTUAL") {
+          infoText.innerHTML = `Você vendeu <strong>R$ ${totalVendidoPeriodo.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</strong>. Faltam <strong style="color: var(--gold-primary);">R$ ${faltam.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</strong> para atingir a meta e ganhar <strong>+${bonus}%</strong> de comissão!`;
+        } else {
+          infoText.innerHTML = `Você vendeu <strong>R$ ${totalVendidoPeriodo.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</strong>. Faltam <strong style="color: var(--gold-primary);">R$ ${faltam.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</strong> para atingir a meta e ganhar um bônus extra de <strong>R$ ${bonus.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</strong>!`;
+        }
+      }
+      return;
+    }
+
+    // Cenário 3: COMISSÃO PROGRESSIVA
+    if (rev.tipoComissao === "PROGRESSIVA") {
+      const faixas = rev.faixasComissao || [];
+      if (faixas.length === 0) {
+        progressBar.style.width = "0%";
+        statusText.innerHTML = `Sua Comissão: <strong>${rev.comissao || 30}%</strong>`;
+        infoText.innerHTML = `Você já vendeu <strong>R$ ${totalVendidoPeriodo.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</strong> no acerto atual. Nenhuma faixa progressiva cadastrada.`;
+        return;
+      }
+
+      // Ordena faixas por valorMin
+      faixas.sort((a, b) => a.valorMin - b.valorMin);
+
+      // Encontra a faixa atual
+      let faixaAtual = null;
+      for (let i = 0; i < faixas.length; i++) {
+        if (totalVendidoPeriodo >= faixas[i].valorMin) {
+          faixaAtual = faixas[i];
+        }
+      }
+
+      const comissaoPadrao = rev.comissao || 30;
+      const percentualAtual = faixaAtual ? faixaAtual.percentual : comissaoPadrao;
+
+      // Encontra a próxima faixa
+      let proximaFaixa = null;
+      if (!faixaAtual) {
+        proximaFaixa = faixas[0];
+      } else {
+        const indexAtual = faixas.indexOf(faixaAtual);
+        if (indexAtual < faixas.length - 1) {
+          proximaFaixa = faixas[indexAtual + 1];
+        }
+      }
+
+      statusText.innerHTML = `Sua Comissão Atual: <strong>${percentualAtual}%</strong>`;
+
+      if (proximaFaixa) {
+        const faltamParaProxima = proximaFaixa.valorMin - totalVendidoPeriodo;
+        const valorBase = faixaAtual ? faixaAtual.valorMin : 0;
+        const totalNecessario = proximaFaixa.valorMin - valorBase;
+        const progresso = totalVendidoPeriodo - valorBase;
+        const pct = Math.min(100, Math.max(0, (progresso / totalNecessario) * 100));
+
+        progressBar.style.width = `${pct}%`;
+        infoText.innerHTML = `Você já vendeu <strong>R$ ${totalVendidoPeriodo.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</strong> no acerto atual. Faltam <strong style="color: var(--gold-primary);">R$ ${faltamParaProxima.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</strong> para você atingir a comissão de <strong>${proximaFaixa.percentual}%</strong>!`;
+      } else {
+        // Última faixa atingida! Progresso em 100%
+        progressBar.style.width = "100%";
+        infoText.innerHTML = `<strong style="color: #81c784;"><i class="fa-solid fa-crown"></i> Faixa Máxima Atingida (${percentualAtual}%)!</strong> Você já vendeu <strong>R$ ${totalVendidoPeriodo.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</strong> no acerto atual. Parabéns pelo excelente resultado!`;
+      }
+    }
   },
 
   renderizarHistoricoVendasRev: function() {
@@ -977,8 +1123,10 @@ const app = {
         }
       }
 
-      // Adiciona à lista de vendas da sessão
+      // Adiciona à lista de vendas da sessão e às pendentes para a barra de comissão
       this.state.vendasSessao.unshift(resp.venda);
+      if (!this.state.vendasPendentes) this.state.vendasPendentes = [];
+      this.state.vendasPendentes.unshift(resp.venda);
 
       // Fecha modal e renderiza
       document.getElementById("modal-venda-rev").classList.remove("active");

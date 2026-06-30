@@ -436,6 +436,33 @@
           </div>
         </div>
 
+        <!-- Painel de Progressão de Comissão da Revendedora -->
+        <div id="vendedora-progressao-card" class="pricing-calculator-card" style="margin-bottom: 1.5rem; padding: 1.5rem; border-color: rgba(212, 175, 55, 0.35); background: var(--bg-card); display: none;">
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 0.8rem;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="font-size: 1.5rem; color: var(--gold-primary);"><i class="fa-solid fa-crown"></i></span>
+              <div>
+                <h3 style="margin: 0; font-size: 1.1rem; color: var(--gold-light);">Sua Comissão Progressiva</h3>
+                <p style="margin: 0; font-size: 0.8rem; color: var(--text-secondary);">Aumente suas vendas para ganhar comissões maiores!</p>
+              </div>
+            </div>
+            <div style="text-align: right;">
+              <span id="vendedora-proxima-faixa-status" style="background: rgba(212, 175, 55, 0.1); color: var(--gold-primary); border: 1px solid rgba(212, 175, 55, 0.2); padding: 4px 12px; border-radius: 20px; font-weight: 600; font-size: 0.85rem;">
+                Faixa Atual: --
+              </span>
+            </div>
+          </div>
+
+          <!-- Barra de Progresso Customizada -->
+          <div style="width: 100%; height: 12px; background: #222; border-radius: 6px; overflow: hidden; margin: 0.8rem 0; position: relative; border: 1px solid #333;">
+            <div id="vendedora-progressao-barra" style="width: 0%; height: 100%; background: linear-gradient(90deg, #b38f1d, #d4af37, #f3e5ab); border-radius: 6px; transition: width 0.5s ease-in-out;"></div>
+          </div>
+
+          <div id="vendedora-progressao-info" style="font-size: 0.9rem; color: #eee; text-align: center; margin-top: 0.5rem; line-height: 1.4;">
+            Calculando progresso...
+          </div>
+        </div>
+
         <!-- Abas: Maleta Atual | Histórico de Vendas -->
         <div class="mkt-tabs" style="margin-bottom: 1.5rem;">
           <button class="mkt-tab-btn active" id="btn-subtab-maleta-rev" onclick="app.mudarSubAbaMaleta('pecas')">

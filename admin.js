@@ -1293,6 +1293,12 @@ const app = {
     // Salvar Revendedora
     document.getElementById("btn-salvar-revendedora").addEventListener("click", () => this.salvarNovaRevendedora());
 
+    // Adicionar Faixa de Comissão na UI
+    const btnAddFaixaUi = document.getElementById("btn-add-faixa-ui");
+    if (btnAddFaixaUi) {
+      btnAddFaixaUi.addEventListener("click", () => this.adicionarFaixaLinha());
+    }
+
     // Consignar Peças (Confirmar envio)
     document.getElementById("btn-confirmar-consignar").addEventListener("click", () => this.processarConsignacao());
 
@@ -2614,12 +2620,239 @@ const app = {
     }
   },
 
+  adicionarFaixaLinha: function(valorMin = 0, valorMax = 0, percentual = 0) {
+    const container = document.getElementById("rev-faixas-container");
+    if (!container) return;
+
+    // Remove o aviso de "vazio" se existir
+    const vazio = document.getElementById("rev-faixas-vazio");
+    if (vazio) vazio.remove();
+
+    const row = document.createElement("div");
+    row.className = "rev-faixa-row";
+    row.style = "display: grid; grid-template-columns: 1fr auto 1fr auto 70px auto auto; gap: 6px; align-items: center; margin-bottom: 8px; background: rgba(255, 255, 255, 0.02); padding: 6px; border-radius: 4px; border: 1px solid #222; transition: all 0.2s ease;";
+    row.innerHTML = `
+      <div style="position: relative; display: flex; align-items: center;">
+        <span style="position: absolute; left: 8px; color: #666; font-size: 0.8rem; font-weight: 600;">R$</span>
+        <input type="number" class="form-control faixa-min" placeholder="Mínimo" value="${valorMin}" style="width: 100%; padding: 4px 8px 4px 24px; font-size: 0.85rem; border-color: #333;" min="0">
+      </div>
+      <span style="color: #666; font-size: 0.8rem;">a</span>
+      <div style="position: relative; display: flex; align-items: center;">
+        <span style="position: absolute; left: 8px; color: #666; font-size: 0.8rem; font-weight: 600;">R$</span>
+        <input type="number" class="form-control faixa-max" placeholder="Máximo" value="${valorMax}" style="width: 100%; padding: 4px 8px 4px 24px; font-size: 0.85rem; border-color: #333;" min="0">
+      </div>
+      <span style="color: #666; font-size: 0.8rem;">=</span>
+      <input type="number" class="form-control faixa-pct" placeholder="%" value="${percentual}" style="width: 100%; padding: 4px 8px; font-size: 0.85rem; text-align: center; border-color: #333;" min="0" max="100">
+      <span style="color: #666; font-size: 0.85rem; font-weight: 600;">%</span>
+      <button type="button" class="btn-delete-faixa" style="background: rgba(239, 83, 80, 0.1); color: #ff8a80; border: 1px solid rgba(239, 83, 80, 0.25); border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); margin: 0;" title="Remover faixa">
+        <i class="fa-solid fa-trash-can" style="font-size: 0.85rem;"></i>
+      </button>
+    `;
+
+    // Hover effects and delete
+    const deleteBtn = row.querySelector(".btn-delete-faixa");
+    deleteBtn.addEventListener("mouseover", () => {
+      deleteBtn.style.background = "#ef5350";
+      deleteBtn.style.color = "#ffffff";
+      deleteBtn.style.borderColor = "#ef5350";
+      deleteBtn.style.boxShadow = "0 0 10px rgba(239, 83, 80, 0.5)";
+      deleteBtn.style.transform = "scale(1.08)";
+    });
+    deleteBtn.addEventListener("mouseout", () => {
+      deleteBtn.style.background = "rgba(239, 83, 80, 0.1)";
+      deleteBtn.style.color = "#ff8a80";
+      deleteBtn.style.borderColor = "rgba(239, 83, 80, 0.25)";
+      deleteBtn.style.boxShadow = "none";
+      deleteBtn.style.transform = "scale(1)";
+    });
+
+    deleteBtn.addEventListener("click", () => {
+      row.style.opacity = "0";
+      row.style.transform = "scale(0.9)";
+      setTimeout(() => {
+        row.remove();
+        if (container.querySelectorAll(".rev-faixa-row").length === 0) {
+          container.innerHTML = `
+            <div style="color: #888; font-size: 0.9rem; text-align: center; padding: 10px;" id="rev-faixas-vazio">
+              Nenhuma faixa cadastrada. Usará a comissão padrão acima.
+            </div>
+          `;
+        }
+      }, 200);
+    });
+
+    // Animação de entrada
+    row.style.opacity = "0";
+    row.style.transform = "translateY(5px)";
+    container.appendChild(row);
+    setTimeout(() => {
+      row.style.opacity = "1";
+      row.style.transform = "translateY(0)";
+    }, 50);
+  },
+
+  obterFaixasComissaoDaUI: function() {
+    const rows = document.querySelectorAll(".rev-faixa-row");
+    const faixas = [];
+    rows.forEach(row => {
+      const valorMin = parseFloat(row.querySelector(".faixa-min").value) || 0;
+      const valorMax = parseFloat(row.querySelector(".faixa-max").value) || 0;
+      const percentual = parseFloat(row.querySelector(".faixa-pct").value) || 0;
+      faixas.push({ valorMin, valorMax, percentual });
+    });
+    return faixas;
+  },
+
+  atualizarProgressaoComissaoUI: function(faturamentoBruto, rev) {
+    const card = document.getElementById("acerto-progressao-card");
+    const statusText = document.getElementById("acerto-proxima-faixa-status");
+    const progressBar = document.getElementById("acerto-progressao-barra");
+    const infoText = document.getElementById("acerto-progressao-info");
+
+    if (!card) return;
+
+    // Se a revendedora não tiver faixas de comissão, esconde o card
+    if (!rev.faixasComissao || rev.faixasComissao.length === 0) {
+      card.style.display = "none";
+      return;
+    }
+
+    card.style.display = "block";
+
+    // Ordena as faixas por valor mínimo
+    const faixas = [...rev.faixasComissao].sort((a, b) => a.valorMin - b.valorMin);
+
+    // Encontra a faixa atual
+    let faixaAtualIdx = -1;
+    for (let i = 0; i < faixas.length; i++) {
+      if (faturamentoBruto >= faixas[i].valorMin && faturamentoBruto <= faixas[i].valorMax) {
+        faixaAtualIdx = i;
+        break;
+      }
+    }
+
+    // Se o faturamento for maior que a última faixa, a faixa atual é a última
+    if (faixaAtualIdx === -1 && faturamentoBruto > faixas[faixas.length - 1].valorMax) {
+      faixaAtualIdx = faixas.length - 1;
+    }
+
+    // Se o faturamento for menor que a primeira faixa
+    if (faixaAtualIdx === -1 && faturamentoBruto < faixas[0].valorMin) {
+      faixaAtualIdx = -1; // Sem faixa ativa ainda (usa fallback)
+    }
+
+    const faixaAtual = faixaAtualIdx !== -1 ? faixas[faixaAtualIdx] : null;
+    const proximaFaixa = faixaAtualIdx + 1 < faixas.length ? faixas[faixaAtualIdx + 1] : null;
+
+    const percentualAtual = faixaAtual ? faixaAtual.percentual : rev.comissao;
+    statusText.innerText = `Faixa Atual: ${percentualAtual}%`;
+
+    if (proximaFaixa) {
+      // Calcula o progresso dentro da faixa atual rumo à próxima
+      const minFaixaParaProgresso = faixaAtual ? faixaAtual.valorMin : 0;
+      const maxFaixaParaProgresso = proximaFaixa.valorMin; // A próxima faixa começa no valorMin dela
+      
+      const faixaSpan = maxFaixaParaProgresso - minFaixaParaProgresso;
+      const progressoFaturamento = faturamentoBruto - minFaixaParaProgresso;
+      
+      let pctProgresso = (progressoFaturamento / faixaSpan) * 100;
+      pctProgresso = Math.max(0, Math.min(100, pctProgresso));
+
+      progressBar.style.width = `${pctProgresso}%`;
+      
+      const faltamParaProxima = maxFaixaParaProgresso - faturamentoBruto;
+      infoText.innerHTML = `Faltam <strong style="color: var(--gold-primary);">R$ ${faltamParaProxima.toFixed(2).replace(".", ",")}</strong> em vendas para atingir a faixa de <strong>${proximaFaixa.percentual}%</strong>!`;
+    } else {
+      // Última faixa atingida! Progresso em 100%
+      progressBar.style.width = "100%";
+      infoText.innerHTML = `<strong style="color: #81c784;"><i class="fa-solid fa-crown"></i> Faixa Máxima Atingida (${percentualAtual}%)!</strong> Excelente volume de vendas!`;
+    }
+  },
+
+  ajustarCamposComissaoRev: function() {
+    const tipo = document.getElementById("rev-tipo-comissao").value;
+    const groupComissaoPadrao = document.getElementById("group-rev-comissao-padrao");
+    const groupMetaUnica = document.getElementById("group-rev-meta-unica");
+    const groupFaixas = document.getElementById("group-rev-faixas");
+
+    if (tipo === "FIXA") {
+      if (groupComissaoPadrao) groupComissaoPadrao.style.display = "block";
+      if (groupMetaUnica) groupMetaUnica.style.display = "none";
+      if (groupFaixas) groupFaixas.style.display = "none";
+    } else if (tipo === "PROGRESSIVA") {
+      if (groupComissaoPadrao) groupComissaoPadrao.style.display = "none";
+      if (groupMetaUnica) groupMetaUnica.style.display = "none";
+      if (groupFaixas) groupFaixas.style.display = "block";
+    } else if (tipo === "META_UNICA") {
+      if (groupComissaoPadrao) groupComissaoPadrao.style.display = "block";
+      if (groupMetaUnica) groupMetaUnica.style.display = "flex";
+      if (groupFaixas) groupFaixas.style.display = "none";
+    }
+  },
+
+  ajustarLabelsMetaRev: function() {
+    const tipoBonus = document.getElementById("rev-meta-bonus-tipo").value;
+    const labelBonus = document.getElementById("lbl-rev-meta-bonus");
+
+    if (labelBonus) {
+      if (tipoBonus === "PERCENTUAL") {
+        labelBonus.innerHTML = "Bônus da Meta (%) *";
+      } else {
+        labelBonus.innerHTML = "Bônus da Meta (R$) *";
+      }
+    }
+  },
+
+  ajustarCamposPerdaRev: function() {
+    const regra = document.getElementById("rev-regra-perda").value;
+    const groupLimiteIsencao = document.getElementById("group-rev-limite-isencao");
+
+    if (groupLimiteIsencao) {
+      if (regra === "ISENTO") {
+        groupLimiteIsencao.style.display = "block";
+      } else {
+        groupLimiteIsencao.style.display = "none";
+      }
+    }
+  },
+
   limparFormRevendedora: function() {
     document.getElementById("rev-nome").value = "";
     document.getElementById("rev-whatsapp").value = "";
     document.getElementById("rev-comissao").value = "30";
     document.getElementById("rev-senha").value = "";
+    document.getElementById("rev-senha").setAttribute("required", "true");
+    const labelSenha = document.querySelector("#group-rev-senha label");
+    if (labelSenha) labelSenha.innerText = "Senha de Acesso *";
+    const inputSenha = document.getElementById("rev-senha");
+    if (inputSenha) inputSenha.placeholder = "Defina a senha de acesso";
+    const helpSenha = document.querySelector("#group-rev-senha p");
+    if (helpSenha) helpSenha.innerText = "Senha para a revendedora acessar o portal dela.";
     document.getElementById("group-rev-senha").style.display = "block";
+
+    // Novos campos
+    document.getElementById("rev-tipo-comissao").value = "FIXA";
+    document.getElementById("rev-meta-valor").value = "5000";
+    document.getElementById("rev-meta-bonus-tipo").value = "PERCENTUAL";
+    document.getElementById("rev-meta-bonus").value = "5";
+    document.getElementById("rev-base-calculo").value = "BRUTO";
+    document.getElementById("rev-regra-perda").value = "VALOR_VENDA";
+    document.getElementById("rev-limite-isencao").value = "1";
+    document.getElementById("rev-periodo-acumulo").value = "MANUAL";
+
+    this.ajustarCamposComissaoRev();
+    this.ajustarLabelsMetaRev();
+    this.ajustarCamposPerdaRev();
+
+    // Limpa faixas
+    const container = document.getElementById("rev-faixas-container");
+    if (container) {
+      container.innerHTML = `
+        <div style="color: #888; font-size: 0.9rem; text-align: center; padding: 10px;" id="rev-faixas-vazio">
+          Nenhuma faixa cadastrada. Usará a comissão padrão.
+        </div>
+      `;
+    }
 
     const btnSalvar = document.getElementById("btn-salvar-revendedora");
     if (btnSalvar) {
@@ -2633,10 +2866,50 @@ const app = {
   editarRevendedoraSelecionada: function() {
     const rev = this.state.revendedoras.find(r => r.id === this.state.revendedoraSelecionadaId);
     if (rev) {
-      document.getElementById("rev-nome").value = rev.nome;
-      document.getElementById("rev-whatsapp").value = rev.whatsapp;
-      document.getElementById("rev-comissao").value = rev.comissao;
-      document.getElementById("group-rev-senha").style.display = "none";
+      document.getElementById("rev-nome").value = rev.nome || "";
+      document.getElementById("rev-whatsapp").value = rev.whatsapp || "";
+      document.getElementById("rev-comissao").value = rev.comissao || 30;
+      
+      document.getElementById("rev-senha").value = "";
+      document.getElementById("rev-senha").removeAttribute("required");
+      const labelSenha = document.querySelector("#group-rev-senha label");
+      if (labelSenha) labelSenha.innerText = "Nova Senha (Opcional)";
+      const inputSenha = document.getElementById("rev-senha");
+      if (inputSenha) inputSenha.placeholder = "Deixe em branco para não alterar";
+      const helpSenha = document.querySelector("#group-rev-senha p");
+      if (helpSenha) helpSenha.innerText = "Deixe em branco para manter a senha atual.";
+      document.getElementById("group-rev-senha").style.display = "block";
+
+      // Popula novos campos
+      document.getElementById("rev-tipo-comissao").value = rev.tipoComissao || "FIXA";
+      document.getElementById("rev-meta-valor").value = rev.metaUnicaValor || 5000;
+      document.getElementById("rev-meta-bonus-tipo").value = rev.metaUnicaTipoBonus || "PERCENTUAL";
+      document.getElementById("rev-meta-bonus").value = rev.metaUnicaBonus || 5;
+      document.getElementById("rev-base-calculo").value = rev.baseCalculo || "BRUTO";
+      document.getElementById("rev-regra-perda").value = rev.regraPerda || "VALOR_VENDA";
+      document.getElementById("rev-limite-isencao").value = rev.limiteIsencaoPerda || 1;
+      document.getElementById("rev-periodo-acumulo").value = rev.periodoAcumulo || "MANUAL";
+
+      this.ajustarCamposComissaoRev();
+      this.ajustarLabelsMetaRev();
+      this.ajustarCamposPerdaRev();
+
+      // Preenche faixas
+      const container = document.getElementById("rev-faixas-container");
+      if (container) {
+        container.innerHTML = "";
+        if (rev.faixasComissao && rev.faixasComissao.length > 0) {
+          rev.faixasComissao.forEach(f => {
+            this.adicionarFaixaLinha(f.valorMin, f.valorMax, f.percentual);
+          });
+        } else {
+          container.innerHTML = `
+            <div style="color: #888; font-size: 0.9rem; text-align: center; padding: 10px;" id="rev-faixas-vazio">
+              Nenhuma faixa cadastrada. Usará a comissão padrão.
+            </div>
+          `;
+        }
+      }
 
       const btnSalvar = document.getElementById("btn-salvar-revendedora");
       if (btnSalvar) {
@@ -2654,6 +2927,7 @@ const app = {
     const nome = document.getElementById("rev-nome").value.trim();
     const whatsapp = document.getElementById("rev-whatsapp").value.trim();
     const comissao = parseInt(document.getElementById("rev-comissao").value) || 30;
+    const faixasComissao = this.obterFaixasComissaoDaUI();
     const editId = document.getElementById("btn-salvar-revendedora").getAttribute("data-edit-id");
 
     if (!nome || !whatsapp) {
@@ -2667,11 +2941,35 @@ const app = {
       return;
     }
 
+    // Novos campos adicionados
+    const tipoComissao = document.getElementById("rev-tipo-comissao").value;
+    const metaUnicaValor = parseFloat(document.getElementById("rev-meta-valor").value) || 0;
+    const metaUnicaTipoBonus = document.getElementById("rev-meta-bonus-tipo").value;
+    const metaUnicaBonus = parseFloat(document.getElementById("rev-meta-bonus").value) || 0;
+    const baseCalculo = document.getElementById("rev-base-calculo").value;
+    const regraPerda = document.getElementById("rev-regra-perda").value;
+    const limiteIsencaoPerda = parseInt(document.getElementById("rev-limite-isencao").value) || 0;
+    const periodoAcumulo = document.getElementById("rev-periodo-acumulo").value;
+
     try {
       if (editId) {
         // Envia atualização para a API Azure se autenticado
         if (this.state.token) {
-          await this.requisitarAPI(`/revendedoras/${editId}`, "PUT", { nome, whatsapp, comissao });
+          await this.requisitarAPI(`/revendedoras/${editId}`, "PUT", { 
+            nome, 
+            whatsapp, 
+            comissao, 
+            faixasComissao,
+            tipoComissao,
+            metaUnicaValor,
+            metaUnicaBonus,
+            metaUnicaTipoBonus,
+            baseCalculo,
+            regraPerda,
+            limiteIsencaoPerda,
+            periodoAcumulo,
+            senha: senhaInput
+          });
         }
         
         // Atualização no estado local
@@ -2680,6 +2978,15 @@ const app = {
           rev.nome = nome;
           rev.whatsapp = whatsapp;
           rev.comissao = comissao;
+          rev.faixasComissao = faixasComissao;
+          rev.tipoComissao = tipoComissao;
+          rev.metaUnicaValor = metaUnicaValor;
+          rev.metaUnicaBonus = metaUnicaBonus;
+          rev.metaUnicaTipoBonus = metaUnicaTipoBonus;
+          rev.baseCalculo = baseCalculo;
+          rev.regraPerda = regraPerda;
+          rev.limiteIsencaoPerda = limiteIsencaoPerda;
+          rev.periodoAcumulo = periodoAcumulo;
         }
       } else {
         let novaRev;
@@ -2693,13 +3000,31 @@ const app = {
             senha: senhaInput,
             role: "VENDEDORA",
             whatsapp,
-            comissao
+            comissao,
+            faixasComissao,
+            tipoComissao,
+            metaUnicaValor,
+            metaUnicaBonus,
+            metaUnicaTipoBonus,
+            baseCalculo,
+            regraPerda,
+            limiteIsencaoPerda,
+            periodoAcumulo
           });
           novaRev = {
             id: res.usuario.id,
             nome,
             whatsapp,
             comissao,
+            faixasComissao: res.usuario.faixasComissao || faixasComissao,
+            tipoComissao: res.usuario.tipoComissao || tipoComissao,
+            metaUnicaValor: res.usuario.metaUnicaValor || metaUnicaValor,
+            metaUnicaBonus: res.usuario.metaUnicaBonus || metaUnicaBonus,
+            metaUnicaTipoBonus: res.usuario.metaUnicaTipoBonus || metaUnicaTipoBonus,
+            baseCalculo: res.usuario.baseCalculo || baseCalculo,
+            regraPerda: res.usuario.regraPerda || regraPerda,
+            limiteIsencaoPerda: res.usuario.limiteIsencaoPerda || limiteIsencaoPerda,
+            periodoAcumulo: res.usuario.periodoAcumulo || periodoAcumulo,
             pin: res.usuario.pin,
             consignado: [],
             historico: []
@@ -2711,6 +3036,15 @@ const app = {
             nome: nome,
             whatsapp: whatsapp,
             comissao: comissao,
+            faixasComissao,
+            tipoComissao,
+            metaUnicaValor,
+            metaUnicaBonus,
+            metaUnicaTipoBonus,
+            baseCalculo,
+            regraPerda,
+            limiteIsencaoPerda,
+            periodoAcumulo,
             pin: Math.floor(1000 + Math.random() * 9000).toString(),
             consignado: [],
             historico: []
@@ -3041,7 +3375,7 @@ const app = {
     if (!rev.consignado || rev.consignado.length === 0) {
       tbody.innerHTML = `
         <tr>
-          <td colspan="8" style="text-align: center; color: var(--text-secondary); padding: 2rem;">
+          <td colspan="7" style="text-align: center; color: var(--text-secondary); padding: 2rem;">
             Nenhuma peça consignada para acertar.
           </td>
         </tr>
@@ -3050,7 +3384,7 @@ const app = {
       return;
     }
 
-    tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: var(--text-secondary); padding: 2rem;"><i class="fa-solid fa-spinner fa-spin"></i> Buscando vendas pendentes da revendedora...</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--text-secondary); padding: 2rem;"><i class="fa-solid fa-spinner fa-spin"></i> Buscando vendas pendentes da revendedora...</td></tr>`;
 
     // Carrega vendas pendentes
     const vendasPendentes = await this.buscarVendasPendentesAcerto(rev.id);
@@ -3063,64 +3397,107 @@ const app = {
 
     rev.consignado.forEach(item => {
       const tr = document.createElement("tr");
+      tr.id = `acerto-row-${item.produtoId}`;
       
       const qtdVendidaSugerida = Math.min(mapaVendas.get(item.produtoId) || 0, item.quantidadeConsignada);
       const qtdDevolvidaSugerida = item.quantidadeConsignada - qtdVendidaSugerida;
 
       tr.innerHTML = `
         <td>
-          <strong>${item.codigo}</strong><br>
-          <span class="prod-name-cell" style="font-size: 0.8rem; color: var(--text-secondary);">${item.nome}</span>
+          <div style="display: flex; flex-direction: column;">
+            <strong style="font-size: 0.95rem; color: #fff;">${item.codigo}</strong>
+            <span class="prod-name-cell" style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 1px;">${item.nome}</span>
+            <div class="acerto-badges-container" id="badges-${item.produtoId}" style="display: flex; gap: 5px; margin-top: 5px; flex-wrap: wrap;"></div>
+          </div>
         </td>
-        <td>R$ ${Number(item.precoVenda).toFixed(2).replace(".", ",")}</td>
-        <td><strong>${item.quantidadeConsignada}</strong> pçs</td>
+        <td style="color: #eee; font-weight: 500;">R$ ${Number(item.precoVenda).toFixed(2).replace(".", ",")}</td>
         <td>
-          <div class="acerto-input-wrapper">
-            <button class="btn-input-adjust" onclick="app.ajustarQtdAcerto(this, -1, 'vendido', ${item.quantidadeConsignada})"><i class="fa-solid fa-minus"></i></button>
+          <span style="background: rgba(212, 175, 55, 0.08); color: var(--gold-primary); border: 1px solid rgba(212, 175, 55, 0.15); padding: 4px 10px; border-radius: 20px; font-weight: 600; font-size: 0.8rem; display: inline-block;">
+            ${item.quantidadeConsignada} pçs
+          </span>
+        </td>
+        <td>
+          <div class="acerto-input-wrapper" style="display: flex; align-items: center; justify-content: center; gap: 2px; background: rgba(255,255,255,0.02); border: 1px solid #333; border-radius: 6px; padding: 2px; width: 100px; margin: 0 auto;">
+            <button type="button" class="btn-input-adjust" onclick="app.ajustarQtdAcerto(this, -1, 'vendido', ${item.quantidadeConsignada})" style="background: transparent; border: none; color: #888; cursor: pointer; padding: 4px 6px; font-size: 0.75rem;"><i class="fa-solid fa-minus"></i></button>
             <input type="number" class="input-acerto-vendido"
                    data-prod-id="${item.produtoId}"
                    value="${qtdVendidaSugerida}" min="0" max="${item.quantidadeConsignada}"
-                   oninput="app.sincronizarAcertoQuantidades(this, 'vendido')">
-            <button class="btn-input-adjust" onclick="app.ajustarQtdAcerto(this, 1, 'vendido', ${item.quantidadeConsignada})"><i class="fa-solid fa-plus"></i></button>
+                   oninput="app.sincronizarAcertoQuantidades(this, 'vendido')"
+                   style="width: 32px; text-align: center; font-weight: 700; border: none; background: transparent; color: var(--text-primary); font-size: 0.85rem; outline: none; padding: 0;">
+            <button type="button" class="btn-input-adjust" onclick="app.ajustarQtdAcerto(this, 1, 'vendido', ${item.quantidadeConsignada})" style="background: transparent; border: none; color: #888; cursor: pointer; padding: 4px 6px; font-size: 0.75rem;"><i class="fa-solid fa-plus"></i></button>
           </div>
-          ${qtdVendidaSugerida > 0 ? `<div style="font-size: 0.72rem; color: #81c784; text-align: center; margin-top: 3px;"><i class="fa-solid fa-check"></i> ${qtdVendidaSugerida} reg. no app</div>` : ''}
+          ${qtdVendidaSugerida > 0 ? `<div style="font-size: 0.65rem; color: #81c784; text-align: center; margin-top: 4px;"><i class="fa-solid fa-check"></i> ${qtdVendidaSugerida} no app</div>` : ''}
         </td>
         <td>
-          <div class="acerto-input-wrapper">
-            <button class="btn-input-adjust" onclick="app.ajustarQtdAcerto(this, -1, 'devolvido', ${item.quantidadeConsignada})"><i class="fa-solid fa-minus"></i></button>
-            <input type="number" class="input-acerto-devolvido"
-                   data-prod-id="${item.produtoId}"
-                   value="${qtdDevolvidaSugerida}" min="0" max="${item.quantidadeConsignada}"
-                   oninput="app.sincronizarAcertoQuantidades(this, 'devolvido')">
-            <button class="btn-input-adjust" onclick="app.ajustarQtdAcerto(this, 1, 'devolvido', ${item.quantidadeConsignada})"><i class="fa-solid fa-plus"></i></button>
-          </div>
-        </td>
-        <td>
-          <div class="acerto-input-wrapper">
-            <input type="number" class="input-acerto-perdido"
-                   data-prod-id="${item.produtoId}"
-                   value="0" min="0" max="${item.quantidadeConsignada}"
-                   oninput="app.sincronizarAcertoQuantidades(this, 'perdido')"
-                   style="border-color: rgba(239, 154, 154, 0.5); width: 60px; text-align: center;">
+          <div style="text-align: center;">
+            <span class="badge-dev" id="dev-badge-${item.produtoId}" style="background: rgba(255,255,255,0.04); color: #999; border: 1px solid rgba(255,255,255,0.08); padding: 4px 12px; border-radius: 20px; font-weight: 600; font-size: 0.8rem; display: inline-block;">
+              ${qtdDevolvidaSugerida} pçs
+            </span>
+            <!-- Input oculto para compatibilidade -->
+            <input type="number" class="input-acerto-devolvido" data-prod-id="${item.produtoId}" value="${qtdDevolvidaSugerida}" style="display: none;">
           </div>
         </td>
         <td>
-          <div class="acerto-input-wrapper">
-            <input type="number" class="input-acerto-defeito"
-                   data-prod-id="${item.produtoId}"
-                   value="0" min="0" max="${item.quantidadeConsignada}"
-                   oninput="app.sincronizarAcertoQuantidades(this, 'defeito')"
-                   style="border-color: rgba(255, 183, 77, 0.5); width: 60px; text-align: center;">
+          <div style="text-align: center;">
+            <button type="button" class="btn-excecoes-trigger" onclick="app.toggleExcecoesAcerto('${item.produtoId}')" style="background: rgba(255, 183, 77, 0.05); color: #ffb74d; border: 1px solid rgba(255, 183, 77, 0.15); padding: 5px 10px; border-radius: 6px; font-size: 0.75rem; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; transition: all 0.2s; font-weight: 500;">
+              <i class="fa-solid fa-triangle-exclamation"></i> Ocorrências
+            </button>
           </div>
         </td>
         <td style="text-align: right;">
-          <div style="display: flex; gap: 0.3rem; justify-content: flex-end;">
-            <button class="btn-shortcut" onclick="app.definirAcertoLinha('${item.produtoId}', 'venda', ${item.quantidadeConsignada})">Vendeu Tudo</button>
-            <button class="btn-shortcut danger" onclick="app.definirAcertoLinha('${item.produtoId}', 'devolucao', ${item.quantidadeConsignada})">Devolveu Tudo</button>
+          <div style="display: flex; gap: 4px; justify-content: flex-end;">
+            <button type="button" class="btn-shortcut-venda" onclick="app.definirAcertoLinha('${item.produtoId}', 'venda', ${item.quantidadeConsignada})" style="background: rgba(129, 199, 132, 0.08); color: #81c784; border: 1px solid rgba(129, 199, 132, 0.15); padding: 5px 10px; border-radius: 6px; font-size: 0.72rem; cursor: pointer; transition: all 0.2s; font-weight: 600; margin: 0;">Vendeu Tudo</button>
+            <button type="button" class="btn-shortcut-devolucao" onclick="app.definirAcertoLinha('${item.produtoId}', 'devolucao', ${item.quantidadeConsignada})" style="background: rgba(255,255,255,0.03); color: #aaa; border: 1px solid rgba(255,255,255,0.08); padding: 5px 10px; border-radius: 6px; font-size: 0.72rem; cursor: pointer; transition: all 0.2s; font-weight: 500; margin: 0;">Devolveu</button>
           </div>
         </td>
       `;
       tbody.appendChild(tr);
+
+      // Cria a linha de exceções (oculta por padrão)
+      const trEx = document.createElement("tr");
+      trEx.id = `excecoes-row-${item.produtoId}`;
+      trEx.style.display = "none";
+      trEx.style.background = "rgba(239, 83, 80, 0.01)";
+      trEx.style.borderLeft = "3px solid #ef5350";
+      trEx.innerHTML = `
+        <td colspan="7" style="padding: 12px 20px; border-bottom: 1px solid rgba(255, 255, 255, 0.03);">
+          <div style="display: flex; gap: 2rem; align-items: center; flex-wrap: wrap;">
+            <span style="font-size: 0.8rem; font-weight: 600; color: #ff8a80;"><i class="fa-solid fa-triangle-exclamation"></i> Registrar Ocorrências:</span>
+            
+            <!-- Perdido / Danificado -->
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="font-size: 0.8rem; color: #ef9a9a;">Perda/Dano (Revendedora paga):</span>
+              <div class="acerto-input-wrapper" style="display: flex; align-items: center; gap: 2px; background: rgba(255,255,255,0.02); border: 1px solid #333; border-radius: 6px; padding: 2px; width: 100px;">
+                <button type="button" class="btn-input-adjust" onclick="app.ajustarQtdAcerto(this, -1, 'perdido', ${item.quantidadeConsignada})" style="background: transparent; border: none; color: #888; cursor: pointer; padding: 2px 6px; font-size: 0.75rem;"><i class="fa-solid fa-minus"></i></button>
+                <input type="number" class="input-acerto-perdido"
+                       data-prod-id="${item.produtoId}"
+                       value="0" min="0" max="${item.quantidadeConsignada}"
+                       oninput="app.sincronizarAcertoQuantidades(this, 'perdido')"
+                       style="width: 30px; text-align: center; font-weight: 700; border: none; background: transparent; color: var(--text-primary); font-size: 0.85rem; outline: none; padding: 0;">
+                <button type="button" class="btn-input-adjust" onclick="app.ajustarQtdAcerto(this, 1, 'perdido', ${item.quantidadeConsignada})" style="background: transparent; border: none; color: #888; cursor: pointer; padding: 2px 6px; font-size: 0.75rem;"><i class="fa-solid fa-plus"></i></button>
+              </div>
+            </div>
+
+            <!-- Defeito de Fábrica -->
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="font-size: 0.8rem; color: #ffb74d;">Defeito de Fábrica:</span>
+              <div class="acerto-input-wrapper" style="display: flex; align-items: center; gap: 2px; background: rgba(255,255,255,0.02); border: 1px solid #333; border-radius: 6px; padding: 2px; width: 100px;">
+                <button type="button" class="btn-input-adjust" onclick="app.ajustarQtdAcerto(this, -1, 'defeito', ${item.quantidadeConsignada})" style="background: transparent; border: none; color: #888; cursor: pointer; padding: 2px 6px; font-size: 0.75rem;"><i class="fa-solid fa-minus"></i></button>
+                <input type="number" class="input-acerto-defeito"
+                       data-prod-id="${item.produtoId}"
+                       value="0" min="0" max="${item.quantidadeConsignada}"
+                       oninput="app.sincronizarAcertoQuantidades(this, 'defeito')"
+                       style="width: 30px; text-align: center; font-weight: 700; border: none; background: transparent; color: var(--text-primary); font-size: 0.85rem; outline: none; padding: 0;">
+                <button type="button" class="btn-input-adjust" onclick="app.ajustarQtdAcerto(this, 1, 'defeito', ${item.quantidadeConsignada})" style="background: transparent; border: none; color: #888; cursor: pointer; padding: 2px 6px; font-size: 0.75rem;"><i class="fa-solid fa-plus"></i></button>
+              </div>
+            </div>
+          </div>
+        </td>
+      `;
+      tbody.appendChild(trEx);
+
+      // Inicializa os badges
+      this.atualizarBadgesLinhaAcerto(item.produtoId);
     });
 
     this.calcularResumoFechamentoAcerto();
@@ -3170,6 +3547,7 @@ const app = {
         if (inputPerdido) inputPerdido.value = 0;
         if (inputDefeito) inputDefeito.value = 0;
       }
+      this.atualizarBadgesLinhaAcerto(prodId);
       this.calcularResumoFechamentoAcerto();
     }
   },
@@ -3197,6 +3575,7 @@ const app = {
           if (inputPerdido) inputPerdido.value = 0;
           if (inputDefeito) inputDefeito.value = 0;
         }
+        this.atualizarBadgesLinhaAcerto(prodId);
       }
     });
     this.calcularResumoFechamentoAcerto();
@@ -3241,7 +3620,58 @@ const app = {
     if (inpPerd) inpPerd.value = p;
     if (inpDef)  inpDef.value  = def;
 
+    this.atualizarBadgesLinhaAcerto(prodId);
     this.calcularResumoFechamentoAcerto();
+  },
+
+  toggleExcecoesAcerto: function(prodId) {
+    const row = document.getElementById(`excecoes-row-${prodId}`);
+    if (row) {
+      if (row.style.display === "none") {
+        row.style.display = "table-row";
+      } else {
+        row.style.display = "none";
+      }
+    }
+  },
+
+  atualizarBadgesLinhaAcerto: function(prodId) {
+    const inpVend = document.querySelector(`.input-acerto-vendido[data-prod-id="${prodId}"]`);
+    const inpDev  = document.querySelector(`.input-acerto-devolvido[data-prod-id="${prodId}"]`);
+    const inpPerd = document.querySelector(`.input-acerto-perdido[data-prod-id="${prodId}"]`);
+    const inpDef  = document.querySelector(`.input-acerto-defeito[data-prod-id="${prodId}"]`);
+
+    if (!inpVend || !inpDev) return;
+
+    const v = parseInt(inpVend.value) || 0;
+    const d = parseInt(inpDev.value) || 0;
+    const p = inpPerd ? (parseInt(inpPerd.value) || 0) : 0;
+    const def = inpDef ? (parseInt(inpDef.value) || 0) : 0;
+
+    // Atualiza o badge de Devolvido
+    const devBadge = document.getElementById(`dev-badge-${prodId}`);
+    if (devBadge) {
+      devBadge.innerText = `${d} pçs`;
+      if (d > 0) {
+        devBadge.style.background = "rgba(255, 255, 255, 0.05)";
+        devBadge.style.color = "#aaa";
+      } else {
+        devBadge.style.background = "transparent";
+        devBadge.style.color = "#444";
+      }
+    }
+
+    // Atualiza o container de badges de exceções
+    const badgesContainer = document.getElementById(`badges-${prodId}`);
+    if (badgesContainer) {
+      badgesContainer.innerHTML = "";
+      if (p > 0) {
+        badgesContainer.innerHTML += `<span style="background: rgba(239, 83, 80, 0.15); color: #ff8a80; font-size: 0.7rem; padding: 2px 6px; border-radius: 3px; border: 1px solid rgba(239, 83, 80, 0.25); display: inline-flex; align-items: center; gap: 3px;"><i class="fa-solid fa-triangle-exclamation"></i> ${p} perda</span>`;
+      }
+      if (def > 0) {
+        badgesContainer.innerHTML += `<span style="background: rgba(255, 183, 77, 0.15); color: #ffb74d; font-size: 0.7rem; padding: 2px 6px; border-radius: 3px; border: 1px solid rgba(255, 183, 77, 0.25); display: inline-flex; align-items: center; gap: 3px;"><i class="fa-solid fa-screwdriver-wrench"></i> ${def} defeito</span>`;
+      }
+    }
   },
 
   obterItensDoAcertoAtual: function() {
@@ -3288,25 +3718,117 @@ const app = {
     let totalPecasConsignadas = 0;
     let faturamentoBruto = 0;
     let valorPerdas = 0;
+    let lostPiecesCounter = 0;
 
     itensAcerto.forEach(item => {
       totalPecasConsignadas += item.quantidadeConsignada;
       faturamentoBruto += Number(item.precoVenda) * item.quantidadeVendida;
-      valorPerdas += Number(item.precoVenda) * (item.quantidadePerdida || 0);
+      
+      const qtdPerdida = item.quantidadePerdida || 0;
+      if (qtdPerdida > 0) {
+        const prod = this.state.produtos.find(p => p.id === item.produtoId);
+        const custoLiquido = prod ? (prod.custoLiquido || 0) : 0;
+        
+        for (let i = 0; i < qtdPerdida; i++) {
+          lostPiecesCounter++;
+          if (rev.regraPerda === 'ISENTO' && lostPiecesCounter <= (rev.limiteIsencaoPerda || 0)) {
+            valorPerdas += 0;
+          } else if (rev.regraPerda === 'VALOR_CUSTO') {
+            valorPerdas += custoLiquido;
+          } else {
+            valorPerdas += Number(item.precoVenda);
+          }
+        }
+      }
     });
 
-    const comissaoBruta = faturamentoBruto * (Number(rev.comissao) / 100);
+    // 1. Base de cálculo da comissão: Bruto vs Líquido
+    const valorBaseComissao = (rev.baseCalculo === 'LIQUIDO')
+      ? Math.max(0, faturamentoBruto - valorPerdas)
+      : faturamentoBruto;
+
+    // 2. Determinação da comissão e bônus conforme o tipo de comissão
+    let pctComissao = Number(rev.comissao) || 30;
+    let comissaoBruta = 0;
+
+    // Volume de faturamento considerado para enquadramento de faixa ou meta
+    let faturamentoVolumeParaFaixa = faturamentoBruto;
+    if (rev.periodoAcumulo === 'MENSAL') {
+      const agora = new Date();
+      const inicioMes = new Date(agora.getFullYear(), agora.getMonth(), 1, 0, 0, 0, 0);
+      
+      let faturamentoAcumuladoMes = 0;
+      if (rev.vendas && Array.isArray(rev.vendas)) {
+        rev.vendas.forEach(v => {
+          const dataVenda = new Date(v.data);
+          if (dataVenda >= inicioMes) {
+            faturamentoAcumuladoMes += Number(v.precoVenda) * Number(v.quantidade || 1);
+          }
+        });
+      }
+      faturamentoVolumeParaFaixa = faturamentoAcumuladoMes;
+      // Garante que inclua o faturamento do acerto atual se alguma venda ainda não tiver sido salva
+      if (faturamentoVolumeParaFaixa < faturamentoBruto) {
+        faturamentoVolumeParaFaixa = faturamentoBruto;
+      }
+    }
+
+    if (rev.tipoComissao === 'PROGRESSIVA') {
+      const faixas = (rev.faixasComissao && rev.faixasComissao.length > 0)
+        ? rev.faixasComissao
+        : (this.state.lojaConfig && this.state.lojaConfig.faixasComissao ? this.state.lojaConfig.faixasComissao : []);
+      const sortedFaixas = [...faixas].sort((a, b) => a.valorMin - b.valorMin);
+      let faixaAtual = null;
+      for (let i = 0; i < sortedFaixas.length; i++) {
+        if (faturamentoVolumeParaFaixa >= sortedFaixas[i].valorMin) {
+          faixaAtual = sortedFaixas[i];
+        }
+      }
+      pctComissao = faixaAtual ? faixaAtual.percentual : (Number(rev.comissao) || 30);
+      comissaoBruta = valorBaseComissao * (pctComissao / 100);
+    } else if (rev.tipoComissao === 'META_UNICA') {
+      const atingiuMeta = faturamentoVolumeParaFaixa >= (rev.metaUnicaValor || 0);
+      if (atingiuMeta) {
+        if (rev.metaUnicaTipoBonus === 'PERCENTUAL') {
+          pctComissao = (Number(rev.comissao) || 30) + (rev.metaUnicaBonus || 0);
+          comissaoBruta = valorBaseComissao * (pctComissao / 100);
+        } else { // Bônus Fixo em Dinheiro
+          pctComissao = Number(rev.comissao) || 30;
+          comissaoBruta = (valorBaseComissao * (pctComissao / 100)) + (rev.metaUnicaBonus || 0);
+        }
+      } else {
+        pctComissao = Number(rev.comissao) || 30;
+        comissaoBruta = valorBaseComissao * (pctComissao / 100);
+      }
+    } else { // FIXA
+      pctComissao = Number(rev.comissao) || 30;
+      comissaoBruta = valorBaseComissao * (pctComissao / 100);
+    }
+
     const comissaoFinal = Math.max(0, comissaoBruta - valorPerdas);
-    const liquidoReceber = faturamentoBruto - comissaoBruta + valorPerdas;
+    const liquidoReceber = faturamentoBruto - comissaoFinal;
 
     document.getElementById("acerto-total-peças-levadas").innerText = `${totalPecasConsignadas} pçs`;
     document.getElementById("acerto-total-faturamento-bruto").innerText = `R$ ${faturamentoBruto.toFixed(2).replace(".", ",")}`;
-    document.getElementById("acerto-comissao-valor").innerText = `R$ ${comissaoBruta.toFixed(2).replace(".", ",")}`;
+    document.getElementById("acerto-comissao-valor").innerText = `R$ ${comissaoFinal.toFixed(2).replace(".", ",")}`;
+    
+    // Atualiza a exibição da porcentagem no recibo/modal em tempo real
+    const elPct = document.getElementById("acerto-comissao-percent");
+    if (elPct) {
+      if (rev.tipoComissao === 'META_UNICA' && faturamentoVolumeParaFaixa >= (rev.metaUnicaValor || 0) && rev.metaUnicaTipoBonus === 'FIXO') {
+        elPct.innerText = `${pctComissao}% + R$ ${rev.metaUnicaBonus}`;
+      } else {
+        elPct.innerText = `${pctComissao}%`;
+      }
+    }
     
     const elDesconto = document.getElementById("acerto-desconto-perdas");
     if (elDesconto) elDesconto.innerText = `- R$ ${valorPerdas.toFixed(2).replace(".", ",")}`;
     
     document.getElementById("acerto-total-liquido-receber").innerText = `R$ ${liquidoReceber.toFixed(2).replace(".", ",")}`;
+
+    // Atualiza o painel de progressão visual de comissão
+    this.atualizarProgressaoComissaoUI(faturamentoVolumeParaFaixa, rev);
   },
 
   finalizarAcerto: async function(abrirWhatsApp = false) {
@@ -3359,10 +3881,69 @@ const app = {
       }
     });
 
-    const valorComissaoBruta = faturamentoBruto * (Number(rev.comissao) / 100);
-    const valorPerdas = itensAcerto.reduce((acc, item) => acc + Number(item.precoVenda) * (item.quantidadePerdida || 0), 0);
-    const valorComissao = Math.max(0, valorComissaoBruta - valorPerdas);
-    const valorLiquido = faturamentoBruto - valorComissaoBruta + valorPerdas;
+    let lostPiecesCounter = 0;
+    let valorPerdas = 0;
+    itensAcerto.forEach(item => {
+      const qtdPerdida = item.quantidadePerdida || 0;
+      if (qtdPerdida > 0) {
+        const prod = this.state.produtos.find(p => p.id === item.produtoId);
+        const custoLiquido = prod ? (prod.custoLiquido || 0) : 0;
+        for (let i = 0; i < qtdPerdida; i++) {
+          lostPiecesCounter++;
+          if (rev.regraPerda === 'ISENTO' && lostPiecesCounter <= (rev.limiteIsencaoPerda || 0)) {
+            valorPerdas += 0;
+          } else if (rev.regraPerda === 'VALOR_CUSTO') {
+            valorPerdas += custoLiquido;
+          } else {
+            valorPerdas += Number(item.precoVenda);
+          }
+        }
+      }
+    });
+
+    // 1. Base de cálculo da comissão: Bruto vs Líquido
+    const valorBaseComissao = (rev.baseCalculo === 'LIQUIDO')
+      ? Math.max(0, faturamentoBruto - valorPerdas)
+      : faturamentoBruto;
+
+    // 2. Determinação da comissão e bônus conforme o tipo de comissão
+    let pctComissao = Number(rev.comissao) || 30;
+    let comissaoBruta = 0;
+
+    if (rev.tipoComissao === 'PROGRESSIVA') {
+      const faixas = (rev.faixasComissao && rev.faixasComissao.length > 0)
+        ? rev.faixasComissao
+        : (this.state.lojaConfig && this.state.lojaConfig.faixasComissao ? this.state.lojaConfig.faixasComissao : []);
+      const sortedFaixas = [...faixas].sort((a, b) => a.valorMin - b.valorMin);
+      let faixaAtual = null;
+      for (let i = 0; i < sortedFaixas.length; i++) {
+        if (faturamentoBruto >= sortedFaixas[i].valorMin) {
+          faixaAtual = sortedFaixas[i];
+        }
+      }
+      pctComissao = faixaAtual ? faixaAtual.percentual : (Number(rev.comissao) || 30);
+      comissaoBruta = valorBaseComissao * (pctComissao / 100);
+    } else if (rev.tipoComissao === 'META_UNICA') {
+      const atingiuMeta = faturamentoBruto >= (rev.metaUnicaValor || 0);
+      if (atingiuMeta) {
+        if (rev.metaUnicaTipoBonus === 'PERCENTUAL') {
+          pctComissao = (Number(rev.comissao) || 30) + (rev.metaUnicaBonus || 0);
+          comissaoBruta = valorBaseComissao * (pctComissao / 100);
+        } else { // Bônus Fixo em Dinheiro
+          pctComissao = Number(rev.comissao) || 30;
+          comissaoBruta = (valorBaseComissao * (pctComissao / 100)) + (rev.metaUnicaBonus || 0);
+        }
+      } else {
+        pctComissao = Number(rev.comissao) || 30;
+        comissaoBruta = valorBaseComissao * (pctComissao / 100);
+      }
+    } else { // FIXA
+      pctComissao = Number(rev.comissao) || 30;
+      comissaoBruta = valorBaseComissao * (pctComissao / 100);
+    }
+
+    const valorComissao = Math.max(0, comissaoBruta - valorPerdas);
+    const valorLiquido = faturamentoBruto - valorComissao;
 
     const selectForma = document.getElementById("acerto-forma-pagamento");
     const formaPagamento = selectForma ? selectForma.value : "Pix";
