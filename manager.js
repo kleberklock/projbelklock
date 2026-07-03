@@ -5115,33 +5115,7 @@ const app = {
 };
 
 // Funções auxiliares para manipulação de cores HEX e aplicação de tema visual white-label
-function aplicarTemaLoja(tema) {
-  if (!tema) return;
-  if (tema.corPrimaria) {
-    document.documentElement.style.setProperty('--gold-primary', tema.corPrimaria);
-    document.documentElement.style.setProperty('--gold-light', alterarBrilhoHex(tema.corPrimaria, 30));
-    document.documentElement.style.setProperty('--gold-dark', alterarBrilhoHex(tema.corPrimaria, -30));
-    document.documentElement.style.setProperty('--gold-gradient', `linear-gradient(135deg, ${alterarBrilhoHex(tema.corPrimaria, -30)} 0%, ${tema.corPrimaria} 40%, ${alterarBrilhoHex(tema.corPrimaria, 30)} 75%, ${alterarBrilhoHex(tema.corPrimaria, -30)} 100%)`);
-    document.documentElement.style.setProperty('--gold-translucent', hexToRgbA(tema.corPrimaria, 0.15));
-    document.documentElement.style.setProperty('--gold-translucent-hover', hexToRgbA(tema.corPrimaria, 0.25));
-    document.documentElement.style.setProperty('--border-gold', `1px solid ${hexToRgbA(tema.corPrimaria, 0.2)}`);
-    document.documentElement.style.setProperty('--border-gold-focus', `1px solid ${hexToRgbA(tema.corPrimaria, 0.7)}`);
-    
-    document.documentElement.style.setProperty('--shadow-premium', `0 10px 30px rgba(0, 0, 0, 0.7), 0 0 15px ${hexToRgbA(tema.corPrimaria, 0.05)}`);
-    document.documentElement.style.setProperty('--shadow-glow', `0 0 15px ${hexToRgbA(tema.corPrimaria, 0.25)}`);
-  }
-  
-  if (tema.bgPrimary) {
-    document.documentElement.style.setProperty('--bg-primary', tema.bgPrimary);
-    document.documentElement.style.setProperty('--bg-absolute', alterarBrilhoHex(tema.bgPrimary, -10));
-  }
-  
-  if (tema.bgCard) {
-    document.documentElement.style.setProperty('--bg-card', tema.bgCard);
-    document.documentElement.style.setProperty('--bg-card-hover', alterarBrilhoHex(tema.bgCard, 10));
-    document.documentElement.style.setProperty('--bg-modal', alterarBrilhoHex(tema.bgCard, 5));
-  }
-}
+
 
 function alterarBrilhoHex(hex, percent) {
   let num = parseInt(hex.replace("#",""), 16),

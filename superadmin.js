@@ -6599,8 +6599,15 @@ const app = {
 };
 
 // Funções auxiliares para manipulação de cores HEX e aplicação de tema visual white-label
+
 function aplicarTemaLoja(tema) {
   if (!tema) return;
+
+  const temaPrefUpper = (tema.temaPref || '').toUpperCase();
+  const isLight = (temaPrefUpper === 'CLARO' || temaPrefUpper === 'LIGHT') || 
+                  ((temaPrefUpper === 'SISTEMA' || temaPrefUpper === 'SYSTEM' || !temaPrefUpper) && 
+                   window.matchMedia && !window.matchMedia('(prefers-color-scheme: dark)').matches);
+
   if (tema.corPrimaria) {
     document.documentElement.style.setProperty('--gold-primary', tema.corPrimaria);
     document.documentElement.style.setProperty('--gold-light', alterarBrilhoHex(tema.corPrimaria, 30));
@@ -6614,16 +6621,30 @@ function aplicarTemaLoja(tema) {
     document.documentElement.style.setProperty('--shadow-premium', `0 10px 30px rgba(0, 0, 0, 0.7), 0 0 15px ${hexToRgbA(tema.corPrimaria, 0.05)}`);
     document.documentElement.style.setProperty('--shadow-glow', `0 0 15px ${hexToRgbA(tema.corPrimaria, 0.25)}`);
   }
-  
-  if (tema.bgPrimary) {
-    document.documentElement.style.setProperty('--bg-primary', tema.bgPrimary);
-    document.documentElement.style.setProperty('--bg-absolute', alterarBrilhoHex(tema.bgPrimary, -10));
-  }
-  
-  if (tema.bgCard) {
-    document.documentElement.style.setProperty('--bg-card', tema.bgCard);
-    document.documentElement.style.setProperty('--bg-card-hover', alterarBrilhoHex(tema.bgCard, 10));
-    document.documentElement.style.setProperty('--bg-modal', alterarBrilhoHex(tema.bgCard, 5));
+
+  const defaultBgPrimary = isLight ? '#f5f5f5' : '#0a0a0a';
+  const defaultBgCard = isLight ? '#ffffff' : '#121212';
+
+  const bgPrimary = tema.bgPrimary && tema.bgPrimary !== '#0a0a0a' ? tema.bgPrimary : defaultBgPrimary;
+  const bgCard = tema.bgCard && tema.bgCard !== '#121212' ? tema.bgCard : defaultBgCard;
+  const bgAbsolute = alterarBrilhoHex(bgPrimary, -10);
+
+  document.documentElement.style.setProperty('--bg-primary', bgPrimary);
+  document.documentElement.style.setProperty('--bg-absolute', bgAbsolute);
+  document.documentElement.style.setProperty('--bg-card', bgCard);
+  document.documentElement.style.setProperty('--bg-card-hover', alterarBrilhoHex(bgCard, isLight ? -8 : 8));
+  document.documentElement.style.setProperty('--bg-modal', alterarBrilhoHex(bgCard, isLight ? -5 : 5));
+
+  if (isLight) {
+    document.documentElement.style.setProperty('--text-primary', '#111111');
+    document.documentElement.style.setProperty('--text-secondary', '#495057');
+    document.documentElement.style.setProperty('--text-muted', '#868e96');
+    document.documentElement.style.setProperty('--text-dark', '#ffffff');
+  } else {
+    document.documentElement.style.setProperty('--text-primary', '#f5f5f5');
+    document.documentElement.style.setProperty('--text-secondary', '#a0a0a0');
+    document.documentElement.style.setProperty('--text-muted', '#666666');
+    document.documentElement.style.setProperty('--text-dark', '#0a0a0a');
   }
 }
 

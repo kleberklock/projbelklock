@@ -24,8 +24,8 @@ if (!JWT_SECRET || JWT_SECRET === 'belklock_super_secret_key_2026') {
 const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5500';
 app.use(cors({
   origin: [
-    frontendUrl, 
-    'http://localhost:5500', 
+    frontendUrl,
+    'http://localhost:5500',
     'http://127.0.0.1:5500',
     'http://localhost:8080',
     'http://127.0.0.1:8080'
@@ -51,7 +51,7 @@ app.use('/uploads', express.static(UPLOADS_DIR));
 
 // Configuração do Multer para Imagens em Memória
 const storage = multer.memoryStorage();
-const upload = multer({ 
+const upload = multer({
   storage: storage,
   limits: { fileSize: 5 * 1024 * 1024 } // limite de 5MB
 });
@@ -67,7 +67,7 @@ const docStorage = multer.diskStorage({
     cb(null, file.fieldname + '-' + uniqueSuffix + ext);
   }
 });
-const uploadDocs = multer({ 
+const uploadDocs = multer({
   storage: docStorage,
   limits: { fileSize: 10 * 1024 * 1024 } // limite de 10MB para documentos
 });
@@ -140,7 +140,7 @@ async function registrarLog(req, acao, detalhes, usuarioInfo = null) {
   try {
     let usuarioId = usuarioInfo ? usuarioInfo.id : (req.user ? req.user.id : null);
     let usuarioNome = usuarioInfo ? usuarioInfo.nome : (req.user ? req.user.nome : null);
-    
+
     await prisma.logAcao.create({
       data: {
         usuarioId,
@@ -348,7 +348,7 @@ app.post('/api/auth/register', autenticarJWT, autorizarRole(['Manager', 'SuperAd
     }
 
     const senhaHash = await bcrypt.hash(senha, 10);
-    
+
     let pin = null;
     if (normalizedRole === 'Consultant') {
       pin = await gerarPinUnico();
@@ -406,11 +406,11 @@ app.post('/api/auth/register', autenticarJWT, autorizarRole(['Manager', 'SuperAd
 
     res.status(201).json({
       message: 'Usuário cadastrado com sucesso!',
-      usuario: { 
-        id: novoUsuario.id, 
-        nome: novoUsuario.nome, 
-        email: novoUsuario.email, 
-        pin: novoUsuario.pin, 
+      usuario: {
+        id: novoUsuario.id,
+        nome: novoUsuario.nome,
+        email: novoUsuario.email,
+        pin: novoUsuario.pin,
         role: novoUsuario.role,
         comissao: novoUsuario.comissao,
         faixasComissao: novoUsuario.faixasComissao,
@@ -568,7 +568,7 @@ app.delete('/api/produtos/:id', autenticarJWT, autorizarRole(['Manager', 'SuperA
     }
 
     await prisma.produto.delete({ where: { id } });
-    
+
     registrarLog(req, "PRODUTO_EXCLUIR", `Excluiu o produto ${prod.nome} (${prod.codigo}).`);
 
     res.json({ message: 'Produto removido com sucesso!' });
@@ -792,7 +792,7 @@ app.get('/api/revendedoras/minha-maleta', autenticarJWT, identificarLoja, async 
         }
       }
     });
-    
+
     const maletaFormatada = consignados.map(c => ({
       produtoId: c.produtoId,
       codigo: c.produto.codigo,
@@ -922,7 +922,7 @@ app.post('/api/consignacoes', autenticarJWT, autorizarRole(['Manager', 'SuperAdm
 app.post('/api/acertos', autenticarJWT, autorizarRole(['Manager', 'SuperAdmin']), identificarLoja, async (req, res) => {
   // itensAcerto: [{ produtoId, quantidadeVendida, quantidadeDevolvida, quantidadePerdida, quantidadeDefeito }]
   const { usuarioId, itensAcerto, formaPagamento } = req.body;
-  
+
   if (!usuarioId || !itensAcerto || itensAcerto.length === 0) {
     return res.status(400).json({ error: 'Falta dados para o fechamento.' });
   }
@@ -1098,7 +1098,7 @@ app.post('/api/acertos', autenticarJWT, autorizarRole(['Manager', 'SuperAdmin'])
 
     // Enviar mensagem de WhatsApp ao realizar acerto de contas (criar na fila)
     const msgTexto = `Olá ${revendedora.nome}! Seu acerto de contas da BelKlock Semijoias foi concluído com sucesso. Resumo do acerto: Faturamento Bruto: R$ ${faturamentoBruto.toFixed(2)} | Comissão Devida: R$ ${comissaoPaga.toFixed(2)} | Retido em Mãos: R$ ${totalRetidoRev.toFixed(2)} | Saldo Final: R$ ${Math.abs(saldoFinal).toFixed(2)} (${saldoFinal >= 0 ? 'A receber da BelKlock' : 'A repassar para a BelKlock'}). Obrigado pela parceria! ✨`;
-    
+
     await prisma.mensagemWhatsapp.create({
       data: {
         numero: revendedora.whatsapp,
@@ -1188,7 +1188,7 @@ app.post('/api/vendas-diretas', autenticarJWT, autorizarRole(['Manager', 'SuperA
 
   try {
     let ultimaVendaCreated = null;
-    
+
     // Cria tantas vendas diretas quanto a quantidade especificada
     for (let i = 0; i < qtd; i++) {
       const venda = await prisma.vendaDireta.create({
@@ -1566,15 +1566,15 @@ app.post('/api/uploads', autenticarJWT, upload.single('imagem'), async (req, res
     console.warn("Aviso: Azure Blob Storage não configurado. Utilizando link simulado temporariamente.");
     // Fallback: Simulador de link local para testes locais
     const blobNameSimulado = `fallback_${Date.now()}_${req.file.originalname}`;
-    return res.json({ 
-      url: `https://via.placeholder.com/450/423004/d4af37?text=${encodeURIComponent(blobNameSimulado)}` 
+    return res.json({
+      url: `https://via.placeholder.com/450/423004/d4af37?text=${encodeURIComponent(blobNameSimulado)}`
     });
   }
 
   try {
     const blobName = `semijoia_${Date.now()}_${Math.random().toString(36).substr(2, 5)}_${req.file.originalname.replace(/\s+/g, '_')}`;
     const blockBlobClient = containerClient.getBlockBlobClient(blobName);
-    
+
     // Faz o upload do buffer diretamente para o contêiner na Azure
     await blockBlobClient.upload(req.file.buffer, req.file.buffer.length, {
       blobHTTPHeaders: { blobContentType: req.file.mimetype }
@@ -1593,7 +1593,7 @@ app.post('/api/uploads', autenticarJWT, upload.single('imagem'), async (req, res
 
 app.post('/api/importar', autenticarJWT, autorizarRole(['Manager', 'SuperAdmin']), identificarLoja, async (req, res) => {
   const { produtos, revendedoras, substituirTudo } = req.body;
-  
+
   try {
     if (substituirTudo) {
       // Limpa todas as tabelas (exceto administradores) da loja atual
@@ -1611,7 +1611,7 @@ app.post('/api/importar', autenticarJWT, autorizarRole(['Manager', 'SuperAdmin']
     if (produtos && produtos.length > 0) {
       for (const p of produtos) {
         const existente = await prisma.produto.findFirst({ where: { codigo: p.codigo, lojaId: req.lojaId } });
-        
+
         if (existente) {
           if (!substituirTudo) {
             await prisma.produto.update({
@@ -1649,7 +1649,7 @@ app.post('/api/importar', autenticarJWT, autorizarRole(['Manager', 'SuperAdmin']
     if (revendedoras && revendedoras.length > 0) {
       for (const r of revendedoras) {
         const emailTemporario = r.email || (r.nome.toLowerCase().replace(/\s+/g, '') + "_" + Math.floor(Math.random() * 1000) + "@belklock.com");
-        
+
         let existente = await prisma.usuario.findFirst({
           where: {
             lojaId: req.lojaId,
@@ -1677,7 +1677,7 @@ app.post('/api/importar', autenticarJWT, autorizarRole(['Manager', 'SuperAdmin']
           const senhaGerada = gerarSenhaAleatoria(8);
           const senhaHash = await bcrypt.hash(senhaGerada, 10);
           const pin = r.pin || Math.floor(1000 + Math.random() * 9000).toString();
-          
+
           const novaRev = await prisma.usuario.create({
             data: {
               id: r.id && !r.id.startsWith('rev_') ? r.id : undefined,
@@ -1738,7 +1738,7 @@ app.post('/api/importar', autenticarJWT, autorizarRole(['Manager', 'SuperAdmin']
       }
     }
 
-    res.json({ 
+    res.json({
       message: 'Dados importados e sincronizados com sucesso no banco de dados SQLite!',
       novasRevendedoras: novasRevendedorasSenhas
     });
@@ -1795,10 +1795,10 @@ app.post('/api/clientes', autenticarJWT, autorizarRole(['Consultant', 'Manager',
     }
 
     const cliente = await prisma.cliente.create({
-      data: { 
-        nome, 
-        whatsapp, 
-        dataNascimento: dataNascimento || null, 
+      data: {
+        nome,
+        whatsapp,
+        dataNascimento: dataNascimento || null,
         observacoes: observacoes || null,
         lojaId: req.lojaId,
         usuarioId: userFilter
@@ -1814,7 +1814,7 @@ app.post('/api/clientes', autenticarJWT, autorizarRole(['Consultant', 'Manager',
 app.put('/api/clientes/:id', autenticarJWT, autorizarRole(['Consultant', 'Manager', 'SuperAdmin']), identificarLoja, async (req, res) => {
   const { id } = req.params;
   const { nome, whatsapp, dataNascimento, observacoes } = req.body;
-  
+
   let searchWhere = { id, lojaId: req.lojaId };
   if (req.user.role === 'Consultant') {
     searchWhere.usuarioId = req.user.id;
@@ -1854,7 +1854,7 @@ app.put('/api/clientes/:id', autenticarJWT, autorizarRole(['Consultant', 'Manage
 // Excluir Cliente
 app.delete('/api/clientes/:id', autenticarJWT, autorizarRole(['Consultant', 'Manager', 'SuperAdmin']), identificarLoja, async (req, res) => {
   const { id } = req.params;
-  
+
   let searchWhere = { id, lojaId: req.lojaId };
   if (req.user.role === 'Consultant') {
     searchWhere.usuarioId = req.user.id;
@@ -1967,48 +1967,49 @@ app.put('/api/config', autenticarJWT, autorizarRole(['Manager', 'SuperAdmin']), 
     let config = await prisma.configuracao.findFirst({
       where: { lojaId: req.lojaId }
     });
-
-    // Dados base sempre suportados
-    const dadosBase = {
-      nomeEmpresa: nomeEmpresa !== undefined ? nomeEmpresa : (config ? config.nomeEmpresa : 'BelKlock Semijoias'),
-      logoUrl: logoUrl !== undefined ? logoUrl : (config ? config.logoUrl : ''),
-      corPrimaria: corPrimaria !== undefined ? corPrimaria : (config ? config.corPrimaria : '#d4af37'),
-      corSecundaria: corSecundaria !== undefined ? corSecundaria : (config ? config.corSecundaria : '#111111'),
-      bgPrimary: bgPrimary !== undefined ? bgPrimary : (config ? config.bgPrimary : '#0a0a0a'),
-      bgCard: bgCard !== undefined ? bgCard : (config ? config.bgCard : '#121212'),
-      whatsappAtendimento: whatsappAtendimento !== undefined ? whatsappAtendimento : (config ? config.whatsappAtendimento : ''),
-      temaPref: temaPref !== undefined ? temaPref : (config ? config.temaPref : 'ESCURO'),
-      segmento: segmento !== undefined ? segmento : (config ? config.segmento : ''),
-      estiloLoja: estiloLoja !== undefined ? estiloLoja : (config ? config.estiloLoja : ''),
-      onboardingCompleto: onboardingCompleto !== undefined ? onboardingCompleto : (config ? config.onboardingCompleto : false)
-    };
-
-    // Tentar incluir campos de redes sociais (podem não existir no Prisma Client em cache)
-    try {
-      dadosBase.instagram = instagram !== undefined ? instagram : (config && config.instagram ? config.instagram : '');
-      dadosBase.tiktok = tiktok !== undefined ? tiktok : (config && config.tiktok ? config.tiktok : '');
-      dadosBase.site = site !== undefined ? site : (config && config.site ? config.site : '');
-    } catch (e) {
-      console.warn('Campos de redes sociais não disponíveis no Prisma Client atual (reinicie o servidor para ativar).');
-    }
-
     if (!config) {
-      dadosBase.lojaId = req.lojaId;
-      config = await prisma.configuracao.create({ data: dadosBase });
+      config = await prisma.configuracao.create({
+        data: {
+          lojaId: req.lojaId,
+          nomeEmpresa: nomeEmpresa || 'BelKlock Semijoias',
+          logoUrl: logoUrl || '',
+          corPrimaria: corPrimaria || '#d4af37',
+          corSecundaria: corSecundaria || '#111111',
+          bgPrimary: bgPrimary || '#0a0a0a',
+          bgCard: bgCard || '#121212',
+          whatsappAtendimento: whatsappAtendimento || '',
+          temaPref: temaPref || 'Escuro',
+          segmento: segmento || 'Semijoias',
+          estiloLoja: estiloLoja || 'Premium',
+          onboardingCompleto: onboardingCompleto !== undefined ? onboardingCompleto : false
+        }
+      });
     } else {
       config = await prisma.configuracao.update({
         where: { id: config.id },
-        data: dadosBase
+        data: {
+          nomeEmpresa: nomeEmpresa !== undefined ? nomeEmpresa : config.nomeEmpresa,
+          logoUrl: logoUrl !== undefined ? logoUrl : config.logoUrl,
+          corPrimaria: corPrimaria !== undefined ? corPrimaria : config.corPrimaria,
+          corSecundaria: corSecundaria !== undefined ? corSecundaria : config.corSecundaria,
+          bgPrimary: bgPrimary !== undefined ? bgPrimary : config.bgPrimary,
+          bgCard: bgCard !== undefined ? bgCard : config.bgCard,
+          whatsappAtendimento: whatsappAtendimento !== undefined ? whatsappAtendimento : config.whatsappAtendimento,
+          temaPref: temaPref !== undefined ? temaPref : config.temaPref,
+          segmento: segmento !== undefined ? segmento : config.segmento,
+          estiloLoja: estiloLoja !== undefined ? estiloLoja : config.estiloLoja,
+          instagram: instagram !== undefined ? instagram : (config.instagram || ''),
+          tiktok: tiktok !== undefined ? tiktok : (config.tiktok || ''),
+          site: site !== undefined ? site : (config.site || ''),
+          onboardingCompleto: onboardingCompleto !== undefined ? onboardingCompleto : config.onboardingCompleto
+        }
       });
     }
-
-    // Registrar log sem bloquear resposta
-    registrarLog(req, 'Atualizar Configurações', `nomeEmpresa: ${dadosBase.nomeEmpresa}, corPrimaria: ${dadosBase.corPrimaria}`).catch(() => {});
-
+    await registrarLog(req, 'Atualizar Configurações', `Configuração alterada: ${JSON.stringify(config)}`);
     res.json(config);
   } catch (error) {
     console.error('Erro ao atualizar configuração:', error);
-    res.status(500).json({ error: 'Erro ao atualizar configurações da loja.', detalhes: error.message });
+    res.status(500).json({ error: 'Erro ao atualizar configurações da loja.' });
   }
 });
 
@@ -2100,7 +2101,7 @@ app.post('/api/public/onboarding', uploadDocs.fields([
   { name: 'enderecoFile', maxCount: 1 }
 ]), async (req, res) => {
   const { nome, email, whatsapp, cpf, rg, endereco, vendedoraPrincipal, comoConheceu, experienciaVendas, comentarios, lojaId } = req.body;
-  
+
   if (!nome || !email || !whatsapp || !cpf) {
     return res.status(400).json({ error: 'Campos obrigatórios ausentes: nome, e-mail, whatsapp e CPF.' });
   }
@@ -2191,7 +2192,7 @@ app.post('/api/public/onboarding', uploadDocs.fields([
 
     // Criar mensagem de boas-vindas na fila do WhatsApp
     const mensagemTexto = `Olá ${nome}, seja muito bem-vinda à BelKlock Semijoias! ✨ Seu cadastro de Consultora foi realizado com sucesso. Aqui estão suas credenciais para entrar no portal: Login (PIN): ${pin} | Senha Temporária: ${senhaProvisoria} | Link do portal: ${frontendUrl}/manager.html`;
-    
+
     await prisma.mensagemWhatsapp.create({
       data: {
         numero: whatsapp,
@@ -2607,7 +2608,7 @@ async function inicializarLojaPadrao() {
     if (superAdminEmail && superAdminSenha) {
       const superAdminExiste = await prisma.usuario.findUnique({ where: { email: superAdminEmail } });
       const senhaHash = await bcrypt.hash(superAdminSenha, 10);
-      
+
       if (!superAdminExiste) {
         await prisma.usuario.create({
           data: {
