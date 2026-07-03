@@ -285,12 +285,14 @@ app.post('/api/auth/signup', async (req, res) => {
       }
     });
 
+    const pin = await gerarPinUnico();
     const senhaHash = await bcrypt.hash(senha, 10);
 
     const novaGestora = await prisma.usuario.create({
       data: {
         nome,
         email,
+        pin,
         senhaHash,
         role: 'Manager',
         lojaId: novaLoja.id,
@@ -308,12 +310,14 @@ app.post('/api/auth/signup', async (req, res) => {
     res.status(201).json({
       message: 'Gestora e Marca registradas com sucesso!',
       token,
+      pin,
       usuario: {
         id: novaGestora.id,
         nome: novaGestora.nome,
         email: novaGestora.email,
         role: novaGestora.role,
-        lojaId: novaGestora.lojaId
+        lojaId: novaGestora.lojaId,
+        pin: pin
       }
     });
   } catch (error) {
@@ -381,6 +385,24 @@ app.post('/api/auth/register', autenticarJWT, autorizarRole(['Manager', 'SuperAd
         faixasComissao: true
       }
     });
+
+    // Se o usuário criado for uma consultora (revendedora), cria mensagem de boas-vindas na fila do WhatsApp
+    if (normalizedRole === 'Consultant') {
+      const msgTexto = `Olá ${nome}, seja muito bem-vinda à BelKlock Semijoias! ✨ Seu cadastro de Consultora foi realizado com sucesso. Aqui estão suas credenciais para entrar no portal: Login (PIN): ${pin} | Senha Temporária: ${senha} | Link do portal: ${frontendUrl}/manager.html`;
+      try {
+        await prisma.mensagemWhatsapp.create({
+          data: {
+            numero: whatsapp,
+            mensagem: msgTexto,
+            tipo: 'BOAS_VINDAS',
+            status: 'PENDENTE',
+            lojaId: req.lojaId
+          }
+        });
+      } catch (wsErr) {
+        console.error("Erro ao agendar WhatsApp de boas-vindas no cadastro manual:", wsErr);
+      }
+    }
 
     res.status(201).json({
       message: 'Usuário cadastrado com sucesso!',
@@ -1082,7 +1104,8 @@ app.post('/api/acertos', autenticarJWT, autorizarRole(['Manager', 'SuperAdmin'])
         numero: revendedora.whatsapp,
         mensagem: msgTexto,
         tipo: 'ACERTO',
-        status: 'PENDENTE'
+        status: 'PENDENTE',
+        lojaId: req.lojaId
       }
     });
 
@@ -1127,7 +1150,7 @@ app.get('/api/acertos/historico', autenticarJWT, identificarLoja, async (req, re
 // ==========================================
 
 app.post('/api/vendas-diretas', autenticarJWT, autorizarRole(['Manager', 'SuperAdmin']), identificarLoja, async (req, res) => {
-  let { codigo, nome, preco, whatsappCliente, nomeCliente, clienteId, quantidade, produtoId } = req.body;
+  let { codigo, nome, preco, whatsappCliente, nomeCliente, clienteId, quantidade, produtoId, desconto, motivoDesconto, formaPagamento } = req.body;
 
   // Se veio produtoId e não veio codigo/nome, busca no estoque central
   if (produtoId && (!codigo || !nome)) {
@@ -1158,6 +1181,10 @@ app.post('/api/vendas-diretas', autenticarJWT, autorizarRole(['Manager', 'SuperA
   }
 
   const qtd = parseInt(quantidade) || 1;
+  const descTotal = parseFloat(desconto) || 0.0;
+  const descPorItem = descTotal / qtd;
+  const motivo = motivoDesconto || null;
+  const forma = formaPagamento || "Pix";
 
   try {
     let ultimaVendaCreated = null;
@@ -1168,11 +1195,14 @@ app.post('/api/vendas-diretas', autenticarJWT, autorizarRole(['Manager', 'SuperA
         data: {
           codigo,
           nome,
-          preco: parseFloat(preco),
+          preco: parseFloat(preco) - descPorItem,
           whatsappCliente,
           nomeCliente,
           clienteId: clienteId || null,
-          lojaId: req.lojaId
+          lojaId: req.lojaId,
+          desconto: descPorItem,
+          motivoDesconto: motivo,
+          formaPagamento: forma
         }
       });
       ultimaVendaCreated = venda;
@@ -1376,7 +1406,7 @@ app.get('/api/relatorios/dre', autenticarJWT, autorizarRole(['Manager', 'SuperAd
 
 // Registrar venda (Revendedora registra venda de item da maleta)
 app.post('/api/vendas-revendedora', autenticarJWT, autorizarRole(['Consultant']), identificarLoja, async (req, res) => {
-  const { produtoId, quantidade } = req.body;
+  const { produtoId, quantidade, desconto, motivoDesconto, formaPagamento } = req.body;
   const usuarioId = req.user.id;
 
   if (!produtoId || !quantidade || quantidade <= 0) {
@@ -1402,7 +1432,10 @@ app.post('/api/vendas-revendedora', autenticarJWT, autorizarRole(['Consultant'])
       return res.status(400).json({ error: `Quantidade insuficiente na maleta. Você tem apenas ${consignado.quantidadeConsignada} unidade(s).` });
     }
 
-    const comissaoValor = consignado.precoVenda * quantidade * (consignado.usuario.comissao / 100);
+    const descTotal = parseFloat(desconto) || 0.0;
+    const descPorItem = descTotal / quantidade;
+    const precoFinal = consignado.precoVenda - descPorItem;
+    const comissaoValor = precoFinal * quantidade * (consignado.usuario.comissao / 100);
 
     // Deduz da maleta ou remove o item se zerou
     const novaQtd = consignado.quantidadeConsignada - quantidade;
@@ -1423,15 +1456,18 @@ app.post('/api/vendas-revendedora', autenticarJWT, autorizarRole(['Consultant'])
         nomeProduto: consignado.produto.nome,
         codigoProduto: consignado.produto.codigo,
         quantidade,
-        precoVenda: consignado.precoVenda,
+        precoVenda: precoFinal,
         comissaoValor,
-        lojaId: req.lojaId
+        lojaId: req.lojaId,
+        desconto: descPorItem,
+        motivoDesconto: motivoDesconto || null,
+        formaPagamento: formaPagamento || "Dinheiro"
       }
     });
 
     // Cria notificação de venda para o Admin
     try {
-      const valorTotal = consignado.precoVenda * quantidade;
+      const valorTotal = precoFinal * quantidade;
       await prisma.notificacao.create({
         data: {
           tipo: 'venda_revendedora',
@@ -1442,7 +1478,7 @@ app.post('/api/vendas-revendedora', autenticarJWT, autorizarRole(['Consultant'])
             produtoNome: consignado.produto.nome,
             produtoCodigo: consignado.produto.codigo,
             quantidade,
-            precoVenda: consignado.precoVenda,
+            precoVenda: precoFinal,
             valorTotal,
             comissaoValor,
             data: venda.data
@@ -1717,10 +1753,15 @@ app.post('/api/importar', autenticarJWT, autorizarRole(['Manager', 'SuperAdmin']
 // ==========================================
 
 // Listar Clientes
-app.get('/api/clientes', autenticarJWT, autorizarRole(['Manager', 'SuperAdmin']), identificarLoja, async (req, res) => {
+app.get('/api/clientes', autenticarJWT, autorizarRole(['Consultant', 'Manager', 'SuperAdmin']), identificarLoja, async (req, res) => {
   try {
+    let where = { lojaId: req.lojaId };
+    // Consultoras só veem os clientes que cadastraram
+    if (req.user.role === 'Consultant') {
+      where.usuarioId = req.user.id;
+    }
     const clientes = await prisma.cliente.findMany({
-      where: { lojaId: req.lojaId },
+      where,
       orderBy: { nome: 'asc' }
     });
     res.json(clientes);
@@ -1730,38 +1771,74 @@ app.get('/api/clientes', autenticarJWT, autorizarRole(['Manager', 'SuperAdmin'])
 });
 
 // Criar Cliente
-app.post('/api/clientes', autenticarJWT, autorizarRole(['Manager', 'SuperAdmin']), identificarLoja, async (req, res) => {
+app.post('/api/clientes', autenticarJWT, autorizarRole(['Consultant', 'Manager', 'SuperAdmin']), identificarLoja, async (req, res) => {
   const { nome, whatsapp, dataNascimento, observacoes } = req.body;
   if (!nome || !whatsapp) {
     return res.status(400).json({ error: 'Nome e WhatsApp são obrigatórios.' });
   }
+
+  const isConsultant = req.user.role === 'Consultant';
+  const userFilter = isConsultant ? req.user.id : null;
+
   try {
+    // Validar se o cliente já existe para este mesmo usuário (ou loja para admin)
+    const existente = await prisma.cliente.findFirst({
+      where: {
+        lojaId: req.lojaId,
+        whatsapp,
+        usuarioId: userFilter
+      }
+    });
+
+    if (existente) {
+      return res.status(400).json({ error: 'Já existe uma cliente cadastrada com este WhatsApp.' });
+    }
+
     const cliente = await prisma.cliente.create({
       data: { 
         nome, 
         whatsapp, 
         dataNascimento: dataNascimento || null, 
         observacoes: observacoes || null,
-        lojaId: req.lojaId
+        lojaId: req.lojaId,
+        usuarioId: userFilter
       }
     });
     res.status(201).json(cliente);
   } catch (error) {
-    if (error.code === 'P2002') {
-      return res.status(400).json({ error: 'Já existe uma cliente cadastrada com este WhatsApp nesta loja.' });
-    }
     res.status(500).json({ error: 'Erro ao cadastrar cliente.' });
   }
 });
 
 // Editar Cliente
-app.put('/api/clientes/:id', autenticarJWT, autorizarRole(['Manager', 'SuperAdmin']), identificarLoja, async (req, res) => {
+app.put('/api/clientes/:id', autenticarJWT, autorizarRole(['Consultant', 'Manager', 'SuperAdmin']), identificarLoja, async (req, res) => {
   const { id } = req.params;
   const { nome, whatsapp, dataNascimento, observacoes } = req.body;
+  
+  let searchWhere = { id, lojaId: req.lojaId };
+  if (req.user.role === 'Consultant') {
+    searchWhere.usuarioId = req.user.id;
+  }
+
   try {
-    const cliente = await prisma.cliente.findFirst({ where: { id, lojaId: req.lojaId } });
+    const cliente = await prisma.cliente.findFirst({ where: searchWhere });
     if (!cliente) {
-      return res.status(403).json({ error: 'Acesso negado ou cliente não encontrada nesta loja.' });
+      return res.status(403).json({ error: 'Acesso negado ou cliente não encontrada.' });
+    }
+
+    // Se mudou whatsapp, garante que não colide com outra cliente do mesmo usuário/loja
+    if (whatsapp && whatsapp !== cliente.whatsapp) {
+      const colide = await prisma.cliente.findFirst({
+        where: {
+          lojaId: req.lojaId,
+          whatsapp,
+          usuarioId: req.user.role === 'Consultant' ? req.user.id : null,
+          id: { not: id }
+        }
+      });
+      if (colide) {
+        return res.status(400).json({ error: 'Já existe outra cliente cadastrada com este WhatsApp.' });
+      }
     }
 
     const clienteAtualizado = await prisma.cliente.update({
@@ -1770,20 +1847,23 @@ app.put('/api/clientes/:id', autenticarJWT, autorizarRole(['Manager', 'SuperAdmi
     });
     res.json(clienteAtualizado);
   } catch (error) {
-    if (error.code === 'P2002') {
-      return res.status(400).json({ error: 'Já existe uma cliente cadastrada com este WhatsApp nesta loja.' });
-    }
     res.status(500).json({ error: 'Erro ao atualizar cliente.' });
   }
 });
 
 // Excluir Cliente
-app.delete('/api/clientes/:id', autenticarJWT, autorizarRole(['Manager', 'SuperAdmin']), identificarLoja, async (req, res) => {
+app.delete('/api/clientes/:id', autenticarJWT, autorizarRole(['Consultant', 'Manager', 'SuperAdmin']), identificarLoja, async (req, res) => {
   const { id } = req.params;
+  
+  let searchWhere = { id, lojaId: req.lojaId };
+  if (req.user.role === 'Consultant') {
+    searchWhere.usuarioId = req.user.id;
+  }
+
   try {
-    const cliente = await prisma.cliente.findFirst({ where: { id, lojaId: req.lojaId } });
+    const cliente = await prisma.cliente.findFirst({ where: searchWhere });
     if (!cliente) {
-      return res.status(403).json({ error: 'Acesso negado ou cliente não encontrada nesta loja.' });
+      return res.status(403).json({ error: 'Acesso negado ou cliente não encontrada.' });
     }
 
     await prisma.cliente.delete({ where: { id } });
@@ -1865,6 +1945,11 @@ app.get('/api/config', identificarLoja, async (req, res) => {
           corSecundaria: '#111111',
           bgPrimary: '#0a0a0a',
           bgCard: '#121212',
+          whatsappAtendimento: '',
+          temaPref: 'Escuro',
+          segmento: 'Semijoias',
+          estiloLoja: 'Premium',
+          onboardingCompleto: false
         }
       });
     }
@@ -1877,41 +1962,53 @@ app.get('/api/config', identificarLoja, async (req, res) => {
 
 // PUT /api/config - Atualizar configuração da loja (Somente Admin)
 app.put('/api/config', autenticarJWT, autorizarRole(['Manager', 'SuperAdmin']), identificarLoja, async (req, res) => {
-  const { nomeEmpresa, logoUrl, corPrimaria, corSecundaria, bgPrimary, bgCard } = req.body;
+  const { nomeEmpresa, logoUrl, corPrimaria, corSecundaria, bgPrimary, bgCard, whatsappAtendimento, temaPref, segmento, estiloLoja, instagram, tiktok, site, onboardingCompleto } = req.body;
   try {
     let config = await prisma.configuracao.findFirst({
       where: { lojaId: req.lojaId }
     });
+
+    // Dados base sempre suportados
+    const dadosBase = {
+      nomeEmpresa: nomeEmpresa !== undefined ? nomeEmpresa : (config ? config.nomeEmpresa : 'BelKlock Semijoias'),
+      logoUrl: logoUrl !== undefined ? logoUrl : (config ? config.logoUrl : ''),
+      corPrimaria: corPrimaria !== undefined ? corPrimaria : (config ? config.corPrimaria : '#d4af37'),
+      corSecundaria: corSecundaria !== undefined ? corSecundaria : (config ? config.corSecundaria : '#111111'),
+      bgPrimary: bgPrimary !== undefined ? bgPrimary : (config ? config.bgPrimary : '#0a0a0a'),
+      bgCard: bgCard !== undefined ? bgCard : (config ? config.bgCard : '#121212'),
+      whatsappAtendimento: whatsappAtendimento !== undefined ? whatsappAtendimento : (config ? config.whatsappAtendimento : ''),
+      temaPref: temaPref !== undefined ? temaPref : (config ? config.temaPref : 'ESCURO'),
+      segmento: segmento !== undefined ? segmento : (config ? config.segmento : ''),
+      estiloLoja: estiloLoja !== undefined ? estiloLoja : (config ? config.estiloLoja : ''),
+      onboardingCompleto: onboardingCompleto !== undefined ? onboardingCompleto : (config ? config.onboardingCompleto : false)
+    };
+
+    // Tentar incluir campos de redes sociais (podem não existir no Prisma Client em cache)
+    try {
+      dadosBase.instagram = instagram !== undefined ? instagram : (config && config.instagram ? config.instagram : '');
+      dadosBase.tiktok = tiktok !== undefined ? tiktok : (config && config.tiktok ? config.tiktok : '');
+      dadosBase.site = site !== undefined ? site : (config && config.site ? config.site : '');
+    } catch (e) {
+      console.warn('Campos de redes sociais não disponíveis no Prisma Client atual (reinicie o servidor para ativar).');
+    }
+
     if (!config) {
-      config = await prisma.configuracao.create({
-        data: {
-          lojaId: req.lojaId,
-          nomeEmpresa: nomeEmpresa || 'BelKlock Semijoias',
-          logoUrl: logoUrl || '',
-          corPrimaria: corPrimaria || '#d4af37',
-          corSecundaria: corSecundaria || '#111111',
-          bgPrimary: bgPrimary || '#0a0a0a',
-          bgCard: bgCard || '#121212',
-        }
-      });
+      dadosBase.lojaId = req.lojaId;
+      config = await prisma.configuracao.create({ data: dadosBase });
     } else {
       config = await prisma.configuracao.update({
         where: { id: config.id },
-        data: {
-          nomeEmpresa: nomeEmpresa !== undefined ? nomeEmpresa : config.nomeEmpresa,
-          logoUrl: logoUrl !== undefined ? logoUrl : config.logoUrl,
-          corPrimaria: corPrimaria !== undefined ? corPrimaria : config.corPrimaria,
-          corSecundaria: corSecundaria !== undefined ? corSecundaria : config.corSecundaria,
-          bgPrimary: bgPrimary !== undefined ? bgPrimary : config.bgPrimary,
-          bgCard: bgCard !== undefined ? bgCard : config.bgCard,
-        }
+        data: dadosBase
       });
     }
-    await registrarLog(req, 'Atualizar Configurações', `Configuração alterada: ${JSON.stringify(config)}`);
+
+    // Registrar log sem bloquear resposta
+    registrarLog(req, 'Atualizar Configurações', `nomeEmpresa: ${dadosBase.nomeEmpresa}, corPrimaria: ${dadosBase.corPrimaria}`).catch(() => {});
+
     res.json(config);
   } catch (error) {
     console.error('Erro ao atualizar configuração:', error);
-    res.status(500).json({ error: 'Erro ao atualizar configurações da loja.' });
+    res.status(500).json({ error: 'Erro ao atualizar configurações da loja.', detalhes: error.message });
   }
 });
 
@@ -2100,7 +2197,8 @@ app.post('/api/public/onboarding', uploadDocs.fields([
         numero: whatsapp,
         mensagem: mensagemTexto,
         tipo: 'BOAS_VINDAS',
-        status: 'PENDENTE'
+        status: 'PENDENTE',
+        lojaId: lid
       }
     });
 
@@ -2359,9 +2457,10 @@ app.post('/api/public/termos/:id/assinar', async (req, res) => {
 });
 
 // 5. Listar fila de mensagens pendentes do WhatsApp (Admin)
-app.get('/api/whatsapp/fila', autenticarJWT, autorizarRole(['Manager', 'SuperAdmin']), async (req, res) => {
+app.get('/api/whatsapp/fila', autenticarJWT, autorizarRole(['Manager', 'SuperAdmin']), identificarLoja, async (req, res) => {
   try {
     const fila = await prisma.mensagemWhatsapp.findMany({
+      where: { lojaId: req.lojaId },
       orderBy: { createdAt: 'desc' }
     });
     res.json(fila);
@@ -2431,12 +2530,12 @@ app.delete('/api/treinamentos/:id', autenticarJWT, autorizarRole(['Manager', 'Su
 });
 
 // 7. Reiniciar ciclo de comissões/metas e alertar a revendedora via WhatsApp (Admin)
-app.post('/api/revendedoras/:id/reiniciar-comissoes', autenticarJWT, autorizarRole(['Manager', 'SuperAdmin']), async (req, res) => {
+app.post('/api/revendedoras/:id/reiniciar-comissoes', autenticarJWT, autorizarRole(['Manager', 'SuperAdmin']), identificarLoja, async (req, res) => {
   const { id } = req.params;
   try {
-    const rev = await prisma.usuario.findFirst({ where: { id, role: 'Consultant' } });
+    const rev = await prisma.usuario.findFirst({ where: { id, role: 'Consultant', lojaId: req.lojaId } });
     if (!rev) {
-      return res.status(404).json({ error: 'Revendedora não encontrada.' });
+      return res.status(404).json({ error: 'Revendedora não encontrada nesta loja.' });
     }
 
     const dataAtual = new Date().toLocaleDateString('pt-BR');
@@ -2447,7 +2546,8 @@ app.post('/api/revendedoras/:id/reiniciar-comissoes', autenticarJWT, autorizarRo
         numero: rev.whatsapp,
         mensagem: msgTexto,
         tipo: 'REINICIO_COMISSAO',
-        status: 'PENDENTE'
+        status: 'PENDENTE',
+        lojaId: req.lojaId
       }
     });
 

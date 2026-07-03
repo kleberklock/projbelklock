@@ -372,6 +372,11 @@ const app = {
       if (response.ok) {
         const config = await response.json();
         this.aplicarConfiguracoes(config);
+        
+        // Se o onboarding não estiver completo, abre o wizard do onboarding
+        if (config.onboardingCompleto === false) {
+          this.abrirOnboardingWizard();
+        }
         return;
       }
     } catch (error) {
@@ -1402,6 +1407,16 @@ const app = {
         }
       }
     });
+
+    // Wizard de Onboarding
+    const btnWzNext = document.getElementById("btn-wizard-next");
+    const btnWzPrev = document.getElementById("btn-wizard-prev");
+    if (btnWzNext) {
+      btnWzNext.addEventListener("click", () => this.avancarWizard());
+    }
+    if (btnWzPrev) {
+      btnWzPrev.addEventListener("click", () => this.voltarWizard());
+    }
   },
 
   configurarModal: function(modalId, triggerId, closeBtnId, cancelBtnId) {
@@ -4558,6 +4573,16 @@ const app = {
     const novoBox = document.getElementById("vr-novo-cliente-box");
     if (novoBox) novoBox.style.display = "block";
 
+    // Reseta descontos da venda rápida
+    const chk = document.getElementById("vr-has-discount");
+    if (chk) chk.checked = false;
+    const box = document.getElementById("vr-discount-box");
+    if (box) box.style.display = "none";
+    const val = document.getElementById("vr-desconto");
+    if (val) val.value = 0;
+    const mot = document.getElementById("vr-desconto-motivo");
+    if (mot) mot.value = "";
+
     const tbody = document.querySelector("#table-selecionar-venda-rapida tbody");
     tbody.innerHTML = "";
 
@@ -4581,6 +4606,20 @@ const app = {
     }
 
     document.getElementById("modal-venda-rapida").classList.add("active");
+  },
+
+  toggleDescontoVendaRapida: function() {
+    const chk = document.getElementById("vr-has-discount");
+    const box = document.getElementById("vr-discount-box");
+    const val = document.getElementById("vr-desconto");
+    const mot = document.getElementById("vr-desconto-motivo");
+    if (chk && box) {
+      box.style.display = chk.checked ? "block" : "none";
+      if (!chk.checked) {
+        if (val) val.value = 0;
+        if (mot) mot.value = "";
+      }
+    }
   },
 
   processarVendaRapidaWhats: async function() {
@@ -4638,11 +4677,23 @@ const app = {
       return;
     }
 
+    // Obter desconto e motivo
+    let descontoTotal = 0;
+    let motivoDesconto = "";
+    const chkDesconto = document.getElementById("vr-has-discount");
+    const inputDesconto = document.getElementById("vr-desconto");
+    const reasonDesconto = document.getElementById("vr-desconto-motivo");
+    if (chkDesconto && chkDesconto.checked) {
+      descontoTotal = parseFloat(inputDesconto ? inputDesconto.value : 0) || 0;
+      motivoDesconto = (reasonDesconto ? reasonDesconto.value : "").trim();
+    }
+
     // Pergunta se deseja registrar a baixa no sistema
     const registrarBaixa = await this.confirmar("Deseja registrar esta venda direta no banco de dados do sistema e deduzir a quantidade do estoque central?");
 
     if (registrarBaixa) {
       try {
+        const descPorItem = descontoTotal / selecionados.length;
         for (const item of selecionados) {
           // Se houver conexão de API ativa
           if (this.state.token) {
@@ -4652,7 +4703,10 @@ const app = {
               preco: item.preco,
               whatsappCliente: whatsapp,
               nomeCliente: nomeCliente,
-              clienteId: clienteId || undefined
+              clienteId: clienteId || undefined,
+              desconto: descPorItem,
+              motivoDesconto: motivoDesconto,
+              formaPagamento: "Pix" // Venda rápida por WhatsApp sempre assume Pix
             });
           }
           
@@ -4668,7 +4722,7 @@ const app = {
         this.renderizarDashboard();
       } catch (error) {
         console.error(error);
-        this.toast("Erro ao registrar a venda direta na Azure: " + error.message, "error");
+        this.toast("Erro ao registrar a venda direta: " + error.message, "error");
       }
     }
 
@@ -4680,8 +4734,14 @@ const app = {
       valorTotal += item.preco;
     });
 
-    if (selecionados.length > 1) {
-      listaTexto += `\n*Valor Total de Compra:* R$ ${valorTotal.toFixed(2).replace(".", ",")}`;
+    if (descontoTotal > 0) {
+      listaTexto += `\n*Valor de Tabela:* R$ ${valorTotal.toFixed(2).replace(".", ",")}`;
+      listaTexto += `\n*Desconto Especial:* - R$ ${descontoTotal.toFixed(2).replace(".", ",")}`;
+      listaTexto += `\n*Valor Líquido:* R$ ${(valorTotal - descontoTotal).toFixed(2).replace(".", ",")}`;
+    } else {
+      if (selecionados.length > 1) {
+        listaTexto += `\n*Valor Total de Compra:* R$ ${valorTotal.toFixed(2).replace(".", ",")}`;
+      }
     }
 
     let mensagem = MarketingData.whatsappTemplates.envioCatalogo;
@@ -6384,6 +6444,155 @@ const app = {
       this.toast("Ciclo de comissões reiniciado e WhatsApp agendado!", "success");
     } catch (e) {
       this.toast("Erro ao reiniciar ciclo: " + e.message, "error");
+    }
+  },
+
+  wizardStep: 1,
+
+  abrirOnboardingWizard: function() {
+    this.wizardStep = 1;
+    this.atualizarPassoWizard();
+    document.getElementById("modal-onboarding-wizard").style.display = "flex";
+  },
+
+  atualizarPassoWizard: function() {
+    for (let i = 1; i <= 3; i++) {
+      const stepEl = document.getElementById(`wizard-step-${i}`);
+      if (stepEl) stepEl.style.display = "none";
+    }
+    const currentStepEl = document.getElementById(`wizard-step-${this.wizardStep}`);
+    if (currentStepEl) currentStepEl.style.display = "block";
+    
+    const dots = document.querySelectorAll("#wizard-steps-indicator .step-dot");
+    dots.forEach((dot, idx) => {
+      if (idx === this.wizardStep - 1) {
+        dot.classList.add("active");
+        dot.style.background = "var(--gold-primary)";
+      } else {
+        dot.classList.remove("active");
+        dot.style.background = "rgba(255,255,255,0.2)";
+      }
+    });
+
+    const btnPrev = document.getElementById("btn-wizard-prev");
+    const btnNext = document.getElementById("btn-wizard-next");
+    
+    if (this.wizardStep === 1) {
+      if (btnPrev) btnPrev.style.visibility = "hidden";
+    } else {
+      if (btnPrev) btnPrev.style.visibility = "visible";
+    }
+    
+    if (btnNext) {
+      if (this.wizardStep === 3) {
+        btnNext.innerHTML = '<i class="fa-solid fa-check"></i> Concluir';
+      } else {
+        btnNext.innerHTML = 'Avançar <i class="fa-solid fa-chevron-right"></i>';
+      }
+    }
+  },
+
+  avancarWizard: async function() {
+    if (this.wizardStep < 3) {
+      this.wizardStep++;
+      this.atualizarPassoWizard();
+    } else {
+      const nomeComercial = document.getElementById("wz-nome-comercial").value.trim();
+      const whatsapp = document.getElementById("wz-whatsapp").value.trim();
+      
+      if (!nomeComercial) {
+        this.toast("Por favor, preencha o Nome Comercial da sua marca.", "warning");
+        this.wizardStep = 1;
+        this.atualizarPassoWizard();
+        return;
+      }
+      
+      if (!whatsapp) {
+        this.toast("Por favor, preencha o WhatsApp de Atendimento.", "warning");
+        this.wizardStep = 2;
+        this.atualizarPassoWizard();
+        return;
+      }
+
+      const btnNext = document.getElementById("btn-wizard-next");
+      if (btnNext) {
+        btnNext.disabled = true;
+        btnNext.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Salvando...';
+      }
+
+      try {
+        const segmento = document.getElementById("wz-segmento").value;
+        const estiloLoja = document.getElementById("wz-estilo-visual").value;
+        const temaPref = document.getElementById("wz-tema").value;
+        const corPrimaria = document.getElementById("wz-cor-primaria").value;
+        const corSecundaria = document.getElementById("wz-cor-secundaria").value;
+        
+        let logoUrl = "";
+        const logoFile = document.getElementById("wz-logo-file").files[0];
+        if (logoFile) {
+          const formData = new FormData();
+          formData.append("imagem", logoFile);
+          
+          const uploadResp = await fetch(`${this.state.apiUrl}/uploads`, {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${this.state.token}`
+            },
+            body: formData
+          });
+          if (uploadResp.ok) {
+            const uploadData = await uploadResp.json();
+            logoUrl = uploadData.url;
+          }
+        }
+
+        const body = {
+          nomeEmpresa: nomeComercial,
+          logoUrl,
+          corPrimaria,
+          corSecundaria,
+          whatsappAtendimento: whatsapp,
+          temaPref,
+          segmento,
+          estiloLoja,
+          onboardingCompleto: true
+        };
+
+        const response = await fetch(`${this.state.apiUrl}/config`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${this.state.token}`,
+            "x-loja-id": localStorage.getItem("belklock_loja_id") || "default-loja"
+          },
+          body: JSON.stringify(body)
+        });
+
+        if (response.ok) {
+          const configSalva = await response.json();
+          this.aplicarConfiguracoes(configSalva);
+          document.getElementById("modal-onboarding-wizard").style.display = "none";
+          this.toast("Sua loja foi personalizada com sucesso! ✨ Recomendamos recarregar para aplicar o tema.", "success");
+        } else {
+          const err = await response.json();
+          throw new Error(err.error || "Erro ao salvar configuração.");
+        }
+      } catch (error) {
+        console.error("Erro no onboarding wizard:", error);
+        this.toast("Erro ao salvar personalização: " + error.message, "error");
+      } finally {
+        if (btnNext) {
+          btnNext.disabled = false;
+          btnNext.innerHTML = '<i class="fa-solid fa-check"></i> Concluir';
+        }
+      }
+    }
+  },
+
+  voltarWizard: function() {
+    if (this.wizardStep > 1) {
+      this.wizardStep--;
+      this.atualizarPassoWizard();
     }
   }
 

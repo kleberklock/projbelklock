@@ -482,7 +482,7 @@ const app = {
       if (menuMarketing) menuMarketing.style.display = "none";
       if (menuDashboard) menuDashboard.style.display = "none";
       if (menuVendasGeral) menuVendasGeral.style.display = "none";
-      if (menuClientes) menuClientes.style.display = "none";
+      if (menuClientes) menuClientes.style.display = "block";
       if (menuConfiguracoes) menuConfiguracoes.style.display = "none";
       if (btnCadastrarProduto) btnCadastrarProduto.style.display = "none";
       if (divHeaderActions) divHeaderActions.style.display = "none";
@@ -530,6 +530,7 @@ const app = {
       // Revendedora: carrega maleta e navega direto para Minha Maleta
       await this.carregarMaletaPropriaDaAPI();
       await this.carregarVendasRevendedora();
+      await this.carregarClientesDaAPI();
       try {
         this.state.vendasPendentes = await this.requisitarAPI("/vendas-revendedora?apenasPendentes=true");
       } catch (err) {
@@ -539,6 +540,7 @@ const app = {
       this.aplicarRestricoesPerfil();
       this.renderizarAbas();
       this.renderizarMinhaMaleta();
+      this.renderizarClientes();
       // Atualiza boas-vindas com nome
       const el = document.getElementById("maleta-boas-vindas");
       if (el) el.innerText = `Olá, ${this.state.usuarioLogado.nome.split(' ')[0]}! 💎`;
@@ -946,7 +948,7 @@ const app = {
     maleta.forEach(item => {
       const opt = document.createElement("option");
       opt.value = item.produtoId;
-      opt.textContent = `${item.nome} (${item.quantidadeConsignada} unid. — R$ ${Number(item.precoVenda||0).toFixed(2).replace(".",",")})`;
+      opt.textContent = `[${item.codigo || '—'}] ${item.nome} (${item.quantidadeConsignada} unid. — R$ ${Number(item.precoVenda||0).toFixed(2).replace(".",",")})`;
       opt.setAttribute("data-preco", item.precoVenda);
       opt.setAttribute("data-max", item.quantidadeConsignada);
       select.appendChild(opt);
@@ -955,6 +957,18 @@ const app = {
     // Reseta campos
     const qtdInput = document.getElementById("venda-rev-qtd");
     if (qtdInput) { qtdInput.value = 1; qtdInput.max = 99; }
+    
+    const hasDiscount = document.getElementById("venda-rev-has-discount");
+    if (hasDiscount) hasDiscount.checked = false;
+    const discountBox = document.getElementById("venda-rev-discount-box");
+    if (discountBox) discountBox.style.display = "none";
+    const discountVal = document.getElementById("venda-rev-desconto");
+    if (discountVal) discountVal.value = 0;
+    const discountReason = document.getElementById("venda-rev-desconto-motivo");
+    if (discountReason) discountReason.value = "";
+    const paymentSelect = document.getElementById("venda-rev-pagamento");
+    if (paymentSelect) paymentSelect.value = "Dinheiro";
+
     const preview = document.getElementById("venda-rev-preview");
     if (preview) preview.style.display = "none";
     const aviso = document.getElementById("venda-rev-aviso");
@@ -965,6 +979,24 @@ const app = {
     if (pct) pct.innerText = this.state.usuarioLogado ? this.state.usuarioLogado.comissao : 30;
 
     document.getElementById("modal-venda-rev").classList.add("active");
+  },
+
+  toggleDescontoVendaRev: function() {
+    const hasDiscount = document.getElementById("venda-rev-has-discount");
+    const box = document.getElementById("venda-rev-discount-box");
+    const input = document.getElementById("venda-rev-desconto");
+    const reason = document.getElementById("venda-rev-desconto-motivo");
+    
+    if (!box || !hasDiscount) return;
+    
+    if (hasDiscount.checked) {
+      box.style.display = "block";
+    } else {
+      box.style.display = "none";
+      if (input) input.value = 0;
+      if (reason) reason.value = "";
+    }
+    this.atualizarPreviewVendaRev();
   },
 
   atualizarPreviewVendaRev: function() {
@@ -996,13 +1028,39 @@ const app = {
       }
     }
 
-    const total = preco * Math.min(qtd, max);
-    const comissaoValor = total * (comissao / 100);
+    const totalBruto = preco * Math.min(qtd, max);
+    
+    let desconto = 0;
+    const hasDiscount = document.getElementById("venda-rev-has-discount");
+    const discountVal = document.getElementById("venda-rev-desconto");
+    if (hasDiscount && hasDiscount.checked && discountVal) {
+      desconto = parseFloat(discountVal.value) || 0;
+      if (desconto > totalBruto) {
+        desconto = totalBruto;
+        discountVal.value = totalBruto.toFixed(2);
+      }
+    }
+    
+    const totalLiquido = totalBruto - desconto;
+    const comissaoValor = totalLiquido * (comissao / 100);
 
-    document.getElementById("prev-venda-nome").innerText = selectedOpt.textContent.split(" (")[0];
+    const textSplit = selectedOpt.textContent.split("] ");
+    const nomeProduto = textSplit.length > 1 ? textSplit[1].split(" (")[0] : selectedOpt.textContent.split(" (")[0];
+
+    document.getElementById("prev-venda-nome").innerText = nomeProduto;
     document.getElementById("prev-venda-qtd").innerText = `${Math.min(qtd, max)} unid.`;
     document.getElementById("prev-venda-preco-unit").innerText = `R$ ${preco.toFixed(2).replace(".", ",")}`;
-    document.getElementById("prev-venda-total").innerText = `R$ ${total.toFixed(2).replace(".", ",")}`;
+    
+    const descRow = document.getElementById("prev-venda-desconto-row");
+    const descValSpan = document.getElementById("prev-venda-desconto-val");
+    if (desconto > 0) {
+      if (descRow) descRow.style.display = "flex";
+      if (descValSpan) descValSpan.innerText = `- R$ ${desconto.toFixed(2).replace(".", ",")}`;
+    } else {
+      if (descRow) descRow.style.display = "none";
+    }
+
+    document.getElementById("prev-venda-total").innerText = `R$ ${totalLiquido.toFixed(2).replace(".", ",")}`;
     document.getElementById("prev-venda-comissao-valor").innerText = `R$ ${comissaoValor.toFixed(2).replace(".", ",")}`;
 
     preview.style.display = "block";
@@ -1035,6 +1093,19 @@ const app = {
       return;
     }
 
+    // Capturar novos campos
+    let desconto = 0;
+    let motivoDesconto = "";
+    const hasDiscount = document.getElementById("venda-rev-has-discount");
+    const discountVal = document.getElementById("venda-rev-desconto");
+    const discountReason = document.getElementById("venda-rev-desconto-motivo");
+    if (hasDiscount && hasDiscount.checked) {
+      desconto = parseFloat(discountVal ? discountVal.value : 0) || 0;
+      motivoDesconto = (discountReason ? discountReason.value : "").trim();
+    }
+    const formaPagamentoSelect = document.getElementById("venda-rev-pagamento");
+    const formaPagamento = formaPagamentoSelect ? formaPagamentoSelect.value : "Dinheiro";
+
     const btnConfirmar = document.getElementById("btn-confirmar-venda-rev");
     if (btnConfirmar) {
       btnConfirmar.disabled = true;
@@ -1058,7 +1129,9 @@ const app = {
           throw new Error(`Quantidade insuficiente na maleta. Você tem apenas ${item.quantidadeConsignada} unidade(s).`);
         }
 
-        const comissaoValor = item.precoVenda * quantidade * ((this.state.usuarioLogado.comissao || 30) / 100);
+        const totalBruto = item.precoVenda * quantidade;
+        const totalLiquido = totalBruto - desconto;
+        const comissaoValor = totalLiquido * ((this.state.usuarioLogado.comissao || 30) / 100);
         const novaQtd = item.quantidadeConsignada - quantidade;
 
         if (novaQtd === 0) {
@@ -1075,8 +1148,11 @@ const app = {
           nomeProduto: item.nome,
           codigoProduto: item.codigo,
           quantidade: quantidade,
-          precoVenda: item.precoVenda,
-          comissaoValor: comissaoValor
+          precoVenda: item.precoVenda - (desconto / quantidade),
+          comissaoValor: comissaoValor,
+          desconto: desconto / quantidade,
+          motivoDesconto: motivoDesconto,
+          formaPagamento: formaPagamento
         };
 
         resp = {
@@ -1084,7 +1160,7 @@ const app = {
           resumo: {
             nomeProduto: item.nome,
             quantidade,
-            totalVenda: item.precoVenda * quantidade,
+            totalVenda: totalLiquido,
             comissaoValor,
             qtdRestanteNaMaleta: novaQtd
           }
@@ -1118,7 +1194,7 @@ const app = {
         });
         localStorage.setItem("belklock_notificacoes_mock", JSON.stringify(mockNotificacoes));
       } else {
-        resp = await this.requisitarAPI("/vendas-revendedora", "POST", { produtoId, quantidade });
+        resp = await this.requisitarAPI("/vendas-revendedora", "POST", { produtoId, quantidade, desconto, motivoDesconto, formaPagamento });
 
         // Atualiza maleta local: reduz a quantidade consignada ou remove item
         const rev = this.state.revendedoras.find(r => r.id === this.state.usuarioLogado.id);

@@ -59,6 +59,7 @@ model Usuario {
   consignados  Consignado[]
   historico    HistoricoAcerto[]
   vendas       VendaRevendedora[]
+  clientes     Cliente[]
   createdAt    DateTime           @default(now())
   faixasComissao FaixaComissao[]
 }
@@ -133,6 +134,9 @@ model VendaDireta {
   nomeCliente     String?
   clienteId       String?
   cliente         Cliente? @relation(fields: [clienteId], references: [id])
+  desconto        Float    @default(0.0)
+  motivoDesconto  String?
+  formaPagamento  String?  @default("Pix")
 }
 
 model VendaRevendedora {
@@ -156,14 +160,19 @@ model VendaRevendedora {
   linkPagamentoId String?
 
   usuario       Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  desconto        Float    @default(0.0)
+  motivoDesconto  String?
+  formaPagamento  String?  @default("Dinheiro")
 }
 
 model Cliente {
   id               String             @id @default(uuid())
   lojaId           String             @default("default-loja")
   loja             Loja               @relation(fields: [lojaId], references: [id], onDelete: Cascade)
+  usuarioId        String?
+  usuario          Usuario?           @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
   nome             String
-  whatsapp         String             @unique
+  whatsapp         String
   dataNascimento   String?
   observacoes      String?
   vendas           VendaDireta[]
@@ -204,6 +213,15 @@ model Configuracao {
   bgCard        String   @default("#121212")
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+
+  whatsappAtendimento String?
+  temaPref            String   @default("SISTEMA") // "CLARO" | "ESCURO" | "SISTEMA"
+  segmento            String?
+  estiloLoja          String?
+  onboardingCompleto  Boolean  @default(false)
+  instagram           String   @default("")
+  tiktok              String   @default("")
+  site                String   @default("")
 }
 
 model FaixaComissao {

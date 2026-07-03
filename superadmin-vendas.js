@@ -45,6 +45,18 @@ Object.assign(app, {
     const clienteWhatsInput = document.getElementById("venda-admin-cliente-whatsapp");
     if (clienteWhatsInput) clienteWhatsInput.value = "";
 
+    const hasDiscount = document.getElementById("venda-admin-has-discount");
+    if (hasDiscount) hasDiscount.checked = false;
+
+    const discountBox = document.getElementById("venda-admin-discount-box");
+    if (discountBox) discountBox.style.display = "none";
+
+    const discountVal = document.getElementById("venda-admin-desconto");
+    if (discountVal) discountVal.value = 0;
+
+    const discountReason = document.getElementById("venda-admin-desconto-motivo");
+    if (discountReason) discountReason.value = "";
+
     const previewBox = document.getElementById("venda-admin-preview");
     if (previewBox) previewBox.style.display = "none";
 
@@ -60,6 +72,24 @@ Object.assign(app, {
     if (novoClienteBox) novoClienteBox.style.display = "none";
 
     modal.classList.add("active");
+  },
+
+  toggleDescontoVendaAdmin: function() {
+    const hasDiscount = document.getElementById("venda-admin-has-discount");
+    const box = document.getElementById("venda-admin-discount-box");
+    const input = document.getElementById("venda-admin-desconto");
+    const reason = document.getElementById("venda-admin-desconto-motivo");
+    
+    if (!box || !hasDiscount) return;
+    
+    if (hasDiscount.checked) {
+      box.style.display = "block";
+    } else {
+      box.style.display = "none";
+      if (input) input.value = 0;
+      if (reason) reason.value = "";
+    }
+    this.atualizarPreviewVendaAdmin();
   },
 
   _popularSelectProdutosVendaAdmin: function() {
@@ -154,10 +184,24 @@ Object.assign(app, {
     }
 
     const qtdReal = Math.min(qtd, max);
-    const total = preco * qtdReal;
+    const totalBruto = preco * qtdReal;
     const custoTotal = custo * qtdReal;
-    const lucroEstimado = total - custoTotal;
-    const margemLucro = total > 0 ? ((lucroEstimado / total) * 100).toFixed(1) : 0;
+    
+    // Calcula desconto
+    let desconto = 0;
+    const hasDiscount = document.getElementById("venda-admin-has-discount");
+    const discountVal = document.getElementById("venda-admin-desconto");
+    if (hasDiscount && hasDiscount.checked && discountVal) {
+      desconto = parseFloat(discountVal.value) || 0;
+      if (desconto > totalBruto) {
+        desconto = totalBruto;
+        discountVal.value = totalBruto.toFixed(2);
+      }
+    }
+
+    const totalLiquido = totalBruto - desconto;
+    const lucroEstimado = totalLiquido - custoTotal;
+    const margemLucro = totalLiquido > 0 ? ((lucroEstimado / totalLiquido) * 100).toFixed(1) : 0;
 
     const nomeProduto = selectedOpt.getAttribute("data-nome") || selectedOpt.textContent.split(" (")[0];
 
@@ -171,7 +215,17 @@ Object.assign(app, {
     if (elNome) elNome.innerText = nomeProduto;
     if (elQtd) elQtd.innerText = `${qtdReal} unid.`;
     if (elPrecoUnit) elPrecoUnit.innerText = `R$ ${preco.toFixed(2).replace('.', ',')}`;
-    if (elTotal) elTotal.innerText = `R$ ${total.toFixed(2).replace('.', ',')}`;
+    
+    const descRow = document.getElementById("venda-admin-prev-desconto-row");
+    const descValSpan = document.getElementById("venda-admin-prev-desconto-val");
+    if (desconto > 0) {
+      if (descRow) descRow.style.display = "flex";
+      if (descValSpan) descValSpan.innerText = `- R$ ${desconto.toFixed(2).replace('.', ',')}`;
+    } else {
+      if (descRow) descRow.style.display = "none";
+    }
+
+    if (elTotal) elTotal.innerText = `R$ ${totalLiquido.toFixed(2).replace('.', ',')}`;
     if (elLucro) elLucro.innerText = `R$ ${lucroEstimado.toFixed(2).replace('.', ',')}`;
     if (elMargem) elMargem.innerText = `${margemLucro}%`;
 
@@ -240,6 +294,17 @@ Object.assign(app, {
       const formaPagamento = pagamentoInput ? pagamentoInput.value : "Pix";
       const observacoes = obsInput ? obsInput.value.trim() : "";
 
+      // Obter desconto e motivo
+      let desconto = 0;
+      let motivoDesconto = "";
+      const hasDiscount = document.getElementById("venda-admin-has-discount");
+      const discountVal = document.getElementById("venda-admin-desconto");
+      const discountReason = document.getElementById("venda-admin-desconto-motivo");
+      if (hasDiscount && hasDiscount.checked) {
+        desconto = parseFloat(discountVal ? discountVal.value : 0) || 0;
+        motivoDesconto = (discountReason ? discountReason.value : "").trim();
+      }
+
       // Dados do cliente
       let clienteId = selectCliente ? selectCliente.value : "avulso";
       let nomeCliente = "Cliente Avulso";
@@ -278,8 +343,9 @@ Object.assign(app, {
       }
 
       const totalVenda = preco * quantidade;
+      const totalLiquido = totalVenda - desconto;
       const custoTotalVenda = custo * quantidade;
-      const lucroEstimado = totalVenda - custoTotalVenda;
+      const lucroEstimado = totalLiquido - custoTotalVenda;
 
       let novaVenda;
 
@@ -295,7 +361,7 @@ Object.assign(app, {
           quantidade: quantidade,
           precoVenda: preco,
           custoUnitario: custo,
-          total: totalVenda,
+          total: totalLiquido,
           custoTotal: custoTotalVenda,
           lucroEstimado: lucroEstimado,
           comissao: 0,
@@ -307,7 +373,9 @@ Object.assign(app, {
           vendedor: "BelKlock (Direta)",
           contato: whatsappCliente || "—",
           cliente: nomeCliente,
-          usuarioId: null
+          usuarioId: null,
+          desconto: desconto,
+          motivoDesconto: motivoDesconto
         };
 
         // Deduz do estoque local
@@ -336,7 +404,9 @@ Object.assign(app, {
           whatsappCliente,
           clienteId: (clienteId && clienteId !== "avulso" && clienteId !== "novo") ? clienteId : null,
           formaPagamento,
-          observacoes
+          observacoes,
+          desconto,
+          motivoDesconto
         };
 
         const resp = await this.requisitarAPI("/vendas-diretas", "POST", body);
@@ -351,7 +421,7 @@ Object.assign(app, {
           quantidade: quantidade,
           precoVenda: preco,
           custoUnitario: custo,
-          total: totalVenda,
+          total: totalLiquido,
           custoTotal: custoTotalVenda,
           lucroEstimado: lucroEstimado,
           comissao: 0,
@@ -363,7 +433,9 @@ Object.assign(app, {
           vendedor: "BelKlock (Direta)",
           contato: whatsappCliente || "—",
           cliente: nomeCliente,
-          usuarioId: null
+          usuarioId: null,
+          desconto: desconto,
+          motivoDesconto: motivoDesconto
         };
 
         // Atualiza estoque local a partir da resposta da API

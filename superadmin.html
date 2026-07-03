@@ -2072,6 +2072,25 @@
         </div>
       </div>
 
+      <!-- Desconto no Venda Rápida -->
+      <div class="form-group" style="margin-top: 1rem; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 1rem;">
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 0.8rem;">
+          <input type="checkbox" id="vr-has-discount" onchange="app.toggleDescontoVendaRapida()" style="width: auto; cursor: pointer;">
+          <label for="vr-has-discount" style="margin-bottom: 0; cursor: pointer; font-weight: 500; font-size: 0.9rem;">Dar desconto nesta venda?</label>
+        </div>
+        
+        <div id="vr-discount-box" class="pricing-calculator-card" style="display: none; padding: 1rem; border-color: rgba(212, 175, 55, 0.35); background: rgba(255, 255, 255, 0.03); border-radius: var(--radius-sm);">
+          <div class="form-group" style="margin-bottom: 0.8rem;">
+            <label for="vr-desconto" style="font-size: 0.8rem;">Valor do Desconto Total (R$) *</label>
+            <input type="number" id="vr-desconto" class="form-control" value="0" min="0" step="0.01">
+          </div>
+          <div class="form-group" style="margin-bottom: 0;">
+            <label for="vr-desconto-motivo" style="font-size: 0.8rem;">Motivo do Desconto *</label>
+            <textarea id="vr-desconto-motivo" class="form-control" rows="2" placeholder="Motivo do desconto..." style="resize: none;"></textarea>
+          </div>
+        </div>
+      </div>
+
       <div class="modal-footer">
         <button class="btn-outline-gold" id="btn-cancelar-venda-rapida">Cancelar</button>
         <button class="btn-gold" id="btn-enviar-venda-rapida"><i class="fa-brands fa-whatsapp"></i> Gerar e Enviar</button>
@@ -2299,6 +2318,26 @@
             </div>
           </div>
 
+          <!-- Opção de Desconto -->
+          <div class="form-group" style="margin-top: 1rem;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <input type="checkbox" id="venda-admin-has-discount" onchange="app.toggleDescontoVendaAdmin()" style="width: auto; cursor: pointer;">
+              <label for="venda-admin-has-discount" style="margin-bottom: 0; cursor: pointer; font-weight: 500;">Aplicar Desconto Especial</label>
+            </div>
+          </div>
+          
+          <!-- Balão do Desconto (começa oculto) -->
+          <div id="venda-admin-discount-box" class="pricing-calculator-card" style="display: none; padding: 1rem; margin-top: 0.8rem; border-color: rgba(212, 175, 55, 0.35); background: rgba(255, 255, 255, 0.03); border-radius: var(--radius-sm);">
+            <div class="form-group" style="margin-bottom: 0.8rem;">
+              <label for="venda-admin-desconto" style="font-size: 0.8rem;">Valor do Desconto Total (R$) *</label>
+              <input type="number" id="venda-admin-desconto" class="form-control" value="0" min="0" step="0.01" oninput="app.atualizarPreviewVendaAdmin()">
+            </div>
+            <div class="form-group" style="margin-bottom: 0;">
+              <label for="venda-admin-desconto-motivo" style="font-size: 0.8rem;">Motivo do Desconto *</label>
+              <textarea id="venda-admin-desconto-motivo" class="form-control" rows="2" placeholder="Ex: Cliente comprou em lote, promoção especial etc." style="resize: none;"></textarea>
+            </div>
+          </div>
+
           <!-- Observações -->
           <div class="form-group" style="margin-top: 1rem;">
             <label for="venda-admin-observacoes">Observações (opcional)</label>
@@ -2323,8 +2362,12 @@
               <span>Preço por unidade</span>
               <span id="venda-admin-prev-preco-unit">R$ 0,00</span>
             </div>
+            <div class="pricing-row" id="venda-admin-prev-desconto-row" style="display: none; color: #ef9a9a;">
+              <span>Desconto</span>
+              <span id="venda-admin-prev-desconto-val">- R$ 0,00</span>
+            </div>
             <div class="pricing-row total-venda-rev-row">
-              <span>Total da Venda</span>
+              <span>Valor Recebido (Líquido)</span>
               <span id="venda-admin-prev-total">R$ 0,00</span>
             </div>
             <div class="pricing-row profit profit-venda-rev-row">
@@ -2473,6 +2516,116 @@
           </div>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- ==========================================
+       WIZARD DE ONBOARDING DA GESTORA
+       ========================================== -->
+  <div class="modal-backdrop" id="modal-onboarding-wizard" style="display: none; align-items: center; justify-content: center; z-index: 9999;">
+    <div class="modal-card" style="width: 600px; max-width: 95%; background: radial-gradient(circle at top left, #1a1a1a, #0a0a0a); border: 1px solid rgba(212, 175, 55, 0.4); box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8);">
+      
+      <!-- Cabeçalho do Wizard -->
+      <div style="text-align: center; margin-bottom: 2rem;">
+        <div style="width: 60px; height: 60px; background: rgba(212, 175, 55, 0.1); border: 1px solid var(--gold-primary); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem auto; box-shadow: 0 0 15px rgba(212, 175, 55, 0.2);">
+          <i class="fa-solid fa-gem" style="color: var(--gold-primary); font-size: 1.6rem;"></i>
+        </div>
+        <h2 style="font-family: 'Playfair Display', serif; color: #fff; margin-bottom: 0.5rem; letter-spacing: 1px;">Personalize Sua Loja</h2>
+        <p style="color: var(--text-secondary); font-size: 0.85rem;">Configure a identidade da sua marca em menos de 1 minuto.</p>
+        
+        <!-- Indicador de Passos -->
+        <div style="display: flex; justify-content: center; gap: 8px; margin-top: 1.5rem;" id="wizard-steps-indicator">
+          <span class="step-dot active" style="width: 10px; height: 10px; border-radius: 50%; background: var(--gold-primary); display: inline-block;"></span>
+          <span class="step-dot" style="width: 10px; height: 10px; border-radius: 50%; background: rgba(255,255,255,0.2); display: inline-block;"></span>
+          <span class="step-dot" style="width: 10px; height: 10px; border-radius: 50%; background: rgba(255,255,255,0.2); display: inline-block;"></span>
+        </div>
+      </div>
+
+      <!-- Corpo do Wizard -->
+      <div id="wizard-body">
+        
+        <!-- PASSO 1: Informações Básicas -->
+        <div class="wizard-step" id="wizard-step-1">
+          <div class="form-group" style="margin-bottom: 1.2rem;">
+            <label for="wz-nome-comercial">Nome Comercial da sua Marca *</label>
+            <input type="text" id="wz-nome-comercial" class="form-control" placeholder="Ex: BelKlock Semijoias Luxe" style="background: rgba(255,255,255,0.03); border-color: rgba(255,255,255,0.1); color: #fff;">
+          </div>
+          <div class="form-group" style="margin-bottom: 1.2rem;">
+            <label for="wz-segmento">Principal Segmento *</label>
+            <select id="wz-segmento" class="form-control" style="background: rgba(255,255,255,0.03); border-color: rgba(255,255,255,0.1); color: #fff;">
+              <option value="Semijoias" selected>Semijoias & Joias</option>
+              <option value="Pratas">Pratas 925</option>
+              <option value="Acessórios">Acessórios de Moda</option>
+              <option value="Outro">Outro segmento</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- PASSO 2: Contato & Logo -->
+        <div class="wizard-step" id="wizard-step-2" style="display: none;">
+          <div class="form-group" style="margin-bottom: 1.2rem;">
+            <label for="wz-whatsapp">WhatsApp de Atendimento Oficial *</label>
+            <input type="text" id="wz-whatsapp" class="form-control" placeholder="(11) 99999-9999" style="background: rgba(255,255,255,0.03); border-color: rgba(255,255,255,0.1); color: #fff;">
+          </div>
+          <div class="form-group" style="margin-bottom: 1.2rem;">
+            <label for="wz-logo">Você já possui uma logo da sua marca?</label>
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+              <input type="file" id="wz-logo-file" class="form-control" accept="image/*" style="background: rgba(255,255,255,0.03); border-color: rgba(255,255,255,0.1); color: #fff;">
+              <span style="font-size: 0.75rem; color: var(--text-secondary);">Formatos aceitos: PNG, JPG, WEBP. Se não enviar, usaremos uma logo premium gerada por texto.</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- PASSO 3: Identidade Visual -->
+        <div class="wizard-step" id="wizard-step-3" style="display: none;">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem; margin-bottom: 1.2rem;">
+            <div class="form-group" style="margin-bottom: 0;">
+              <label for="wz-cor-primaria">Cor Primária (Destaques)</label>
+              <div style="display: flex; gap: 10px; align-items: center;">
+                <input type="color" id="wz-cor-primaria" value="#d4af37" style="border: none; background: none; width: 40px; height: 40px; cursor: pointer; padding: 0;">
+                <span style="font-size: 0.85rem; color: #fff;">Toque para alterar</span>
+              </div>
+            </div>
+            <div class="form-group" style="margin-bottom: 0;">
+              <label for="wz-cor-secundaria">Cor Secundária (Fundo Escuro)</label>
+              <div style="display: flex; gap: 10px; align-items: center;">
+                <input type="color" id="wz-cor-secundaria" value="#111111" style="border: none; background: none; width: 40px; height: 40px; cursor: pointer; padding: 0;">
+                <span style="font-size: 0.85rem; color: #fff;">Toque para alterar</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-bottom: 1.2rem;">
+            <label for="wz-estilo-visual">Estilo Visual da sua Loja *</label>
+            <select id="wz-estilo-visual" class="form-control" style="background: rgba(255,255,255,0.03); border-color: rgba(255,255,255,0.1); color: #fff;">
+              <option value="Premium" selected>Premium & Luxo (Dourado e Preto)</option>
+              <option value="Delicado">Delicado (Tons Pastel e Suaves)</option>
+              <option value="Minimalista">Minimalista (Branco e Cinza Clean)</option>
+              <option value="Moderno">Moderno (Neon e Alta Vibração)</option>
+            </select>
+          </div>
+
+          <div class="form-group" style="margin-bottom: 0;">
+            <label for="wz-tema">Tema de Interface Preferido *</label>
+            <select id="wz-tema" class="form-control" style="background: rgba(255,255,255,0.03); border-color: rgba(255,255,255,0.1); color: #fff;">
+              <option value="Escuro" selected>Tema Escuro (Recomendado)</option>
+              <option value="Claro">Tema Claro</option>
+            </select>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Rodapé do Wizard -->
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 2.5rem; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 1.5rem;">
+        <button class="btn-outline-gold" id="btn-wizard-prev" style="visibility: hidden; min-width: 100px;">
+          <i class="fa-solid fa-chevron-left"></i> Voltar
+        </button>
+        <button class="btn-gold" id="btn-wizard-next" style="min-width: 120px;">
+          Avançar <i class="fa-solid fa-chevron-right"></i>
+        </button>
+      </div>
+
     </div>
   </div>
 

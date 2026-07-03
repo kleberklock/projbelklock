@@ -1781,6 +1781,37 @@
             <button class="btn-input-adjust" onclick="app.ajustarQtdVendaRev(1)"><i class="fa-solid fa-plus"></i></button>
           </div>
         </div>
+
+        <!-- Opção de Desconto -->
+        <div class="form-group" style="margin-top: 1rem;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <input type="checkbox" id="venda-rev-has-discount" onchange="app.toggleDescontoVendaRev()" style="width: auto; cursor: pointer;">
+            <label for="venda-rev-has-discount" style="margin-bottom: 0; cursor: pointer; font-weight: 500;">Aplicar Desconto Especial</label>
+          </div>
+        </div>
+        
+        <!-- Balão do Desconto (começa oculto) -->
+        <div id="venda-rev-discount-box" class="pricing-calculator-card" style="display: none; padding: 1rem; margin-top: 0.8rem; border-color: rgba(212, 175, 55, 0.35); background: rgba(255, 255, 255, 0.03); border-radius: var(--radius-sm);">
+          <div class="form-group" style="margin-bottom: 0.8rem;">
+            <label for="venda-rev-desconto" style="font-size: 0.8rem;">Valor do Desconto Total (R$) *</label>
+            <input type="number" id="venda-rev-desconto" class="form-control" value="0" min="0" step="0.01" oninput="app.atualizarPreviewVendaRev()">
+          </div>
+          <div class="form-group" style="margin-bottom: 0;">
+            <label for="venda-rev-desconto-motivo" style="font-size: 0.8rem;">Motivo do Desconto *</label>
+            <textarea id="venda-rev-desconto-motivo" class="form-control" rows="2" placeholder="Ex: Cliente comprou mais peças, negociação etc." style="resize: none;"></textarea>
+          </div>
+        </div>
+
+        <!-- Forma de Pagamento -->
+        <div class="form-group" style="margin-top: 1rem;">
+          <label for="venda-rev-pagamento">Forma de Pagamento *</label>
+          <select id="venda-rev-pagamento" class="form-control">
+            <option value="Dinheiro" selected>Dinheiro</option>
+            <option value="Pix">Pix</option>
+            <option value="Cartão de Crédito">Cartão de Crédito</option>
+            <option value="Cartão de Débito">Cartão de Débito</option>
+          </select>
+        </div>
       </div>
 
       <!-- Preview do Cálculo -->
@@ -1798,8 +1829,12 @@
           <span>Preço por unidade</span>
           <span id="prev-venda-preco-unit">R$ 0,00</span>
         </div>
+        <div class="pricing-row" id="prev-venda-desconto-row" style="display: none; color: #ef9a9a;">
+          <span>Desconto</span>
+          <span id="prev-venda-desconto-val">- R$ 0,00</span>
+        </div>
         <div class="pricing-row total-venda-rev-row">
-          <span>Total da Venda</span>
+          <span>Valor Recebido (Líquido)</span>
           <span id="prev-venda-total">R$ 0,00</span>
         </div>
         <div class="pricing-row profit profit-venda-rev-row">

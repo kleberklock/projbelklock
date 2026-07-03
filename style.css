@@ -1908,4 +1908,22 @@ body {
   color: var(--gold-primary) !important;
 }
 
+/* ==========================================
+   WIZARD DE ONBOARDING
+   ========================================== */
+#modal-onboarding-wizard .step-dot {
+  transition: all 0.3s ease;
+}
+#modal-onboarding-wizard .step-dot.active {
+  transform: scale(1.2);
+  box-shadow: 0 0 10px var(--gold-primary);
+}
+#modal-onboarding-wizard .wizard-step {
+  animation: fadeIn 0.4s ease-in-out;
+}
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 

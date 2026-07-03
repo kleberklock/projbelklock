@@ -15,6 +15,155 @@
   
   <!-- FontAwesome para Ícones de Alta Qualidade -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <style>
+    /* ── Wizard Onboarding ──────────────────────────────────── */
+    #onboarding-wizard-card {
+      display: none;
+      width: 100%;
+      max-width: 520px;
+      background: var(--bg-card);
+      border: 1px solid rgba(212,175,55,0.2);
+      border-radius: var(--radius-lg);
+      padding: 2.2rem 2.5rem 2rem;
+      box-shadow: var(--shadow-premium);
+      animation: fadeSlideUp 0.5s ease forwards;
+    }
+    @keyframes fadeSlideUp {
+      from { opacity:0; transform:translateY(24px); }
+      to   { opacity:1; transform:translateY(0); }
+    }
+
+    .wz-header { text-align:center; margin-bottom:1.6rem; }
+    .wz-header h2 {
+      font-family:'Montserrat',sans-serif;
+      font-size:1.25rem; font-weight:700;
+      color: var(--gold-primary); margin-bottom:.3rem;
+    }
+    .wz-header p { color:var(--text-secondary); font-size:.85rem; }
+
+    /* barra de progresso */
+    .wz-progress-bar {
+      display:flex; gap:6px; margin-bottom:2rem;
+    }
+    .wz-progress-bar span {
+      flex:1; height:4px; border-radius:99px;
+      background:rgba(212,175,55,.15);
+      transition: background .3s;
+    }
+    .wz-progress-bar span.done   { background:var(--gold-primary); }
+    .wz-progress-bar span.active { background:rgba(212,175,55,.55); }
+
+    /* passos */
+    .wz-step { display:none; animation: fadeSlideUp .35s ease; }
+    .wz-step.active { display:block; }
+    .wz-step-icon {
+      font-size:2rem; color:var(--gold-primary);
+      margin-bottom:.6rem; display:block; text-align:center;
+    }
+    .wz-step h3 {
+      font-family:'Montserrat',sans-serif; font-size:1rem;
+      font-weight:600; color:#fff; margin-bottom:.3rem;
+    }
+    .wz-step p.wz-hint {
+      font-size:.8rem; color:var(--text-secondary); margin-bottom:1rem; line-height:1.5;
+    }
+
+    /* upload de logo */
+    #wz-logo-dropzone {
+      border:2px dashed rgba(212,175,55,.3);
+      border-radius:var(--radius-md);
+      padding:1.5rem 1rem; text-align:center;
+      cursor:pointer; transition:border-color .3s;
+    }
+    #wz-logo-dropzone:hover { border-color:var(--gold-primary); }
+    #wz-logo-preview {
+      max-height:90px; margin:0 auto .5rem; border-radius:8px;
+      display:none;
+    }
+    #wz-logo-dropzone i { font-size:1.8rem; color:rgba(212,175,55,.5); }
+    #wz-logo-dropzone span { display:block; font-size:.8rem; color:var(--text-secondary); margin-top:.4rem; }
+
+    /* seletor de cores */
+    .wz-color-row {
+      display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-top:.5rem;
+    }
+    .wz-color-group label { font-size:.8rem; color:var(--text-secondary); display:block; margin-bottom:.4rem; }
+    .wz-color-swatch {
+      display:flex; align-items:center; gap:.7rem;
+      border:1px solid rgba(212,175,55,.2); border-radius:var(--radius-sm);
+      padding:.45rem .7rem; background:rgba(255,255,255,.03);
+    }
+    .wz-color-swatch input[type=color] {
+      width:32px; height:32px; border:none; border-radius:50%;
+      cursor:pointer; background:transparent; padding:0;
+    }
+    .wz-color-swatch input[type=text] {
+      flex:1; background:transparent; border:none; outline:none;
+      color:#fff; font-family:monospace; font-size:.9rem;
+    }
+
+    /* radio cards (tema, segmento) */
+    .wz-radio-grid {
+      display:grid; gap:.6rem; margin-top:.5rem;
+    }
+    .wz-radio-grid.cols-3 { grid-template-columns:repeat(3,1fr); }
+    .wz-radio-grid.cols-2 { grid-template-columns:repeat(2,1fr); }
+    .wz-radio-option { display:none; }
+    .wz-radio-label {
+      display:flex; flex-direction:column; align-items:center; gap:.3rem;
+      padding:.7rem .5rem; border:1px solid rgba(212,175,55,.15);
+      border-radius:var(--radius-sm); cursor:pointer; font-size:.78rem;
+      color:var(--text-secondary); text-align:center; transition:all .25s;
+      background:rgba(255,255,255,.02);
+    }
+    .wz-radio-label i { font-size:1.3rem; color:rgba(212,175,55,.5); }
+    .wz-radio-option:checked + .wz-radio-label {
+      border-color:var(--gold-primary);
+      background:rgba(212,175,55,.08);
+      color:#fff;
+    }
+    .wz-radio-option:checked + .wz-radio-label i { color:var(--gold-primary); }
+
+    /* navegação do wizard */
+    .wz-nav {
+      display:flex; gap:.8rem; margin-top:1.5rem;
+    }
+    .wz-btn-prev, .wz-btn-next {
+      flex:1; padding:.9rem; border:none; border-radius:var(--radius-sm);
+      font-family:'Montserrat',sans-serif; font-size:.88rem; font-weight:600;
+      cursor:pointer; transition:all .25s;
+    }
+    .wz-btn-prev {
+      background:rgba(255,255,255,.05); color:var(--text-secondary);
+    }
+    .wz-btn-prev:hover { background:rgba(255,255,255,.1); color:#fff; }
+    .wz-btn-next {
+      background:var(--gold-gradient); color:#0a0a0a; flex:2;
+    }
+    .wz-btn-next:hover { opacity:.9; }
+    .wz-btn-next:disabled { opacity:.5; cursor:not-allowed; }
+
+    /* credenciais finais */
+    .cred-box {
+      background:rgba(212,175,55,.05);
+      border:1px solid rgba(212,175,55,.25);
+      border-radius:var(--radius-sm);
+      padding:1.2rem; margin-bottom:1.5rem;
+    }
+    .cred-box h4 {
+      color:var(--gold-primary); font-family:'Montserrat',sans-serif;
+      margin-bottom:1rem;
+      border-bottom:1px solid rgba(212,175,55,.15); padding-bottom:.5rem;
+      text-align:center;
+    }
+    .cred-item { margin-bottom:.85rem; font-size:.87rem; }
+    .cred-item strong { color:#fff; display:block; }
+    .cred-item span { color:var(--text-secondary); font-family:monospace; word-break:break-all; }
+    .cred-item span.pin-val {
+      color:var(--gold-primary); font-weight:700; font-size:1.4rem;
+    }
+  </style>
 </head>
 <body style="display: flex; align-items: center; justify-content: center; min-height: 100vh; background: var(--bg-primary);">
 
@@ -64,36 +213,241 @@
       <p>Crie sua conta para gerenciar sua marca</p>
       
       <div id="signup-error-msg" class="login-error-box" style="display: none;"></div>
-      <div id="signup-success-msg" class="login-success-box" style="display: none; background: rgba(129,199,132,0.1); border: 1px solid #81c784; color: #81c784; padding: 0.8rem; border-radius: var(--radius-sm); margin-bottom: 1rem; font-size: 0.85rem; text-align: center;"></div>
  
-      <div class="form-group">
-        <label for="signup-name">Nome Completo *</label>
-        <input type="text" id="signup-name" class="form-control" placeholder="Seu nome" required>
-      </div>
+      <div id="signup-form-fields">
+        <div class="form-group">
+          <label for="signup-name">Nome Completo *</label>
+          <input type="text" id="signup-name" class="form-control" placeholder="Seu nome" required>
+        </div>
 
-      <div class="form-group">
-        <label for="signup-email">E-mail *</label>
-        <input type="email" id="signup-email" class="form-control" placeholder="seu-email@exemplo.com" required>
-      </div>
+        <div class="form-group">
+          <label for="signup-email">E-mail *</label>
+          <input type="email" id="signup-email" class="form-control" placeholder="seu-email@exemplo.com" required>
+        </div>
 
-      <div class="form-group">
-        <label for="signup-loja">Nome da Loja / Marca *</label>
-        <input type="text" id="signup-loja" class="form-control" placeholder="Sua Marca de Semijoias" required>
-      </div>
+        <div class="form-group">
+          <label for="signup-loja">Nome da Loja / Marca *</label>
+          <input type="text" id="signup-loja" class="form-control" placeholder="Sua Marca de Semijoias" required>
+        </div>
 
-      <div class="form-group">
-        <label for="signup-senha">Senha de Acesso *</label>
-        <input type="password" id="signup-senha" class="form-control" placeholder="••••••••" required>
-      </div>
+        <div class="form-group">
+          <label for="signup-senha">Senha de Acesso *</label>
+          <input type="password" id="signup-senha" class="form-control" placeholder="••••••••" required>
+        </div>
 
-      <button class="btn-gold" id="btn-executar-cadastro" style="width: 100%; justify-content: center; padding: 1.1rem; margin-top: 1.2rem; font-size: 1rem;">
-        <i class="fa-solid fa-user-plus"></i> Registrar e Iniciar
-      </button>
+        <button class="btn-gold" id="btn-executar-cadastro" style="width: 100%; justify-content: center; padding: 1.1rem; margin-top: 1.2rem; font-size: 1rem;">
+          <i class="fa-solid fa-user-plus"></i> Criar Conta e Personalizar
+        </button>
 
-      <div class="login-footer" style="margin-top: 1.5rem;">
-        <p>Já possui uma conta? <a href="#" id="link-ir-para-login" style="color: var(--gold-primary); text-decoration: none; font-weight: 500;">Faça Login</a></p>
+        <div class="login-footer" style="margin-top: 1.5rem;">
+          <p>Já possui uma conta? <a href="#" id="link-ir-para-login" style="color: var(--gold-primary); text-decoration: none; font-weight: 500;">Faça Login</a></p>
+        </div>
       </div>
     </div>
+
+    <!-- ══════════════════════════════════════════════
+         WIZARD DE PERSONALIZAÇÃO (7 passos)
+         ══════════════════════════════════════════════ -->
+    <div id="onboarding-wizard-card">
+
+      <div class="wz-header">
+        <h2><i class="fa-solid fa-wand-magic-sparkles"></i> Personalize sua Loja</h2>
+        <p>Vamos configurar a identidade visual da sua marca</p>
+      </div>
+
+      <!-- Barra de progresso -->
+      <div class="wz-progress-bar" id="wz-progress-bar">
+        <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+      </div>
+
+      <!-- PASSO 1 — Logo -->
+      <div class="wz-step active" id="wz-step-1">
+        <i class="wz-step-icon fa-solid fa-image"></i>
+        <h3>Você já possui uma logo da sua marca?</h3>
+        <p class="wz-hint">Faça o upload da imagem. Formatos aceitos: PNG, JPG, SVG. Se não tiver agora, pode pular e adicionar depois.</p>
+
+        <div id="wz-logo-dropzone" onclick="document.getElementById('wz-logo-file').click()">
+          <img id="wz-logo-preview" src="" alt="Preview da logo">
+          <i class="fa-solid fa-cloud-arrow-up" id="wz-logo-icon"></i>
+          <span id="wz-logo-label">Clique para selecionar ou arraste a imagem aqui</span>
+        </div>
+        <input type="file" id="wz-logo-file" accept="image/*" style="display:none">
+      </div>
+
+      <!-- PASSO 2 — Cores -->
+      <div class="wz-step" id="wz-step-2">
+        <i class="wz-step-icon fa-solid fa-palette"></i>
+        <h3>Quais são as cores principais da sua marca?</h3>
+        <p class="wz-hint">Escolha as cores que representam a identidade visual da sua marca. Pode usar o seletor ou inserir o código HEX (#000000).</p>
+        <div class="wz-color-row">
+          <div class="wz-color-group">
+            <label>Cor Primária (destaque)</label>
+            <div class="wz-color-swatch">
+              <input type="color" id="wz-cor-primaria" value="#d4af37">
+              <input type="text" id="wz-cor-primaria-hex" value="#d4af37" maxlength="7" placeholder="#d4af37">
+            </div>
+          </div>
+          <div class="wz-color-group">
+            <label>Cor Secundária (fundo/texto)</label>
+            <div class="wz-color-swatch">
+              <input type="color" id="wz-cor-secundaria" value="#111111">
+              <input type="text" id="wz-cor-secundaria-hex" value="#111111" maxlength="7" placeholder="#111111">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PASSO 3 — Tema -->
+      <div class="wz-step" id="wz-step-3">
+        <i class="wz-step-icon fa-solid fa-moon"></i>
+        <h3>Como você prefere visualizar o sistema?</h3>
+        <p class="wz-hint">Você pode mudar isso a qualquer momento nas configurações.</p>
+        <div class="wz-radio-grid cols-3">
+          <input type="radio" name="wz-tema" id="wz-tema-escuro" class="wz-radio-option" value="ESCURO" checked>
+          <label for="wz-tema-escuro" class="wz-radio-label">
+            <i class="fa-solid fa-moon"></i> Modo Escuro
+          </label>
+          <input type="radio" name="wz-tema" id="wz-tema-claro" class="wz-radio-option" value="CLARO">
+          <label for="wz-tema-claro" class="wz-radio-label">
+            <i class="fa-solid fa-sun"></i> Modo Claro
+          </label>
+          <input type="radio" name="wz-tema" id="wz-tema-sistema" class="wz-radio-option" value="SISTEMA">
+          <label for="wz-tema-sistema" class="wz-radio-label">
+            <i class="fa-solid fa-laptop"></i> Acompanhar Sistema
+          </label>
+        </div>
+      </div>
+
+      <!-- PASSO 4 — Nome Comercial + WhatsApp -->
+      <div class="wz-step" id="wz-step-4">
+        <i class="wz-step-icon fa-solid fa-store"></i>
+        <h3>Dados do seu negócio</h3>
+        <p class="wz-hint">Como sua loja aparecerá para suas clientes e revendedoras.</p>
+        <div class="form-group" style="margin-bottom:.9rem;">
+          <label for="wz-nome-comercial" style="font-size:.8rem; color:var(--text-secondary);">Nome Comercial (Fantasia) *</label>
+          <input type="text" id="wz-nome-comercial" class="form-control" placeholder="Ex: Bella Joias by Maria">
+        </div>
+        <div class="form-group">
+          <label for="wz-whatsapp" style="font-size:.8rem; color:var(--text-secondary);">WhatsApp Principal de Atendimento *</label>
+          <input type="tel" id="wz-whatsapp" class="form-control" placeholder="(11) 99999-9999">
+        </div>
+      </div>
+
+      <!-- PASSO 5 — Segmento -->
+      <div class="wz-step" id="wz-step-5">
+        <i class="wz-step-icon fa-solid fa-tag"></i>
+        <h3>Qual é o principal segmento da sua loja?</h3>
+        <p class="wz-hint">Isso nos ajuda a personalizar relatórios e sugestões para o seu negócio.</p>
+        <div class="wz-radio-grid cols-2">
+          <input type="radio" name="wz-segmento" id="wz-seg-semi" class="wz-radio-option" value="SEMIJOIAS" checked>
+          <label for="wz-seg-semi" class="wz-radio-label"><i class="fa-solid fa-gem"></i> Semijoias</label>
+
+          <input type="radio" name="wz-segmento" id="wz-seg-bi" class="wz-radio-option" value="BIJUTERIAS">
+          <label for="wz-seg-bi" class="wz-radio-label"><i class="fa-solid fa-ring"></i> Bijuterias</label>
+
+          <input type="radio" name="wz-segmento" id="wz-seg-joias" class="wz-radio-option" value="JOIAS">
+          <label for="wz-seg-joias" class="wz-radio-label"><i class="fa-solid fa-crown"></i> Joias Finas</label>
+
+          <input type="radio" name="wz-segmento" id="wz-seg-misto" class="wz-radio-option" value="MISTO">
+          <label for="wz-seg-misto" class="wz-radio-label"><i class="fa-solid fa-layer-group"></i> Misto</label>
+        </div>
+      </div>
+
+      <!-- PASSO 6 — Estilo Visual -->
+      <div class="wz-step" id="wz-step-6">
+        <i class="wz-step-icon fa-solid fa-sparkles"></i>
+        <h3>Qual é o estilo visual da sua marca?</h3>
+        <p class="wz-hint">Isso define a linguagem visual dos materiais e painéis.</p>
+        <div class="wz-radio-grid cols-2">
+          <input type="radio" name="wz-estilo" id="wz-est-luxo" class="wz-radio-option" value="LUXO" checked>
+          <label for="wz-est-luxo" class="wz-radio-label"><i class="fa-solid fa-diamond"></i> Luxo & Elegância</label>
+
+          <input type="radio" name="wz-estilo" id="wz-est-min" class="wz-radio-option" value="MINIMALISTA">
+          <label for="wz-est-min" class="wz-radio-label"><i class="fa-solid fa-circle-dot"></i> Minimalista</label>
+
+          <input type="radio" name="wz-estilo" id="wz-est-vibr" class="wz-radio-option" value="VIBRANTE">
+          <label for="wz-est-vibr" class="wz-radio-label"><i class="fa-solid fa-bolt"></i> Vibrante & Jovem</label>
+
+          <input type="radio" name="wz-estilo" id="wz-est-nat" class="wz-radio-option" value="NATURAL">
+          <label for="wz-est-nat" class="wz-radio-label"><i class="fa-solid fa-leaf"></i> Natural & Orgânico</label>
+        </div>
+      </div>
+
+      <!-- PASSO 7 — Redes Sociais -->
+      <div class="wz-step" id="wz-step-7">
+        <i class="wz-step-icon fa-solid fa-share-nodes"></i>
+        <h3>Redes sociais da sua marca (opcional)</h3>
+        <p class="wz-hint">Esses links poderão aparecer em materiais enviados às clientes. Deixe em branco se preferir preencher depois.</p>
+        <div class="form-group" style="margin-bottom:.8rem;">
+          <label style="font-size:.8rem; color:var(--text-secondary);"><i class="fa-brands fa-instagram" style="color:#E1306C;"></i> Instagram</label>
+          <input type="text" id="wz-instagram" class="form-control" placeholder="@suamarca">
+        </div>
+        <div class="form-group" style="margin-bottom:.8rem;">
+          <label style="font-size:.8rem; color:var(--text-secondary);"><i class="fa-brands fa-tiktok" style="color:#fff;"></i> TikTok</label>
+          <input type="text" id="wz-tiktok" class="form-control" placeholder="@suamarca">
+        </div>
+        <div class="form-group">
+          <label style="font-size:.8rem; color:var(--text-secondary);"><i class="fa-solid fa-globe" style="color:var(--gold-primary);"></i> Site / Loja Virtual</label>
+          <input type="url" id="wz-site" class="form-control" placeholder="https://suamarca.com.br">
+        </div>
+      </div>
+
+      <!-- Navegação -->
+      <div class="wz-nav">
+        <button class="wz-btn-prev" id="wz-btn-prev" style="display:none;">
+          <i class="fa-solid fa-chevron-left"></i> Anterior
+        </button>
+        <button class="wz-btn-next" id="wz-btn-next">
+          Próximo <i class="fa-solid fa-chevron-right"></i>
+        </button>
+      </div>
+
+      <p style="text-align:center; font-size:.75rem; color:var(--text-muted); margin-top:.8rem;">
+        <i class="fa-solid fa-lock" style="font-size:.7rem;"></i> Seus dados ficam seguros e podem ser alterados depois.
+      </p>
+    </div>
+
+    <!-- ══════════════════════════════════════════════
+         TELA FINAL — CREDENCIAIS DE ACESSO
+         ══════════════════════════════════════════════ -->
+    <div class="login-card" id="credentials-card" style="display:none; max-width:440px;">
+      <div style="text-align:center; margin-bottom:1.5rem;">
+        <div style="width:64px; height:64px; background:rgba(212,175,55,.1); border:2px solid var(--gold-primary); border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto .8rem;">
+          <i class="fa-solid fa-check" style="color:var(--gold-primary); font-size:1.6rem;"></i>
+        </div>
+        <h2 style="font-family:'Montserrat',sans-serif; color:#fff; font-size:1.2rem; margin-bottom:.25rem;">Loja Configurada!</h2>
+        <p style="color:var(--text-secondary); font-size:.85rem;">Guarde com segurança suas credenciais de acesso</p>
+      </div>
+
+      <div class="cred-box">
+        <h4><i class="fa-solid fa-key"></i> Suas Credenciais de Acesso</h4>
+        <div class="cred-item">
+          <strong>E-mail de Login:</strong>
+          <span id="cred-email">—</span>
+        </div>
+        <div class="cred-item">
+          <strong>PIN de Acesso Rápido:</strong>
+          <span id="cred-pin" class="pin-val">—</span>
+        </div>
+        <div class="cred-item">
+          <strong>Senha:</strong>
+          <span>A senha que você escolheu no cadastro</span>
+        </div>
+        <div class="cred-item">
+          <strong>Link da sua Loja (Copie e Salve!):</strong>
+          <span id="cred-link">—</span>
+        </div>
+        <p style="font-size:.73rem; color:#ffb74d; margin-top:.8rem; line-height:1.4; text-align:center;">
+          <i class="fa-solid fa-triangle-exclamation"></i>
+          Você pode entrar pelo E-mail ou pelo PIN + sua senha.
+        </p>
+      </div>
+
+      <button class="btn-gold" id="btn-ir-para-painel" style="width:100%; justify-content:center; padding:1.1rem; font-size:1rem;">
+        <i class="fa-solid fa-arrow-right-to-bracket"></i> Entrar no Painel
+      </button>
+    </div>
+
   </div>
 
   <script src="login.js"></script>
