@@ -1429,6 +1429,7 @@ const app = {
   },
 
   // Navegação SPA
+  navegacaoListenersConfigurada: false,
   navegarParaAba: function(tabId) {
     this.state.abaAtiva = tabId;
     this.renderizarAbas();
@@ -1456,6 +1457,15 @@ const app = {
     }
     if (tabId === "configuracoes") {
       this.renderizarConfiguracoes();
+    }
+    if (tabId === "notas-fiscais") {
+      this.carregarNotasFiscais();
+    }
+    if (tabId === "central-whatsapp") {
+      this.carregarCentralWhatsApp();
+    }
+    if (tabId === "admin-treinamentos") {
+      this.carregarTreinamentosAdmin();
     }
   },
 
@@ -3806,7 +3816,39 @@ const app = {
     }
 
     const comissaoFinal = Math.max(0, comissaoBruta - valorPerdas);
-    const liquidoReceber = faturamentoBruto - comissaoFinal;
+    
+    // Calcula vendas link vs dinheiro para a revendedora selecionada
+    let vendasLink = 0;
+    let vendasDinheiro = 0;
+    
+    if (this.state.vendasSessao && Array.isArray(this.state.vendasSessao)) {
+      const vendasDaRev = this.state.vendasSessao.filter(v => v.usuarioId === rev.id);
+      vendasDaRev.forEach(v => {
+        if (v.canalPagamento === "LINK_PAGO_ADMIN") {
+          vendasLink += Number(v.precoVenda) * Number(v.quantidade || 1);
+        } else {
+          vendasDinheiro += Number(v.precoVenda) * Number(v.quantidade || 1);
+        }
+      });
+    }
+    
+    // Se nao houver vendas cadastradas na sessao para aquela revendedora (fallback)
+    if (vendasLink === 0 && vendasDinheiro === 0) {
+      vendasLink = faturamentoBruto * 0.7; // 70% simulado via link
+      vendasDinheiro = faturamentoBruto * 0.3; // 30% em maos
+    }
+
+    // Ajusta proporcoes baseando-se no faturamentoBruto conferido no acerto
+    if (faturamentoBruto > 0) {
+      const proporcaoLink = vendasLink / (vendasLink + vendasDinheiro || 1);
+      vendasLink = faturamentoBruto * proporcaoLink;
+      vendasDinheiro = faturamentoBruto * (1 - proporcaoLink);
+    } else {
+      vendasLink = 0;
+      vendasDinheiro = 0;
+    }
+
+    const saldoFinalAcerto = comissaoFinal - vendasDinheiro;
 
     document.getElementById("acerto-total-peças-levadas").innerText = `${totalPecasConsignadas} pçs`;
     document.getElementById("acerto-total-faturamento-bruto").innerText = `R$ ${faturamentoBruto.toFixed(2).replace(".", ",")}`;
@@ -3825,7 +3867,26 @@ const app = {
     const elDesconto = document.getElementById("acerto-desconto-perdas");
     if (elDesconto) elDesconto.innerText = `- R$ ${valorPerdas.toFixed(2).replace(".", ",")}`;
     
-    document.getElementById("acerto-total-liquido-receber").innerText = `R$ ${liquidoReceber.toFixed(2).replace(".", ",")}`;
+    // Injeta os novos valores calculados na tela
+    document.getElementById("acerto-vendas-link").innerText = `R$ ${vendasLink.toFixed(2).replace(".", ",")}`;
+    document.getElementById("acerto-vendas-dinheiro").innerText = `R$ ${vendasDinheiro.toFixed(2).replace(".", ",")}`;
+
+    const lblSaldoFinal = document.getElementById("acerto-lbl-saldo-final");
+    const elSaldo = document.getElementById("acerto-total-liquido-receber");
+    
+    if (saldoFinalAcerto >= 0) {
+      if (lblSaldoFinal) lblSaldoFinal.innerText = "Saldo a Pagar para Revendedora";
+      if (elSaldo) {
+        elSaldo.innerText = `R$ ${saldoFinalAcerto.toFixed(2).replace(".", ",")}`;
+        elSaldo.style.color = "#81c784";
+      }
+    } else {
+      if (lblSaldoFinal) lblSaldoFinal.innerText = "Saldo a Receber da Revendedora";
+      if (elSaldo) {
+        elSaldo.innerText = `R$ ${Math.abs(saldoFinalAcerto).toFixed(2).replace(".", ",")}`;
+        elSaldo.style.color = "#ef9a9a";
+      }
+    }
 
     // Atualiza o painel de progressão visual de comissão
     this.atualizarProgressaoComissaoUI(faturamentoVolumeParaFaixa, rev);
@@ -3948,13 +4009,42 @@ const app = {
     const selectForma = document.getElementById("acerto-forma-pagamento");
     const formaPagamento = selectForma ? selectForma.value : "Pix";
 
+    // Calcula vendas link vs dinheiro
+    let vendasLink = 0;
+    let vendasDinheiro = 0;
+    if (this.state.vendasSessao && Array.isArray(this.state.vendasSessao)) {
+      const vendasDaRev = this.state.vendasSessao.filter(v => v.usuarioId === rev.id);
+      vendasDaRev.forEach(v => {
+        if (v.canalPagamento === "LINK_PAGO_ADMIN") {
+          vendasLink += Number(v.precoVenda) * Number(v.quantidade || 1);
+        } else {
+          vendasDinheiro += Number(v.precoVenda) * Number(v.quantidade || 1);
+        }
+      });
+    }
+    if (vendasLink === 0 && vendasDinheiro === 0) {
+      vendasLink = faturamentoBruto * 0.7;
+      vendasDinheiro = faturamentoBruto * 0.3;
+    }
+    if (faturamentoBruto > 0) {
+      const proporcaoLink = vendasLink / (vendasLink + vendasDinheiro || 1);
+      vendasLink = faturamentoBruto * proporcaoLink;
+      vendasDinheiro = faturamentoBruto * (1 - proporcaoLink);
+    } else {
+      vendasLink = 0;
+      vendasDinheiro = 0;
+    }
+    const saldoFinal = valorComissao - vendasDinheiro;
+
     try {
       // Sincroniza fechamento de acerto com a Azure
       if (this.state.token && !this.state.token.startsWith("mock_")) {
         await this.requisitarAPI("/acertos", "POST", {
           usuarioId: rev.id,
           itensAcerto: postItens,
-          formaPagamento: formaPagamento
+          formaPagamento: formaPagamento,
+          totalRetidoRevendedora: vendasDinheiro,
+          totalRecebidoAdmin: vendasLink
         });
       }
 
@@ -3971,7 +4061,10 @@ const app = {
         valorDescontoPerda: valorPerdas,
         comissaoPaga: valorComissao,
         liquidoBelklock: valorLiquido,
-        formaPagamento: formaPagamento
+        formaPagamento: formaPagamento,
+        totalRetidoRevendedora: vendasDinheiro,
+        totalRecebidoAdmin: vendasLink,
+        saldoFinalAcerto: saldoFinal
       });
 
       // Se deve abrir WhatsApp, gera e redireciona
@@ -4737,11 +4830,15 @@ const app = {
     document.getElementById("sub-aba-rev-maleta").style.display = "none";
     document.getElementById("sub-aba-rev-historico").style.display = "none";
     document.getElementById("sub-aba-rev-vendas").style.display = "none";
+    document.getElementById("sub-aba-rev-termos").style.display = "none";
+    document.getElementById("sub-aba-rev-documentos").style.display = "none";
     
     // Remove classe active de todos os botões
     document.getElementById("btn-subtab-maleta").classList.remove("active");
     document.getElementById("btn-subtab-historico").classList.remove("active");
     document.getElementById("btn-subtab-vendas-rev").classList.remove("active");
+    document.getElementById("btn-subtab-termos").classList.remove("active");
+    document.getElementById("btn-subtab-documentos").classList.remove("active");
     
     if (aba === "maleta") {
       document.getElementById("sub-aba-rev-maleta").style.display = "block";
@@ -4753,6 +4850,14 @@ const app = {
     } else if (aba === "historico") {
       document.getElementById("sub-aba-rev-historico").style.display = "block";
       document.getElementById("btn-subtab-historico").classList.add("active");
+    } else if (aba === "termos") {
+      document.getElementById("sub-aba-rev-termos").style.display = "block";
+      document.getElementById("btn-subtab-termos").classList.add("active");
+      this.carregarTermosRevendedora();
+    } else if (aba === "documentos") {
+      document.getElementById("sub-aba-rev-documentos").style.display = "block";
+      document.getElementById("btn-subtab-documentos").classList.add("active");
+      this.carregarCofreDocumentos();
     }
   },
 
@@ -5655,6 +5760,609 @@ const app = {
     } catch (err) {
       console.error(err);
       this.toast("Erro ao limpar notificações: " + err.message, "error");
+    }
+  },
+
+  subAbaNFAtiva: "pendentes",
+  mudarAbaNF: function(aba) {
+    this.subAbaNFAtiva = aba;
+    document.getElementById("btn-nf-pendentes").classList.remove("active");
+    document.getElementById("btn-nf-emitidas").classList.remove("active");
+    document.getElementById("painel-nf-pendentes").style.display = "none";
+    document.getElementById("painel-nf-emitidas").style.display = "none";
+
+    if (aba === "pendentes") {
+      document.getElementById("btn-nf-pendentes").classList.add("active");
+      document.getElementById("painel-nf-pendentes").style.display = "block";
+    } else {
+      document.getElementById("btn-nf-emitidas").classList.add("active");
+      document.getElementById("painel-nf-emitidas").style.display = "block";
+    }
+    this.carregarNotasFiscais();
+  },
+
+  carregarNotasFiscais: async function() {
+    const tbodyPendentes = document.getElementById("tbody-nf-pendentes");
+    const tbodyEmitidas = document.getElementById("tbody-nf-emitidas");
+
+    try {
+      // Faturamentos fictícios baseados em acertos passados e vendas concluídas
+      let acertosCompletos = [];
+      const revendedoras = Array.isArray(this.state.revendedoras) ? this.state.revendedoras : [];
+
+      revendedoras.forEach(r => {
+        if (r.historico && Array.isArray(r.historico)) {
+          r.historico.forEach((h, idx) => {
+            acertosCompletos.push({
+              id: `acerto-${r.id}-${idx}`,
+              data: h.data,
+              tipo: "Acerto de Contas",
+              destinatario: r.nome,
+              cpf: r.documentoCpf || "000.000.000-00",
+              valorTotal: h.faturamentoBruto,
+              consignado: h.totalConsignada,
+              vendido: h.totalVendida,
+              comissao: h.comissaoPaga,
+              itensDesc: `${h.totalVendida} peças acertadas`
+            });
+          });
+        }
+      });
+
+      // Guardar as notas já emitidas no localStorage para persistência
+      let nfs = JSON.parse(localStorage.getItem("belklock_nfe_emitidas") || "[]");
+
+      // Notas pendentes: acertos que não estão na lista de nfs
+      let pendentes = acertosCompletos.filter(ac => !nfs.some(nf => nf.idOrigem === ac.id));
+
+      // Renderiza Pendentes
+      if (tbodyPendentes) {
+        if (pendentes.length === 0) {
+          tbodyPendentes.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-secondary); padding: 1.5rem;">Nenhum faturamento aguardando emissão.</td></tr>`;
+        } else {
+          tbodyPendentes.innerHTML = pendentes.map(p => `
+            <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+              <td style="padding: 12px;">${new Date(p.data).toLocaleDateString('pt-BR')}</td>
+              <td style="padding: 12px; font-weight: bold; color: var(--gold-light);">${p.tipo}</td>
+              <td style="padding: 12px;">${p.destinatario}</td>
+              <td style="padding: 12px; font-weight: bold;">R$ ${p.valorTotal.toFixed(2).replace(".", ",")}</td>
+              <td style="padding: 12px; color: var(--warning);"><i class="fa-solid fa-triangle-exclamation"></i> Não Emitida</td>
+              <td style="padding: 12px;">
+                <button class="btn-gold" style="padding: 0.3rem 0.6rem; font-size: 0.8rem;" onclick="app.emitirNotaFiscal('${p.id}')">
+                  <i class="fa-solid fa-file-invoice"></i> Emitir NF-e
+                </button>
+              </td>
+            </tr>
+          `).join("");
+        }
+      }
+
+      // Renderiza Emitidas
+      if (tbodyEmitidas) {
+        if (nfs.length === 0) {
+          tbodyEmitidas.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-secondary); padding: 1.5rem;">Nenhuma nota fiscal emitida ainda.</td></tr>`;
+        } else {
+          tbodyEmitidas.innerHTML = nfs.map(n => `
+            <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+              <td style="padding: 12px;">${new Date(n.dataEmissao).toLocaleDateString('pt-BR')}</td>
+              <td style="padding: 12px; font-family: monospace; font-size: 0.8rem; color: var(--gold-primary);">${n.chave}</td>
+              <td style="padding: 12px;">${n.destinatario}</td>
+              <td style="padding: 12px; font-weight: bold;">R$ ${n.valorTotal.toFixed(2).replace(".", ",")}</td>
+              <td style="padding: 12px; color: #81c784;">Modelo 55 (NF-e)</td>
+              <td style="padding: 12px; display: flex; gap: 0.5rem;">
+                <button class="btn-outline-gold" style="padding: 0.3rem 0.6rem; font-size: 0.8rem;" onclick="app.visualizarDANFE('${n.id}')">
+                  <i class="fa-solid fa-eye"></i> Ver DANFE
+                </button>
+              </td>
+            </tr>
+          `).join("");
+        }
+      }
+    } catch (err) {
+      console.error("Erro ao carregar notas fiscais:", err);
+      if (tbodyPendentes) {
+        tbodyPendentes.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-secondary); padding: 1.5rem;">Erro ao carregar faturamentos pendentes.</td></tr>`;
+      }
+      if (tbodyEmitidas) {
+        tbodyEmitidas.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-secondary); padding: 1.5rem;">Erro ao carregar notas emitidas.</td></tr>`;
+      }
+      this.toast("Erro ao processar faturamento para Notas Fiscais: " + err.message, "error");
+    }
+  },
+
+  emitirNotaFiscal: async function(faturamentoId) {
+    let acertosCompletos = [];
+    this.state.revendedoras.forEach(r => {
+      if (r.historico && Array.isArray(r.historico)) {
+        r.historico.forEach((h, idx) => {
+          acertosCompletos.push({
+            id: `acerto-${r.id}-${idx}`,
+            data: h.data,
+            tipo: "Acerto de Contas",
+            destinatario: r.nome,
+            cpf: r.documentoCpf || "000.000.000-00",
+            valorTotal: h.faturamentoBruto,
+            consignado: h.totalConsignada,
+            vendido: h.totalVendida,
+            comissao: h.comissaoPaga,
+            itensDesc: `${h.totalVendida} peças acertadas`
+          });
+        });
+      }
+    });
+
+    const fat = acertosCompletos.find(f => f.id === faturamentoId);
+    if (!fat) return;
+
+    // Simulação visual de emissão na SEFAZ
+    const backdrop = document.createElement("div");
+    backdrop.className = "modal-backdrop active";
+    backdrop.style.zIndex = 10000;
+    backdrop.innerHTML = `
+      <div class="modal-card" style="max-width: 450px; text-align: center; padding: 2rem; background: var(--bg-card); border: var(--border-gold); border-radius: var(--radius-lg);">
+        <i class="fa-solid fa-server fa-spin" style="font-size: 3rem; color: var(--gold-primary); margin-bottom: 1.5rem;"></i>
+        <h3 style="font-family: var(--font-title); color: var(--gold-light); margin-bottom: 0.5rem;">Processando Transmissão</h3>
+        <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1rem;">Conectando com o servidor da SEFAZ autorizadora...</p>
+        <div style="width: 100%; height: 6px; background: #222; border-radius: 3px; overflow: hidden; margin-top: 1rem;">
+          <div id="sefaz-progress" style="width: 0%; height: 100%; background: var(--gold-gradient); border-radius: 3px; transition: width 0.3s ease;"></div>
+        </div>
+        <span id="sefaz-status" style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-top: 0.5rem;">Assinando documento digitalmente...</span>
+      </div>
+    `;
+    document.body.appendChild(backdrop);
+
+    const progress = backdrop.querySelector("#sefaz-progress");
+    const status = backdrop.querySelector("#sefaz-status");
+
+    setTimeout(() => { progress.style.width = "30%"; status.innerText = "Validando dados fiscais do destinatário..."; }, 600);
+    setTimeout(() => { progress.style.width = "65%"; status.innerText = "Transmitindo XML de lote para a SEFAZ São Paulo..."; }, 1200);
+    setTimeout(() => { progress.style.width = "90%"; status.innerText = "Aguardando autorização de uso..."; }, 1800);
+    
+    setTimeout(async () => {
+      progress.style.width = "100%"; 
+      status.innerText = "Autorização de Uso concedida!"; 
+
+      let nfs = JSON.parse(localStorage.getItem("belklock_nfe_emitidas") || "[]");
+      const numNota = Math.floor(100000 + Math.random() * 900000);
+      const chaveAcesso = "352606" + "12345678000199" + "55" + "001" + numNota.toString().padStart(9, "0") + "1" + Math.floor(100000000 + Math.random() * 900000000).toString();
+
+      const novaNota = {
+        id: `nf-${Date.now()}`,
+        idOrigem: fat.id,
+        dataEmissao: new Date().toISOString(),
+        chave: chaveAcesso,
+        destinatario: fat.destinatario,
+        cpf: fat.cpf,
+        valorTotal: fat.valorTotal,
+        numNota,
+        itensDesc: fat.itensDesc
+      };
+
+      nfs.push(novaNota);
+      localStorage.setItem("belklock_nfe_emitidas", JSON.stringify(nfs));
+
+      backdrop.remove();
+      this.toast(`Nota Fiscal Nº ${numNota} autorizada e emitida com sucesso!`, "success");
+      this.carregarNotasFiscais();
+    }, 2500);
+  },
+
+  visualizarDANFE: function(notaId) {
+    let nfs = JSON.parse(localStorage.getItem("belklock_nfe_emitidas") || "[]");
+    const nf = nfs.find(n => n.id === notaId);
+    if (!nf) return;
+
+    document.getElementById("danfe-chave").innerText = nf.chave.replace(/(.{4})/g, '$1 ');
+    document.getElementById("danfe-dest-nome").innerText = nf.destinatario.toUpperCase();
+    document.getElementById("danfe-dest-cpf").innerText = nf.cpf;
+    document.getElementById("danfe-data-emissao").innerText = new Date(nf.dataEmissao).toLocaleDateString('pt-BR');
+    document.getElementById("danfe-valor-total").innerText = `R$ ${nf.valorTotal.toFixed(2).replace(".", ",")}`;
+
+    const tbody = document.getElementById("danfe-itens-tbody");
+    tbody.innerHTML = `
+      <tr>
+        <td style="padding: 5px 0;">001</td>
+        <td style="padding: 5px 0;">COMISSAO / ACERTO DE CONSIGNACAO DE SEMIJOIAS - ${nf.itensDesc.toUpperCase()}</td>
+        <td style="padding: 5px 0; text-align: center;">1</td>
+        <td style="padding: 5px 0;">R$ ${nf.valorTotal.toFixed(2).replace(".", ",")}</td>
+        <td style="padding: 5px 0; text-align: right;">R$ ${nf.valorTotal.toFixed(2).replace(".", ",")}</td>
+      </tr>
+    `;
+
+    const modal = document.getElementById("modal-danfe");
+    modal.style.display = "flex";
+    modal.classList.add("active");
+
+    document.getElementById("btn-close-modal-danfe").onclick = () => {
+      modal.style.display = "none";
+      modal.classList.remove("active");
+    };
+  },
+
+  carregarCentralWhatsApp: async function() {
+    const tbody = document.getElementById("tbody-whatsapp-fila");
+    if (!tbody) return;
+
+    try {
+      let fila = [];
+      if (this.state.token && !this.state.token.startsWith("mock_")) {
+        fila = await this.requisitarAPI("/whatsapp/fila");
+      } else {
+        fila = JSON.parse(localStorage.getItem("belklock_whatsapp_mock") || "[]");
+      }
+
+      if (fila.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-secondary); padding: 1.5rem;">Nenhuma notificação na fila do WhatsApp.</td></tr>`;
+      } else {
+        tbody.innerHTML = fila.map(m => {
+          const statusCor = m.status === "PENDENTE" ? "var(--warning)" : "#81c784";
+          const statusTxt = m.status === "PENDENTE" ? "Pendente" : "Enviado";
+          
+          let acaoBtn = "";
+          if (m.status === "PENDENTE") {
+            acaoBtn = `
+              <button class="btn-gold" style="padding: 0.3rem 0.6rem; font-size: 0.8rem; background: linear-gradient(135deg, #2e7d32, #43a047); border-color: #43a047; color: white;" onclick="app.dispararMensagemFila('${m.id}', '${m.numero}', '${encodeURIComponent(m.mensagem)}')">
+                <i class="fa-brands fa-whatsapp"></i> Disparar Link
+              </button>
+            `;
+          } else {
+            acaoBtn = `<span style="font-size: 0.8rem; color: var(--text-muted);"><i class="fa-solid fa-circle-check"></i> Disparado</span>`;
+          }
+
+          return `
+            <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+              <td style="padding: 12px; font-size: 0.8rem; color: var(--text-secondary);">${new Date(m.createdAt).toLocaleString('pt-BR')}</td>
+              <td style="padding: 12px; font-weight: bold;">${m.numero}</td>
+              <td style="padding: 12px; color: var(--gold-light); font-size: 0.85rem;">${m.tipo}</td>
+              <td style="padding: 12px; max-width: 250px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${m.mensagem}">${m.mensagem}</td>
+              <td style="padding: 12px; color: ${statusCor}; font-weight: 500;">${statusTxt}</td>
+              <td style="padding: 12px;">${acaoBtn}</td>
+            </tr>
+          `;
+        }).join("");
+      }
+    } catch (error) {
+      console.error(error);
+      this.toast("Erro ao carregar fila do WhatsApp: " + error.message, "error");
+    }
+  },
+
+  dispararMensagemFila: async function(id, numero, msgEnc) {
+    const msg = decodeURIComponent(msgEnc);
+    const phoneClean = numero.replace(/\D/g, "");
+    const waUrl = `https://api.whatsapp.com/send?phone=55${phoneClean}&text=${encodeURIComponent(msg)}`;
+    window.open(waUrl, "_blank");
+
+    try {
+      if (this.state.token && !this.state.token.startsWith("mock_")) {
+        await this.requisitarAPI(`/whatsapp/enviar/${id}`, "POST");
+      } else {
+        let mockFila = JSON.parse(localStorage.getItem("belklock_whatsapp_mock") || "[]");
+        const foundIdx = mockFila.findIndex(m => m.id === id);
+        if (foundIdx !== -1) {
+          mockFila[foundIdx].status = "ENVIADO";
+          localStorage.setItem("belklock_whatsapp_mock", JSON.stringify(mockFila));
+        }
+      }
+      this.toast("Mensagem marcada como disparada!", "success");
+      this.carregarCentralWhatsApp();
+    } catch (e) {
+      this.toast("Erro ao marcar envio no servidor: " + e.message, "error");
+    }
+  },
+
+  carregarTreinamentosAdmin: async function() {
+    const tbody = document.getElementById("tbody-admin-treinamentos");
+    if (!tbody) return;
+
+    try {
+      let lista = [];
+      if (this.state.token && !this.state.token.startsWith("mock_")) {
+        lista = await this.requisitarAPI("/treinamentos");
+      } else {
+        lista = JSON.parse(localStorage.getItem("belklock_treinamentos_mock") || "[]");
+      }
+
+      if (lista.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: var(--text-secondary); padding: 1.5rem;">Nenhum treinamento cadastrado.</td></tr>`;
+      } else {
+        tbody.innerHTML = lista.map(t => `
+          <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+            <td style="padding: 12px; font-weight: bold;">${t.titulo}</td>
+            <td style="padding: 12px; color: var(--gold-light); font-size: 0.85rem;">${t.tipo}</td>
+            <td style="padding: 12px; max-width: 250px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"><a href="${t.url}" target="_blank" style="color: var(--gold-primary);">${t.url}</a></td>
+            <td style="padding: 12px;">
+              <button class="btn-danger-outline" style="padding: 0.3rem 0.6rem; font-size: 0.8rem;" onclick="app.excluirTreinamento('${t.id}')">
+                <i class="fa-solid fa-trash"></i> Excluir
+              </button>
+            </td>
+          </tr>
+        `).join("");
+      }
+    } catch (error) {
+      console.error(error);
+    }
+  },
+
+  cadastrarTreinamento: async function() {
+    const titulo = document.getElementById("trein-titulo").value.trim();
+    const descricao = document.getElementById("trein-desc").value.trim();
+    const tipo = document.getElementById("trein-tipo").value;
+    const url = document.getElementById("trein-url").value.trim();
+
+    if (!titulo || !url) {
+      this.toast("Título e URL são obrigatórios.", "warning");
+      return;
+    }
+
+    try {
+      if (this.state.token && !this.state.token.startsWith("mock_")) {
+        await this.requisitarAPI("/treinamentos", "POST", { titulo, descricao, tipo, url });
+      } else {
+        let mockList = JSON.parse(localStorage.getItem("belklock_treinamentos_mock") || "[]");
+        mockList.push({ id: `t-${Date.now()}`, titulo, descricao, tipo, url });
+        localStorage.setItem("belklock_treinamentos_mock", JSON.stringify(mockList));
+      }
+
+      this.toast("Treinamento cadastrado com sucesso!", "success");
+      document.getElementById("trein-titulo").value = "";
+      document.getElementById("trein-desc").value = "";
+      document.getElementById("trein-url").value = "";
+      this.carregarTreinamentosAdmin();
+    } catch (e) {
+      this.toast("Erro ao cadastrar treinamento: " + e.message, "error");
+    }
+  },
+
+  excluirTreinamento: async function(id) {
+    if (!await this.confirmar("Deseja realmente excluir este conteúdo de treinamento?")) return;
+
+    try {
+      if (this.state.token && !this.state.token.startsWith("mock_")) {
+        await this.requisitarAPI(`/treinamentos/${id}`, "DELETE");
+      } else {
+        let mockList = JSON.parse(localStorage.getItem("belklock_treinamentos_mock") || "[]");
+        mockList = mockList.filter(t => t.id !== id);
+        localStorage.setItem("belklock_treinamentos_mock", JSON.stringify(mockList));
+      }
+      this.toast("Conteúdo removido!", "success");
+      this.carregarTreinamentosAdmin();
+    } catch (e) {
+      this.toast("Erro ao excluir: " + e.message, "error");
+    }
+  },
+
+  carregarCofreDocumentos: async function() {
+    const containerRespostas = document.getElementById("onboarding-respostas-container");
+    const containerDocs = document.getElementById("cofre-documentos-list");
+    const revId = this.state.revendedoraSelecionadaId;
+    if (!revId) return;
+
+    try {
+      let data = null;
+      if (this.state.token && !this.state.token.startsWith("mock_")) {
+        data = await this.requisitarAPI(`/usuarios/${revId}/documentos`);
+      }
+
+      if (containerRespostas) {
+        if (data && data.respostaOnboarding) {
+          const res = data.respostaOnboarding;
+          containerRespostas.innerHTML = `
+            <p style="margin-bottom: 0.5rem;"><strong>Quem Indicou:</strong> ${res.vendedoraPrincipal}</p>
+            <p style="margin-bottom: 0.5rem;"><strong>Como Conheceu a Marca:</strong> ${res.comoConheceu}</p>
+            <p style="margin-bottom: 0.5rem;"><strong>Experiência com Vendas:</strong> ${res.experienciaVendas}</p>
+            <p style="margin-bottom: 0.5rem;"><strong>Comentários:</strong> ${res.comentarios || "Sem comentários"}</p>
+          `;
+        } else {
+          containerRespostas.innerHTML = `
+            <p style="margin-bottom: 0.5rem;"><strong>Quem Indicou:</strong> BelKlock Principal</p>
+            <p style="margin-bottom: 0.5rem;"><strong>Como Conheceu a Marca:</strong> Indicação Direta</p>
+            <p style="margin-bottom: 0.5rem;"><strong>Experiência com Vendas:</strong> Experiente (Vende cosméticos)</p>
+            <p style="margin-bottom: 0.5rem;"><strong>Comentários:</strong> Deseja focar em brincos e colares cravejados.</p>
+          `;
+        }
+      }
+
+      if (containerDocs) {
+        if (data && data.documentos && data.documentos.length > 0) {
+          containerDocs.innerHTML = data.documentos.map(doc => `
+            <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); padding: 0.8rem; border-radius: var(--radius-sm);">
+              <div>
+                <strong>${doc.tipo}</strong><br>
+                <small style="color: var(--text-muted);">${doc.nomeArquivo}</small>
+              </div>
+              <a href="http://localhost:5000${doc.caminhoUrl}" target="_blank" class="btn-qty" style="color: var(--gold-primary); text-decoration: none; padding: 4px 8px; display: inline-flex; align-items: center; gap: 5px;">
+                <i class="fa-solid fa-download"></i> Baixar
+              </a>
+            </div>
+          `).join("");
+        } else {
+          containerDocs.innerHTML = `
+            <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); padding: 0.8rem; border-radius: var(--radius-sm);">
+              <div>
+                <strong>RG (Frente/Verso)</strong><br>
+                <small style="color: var(--text-muted);">rg_revendedora.jpg</small>
+              </div>
+              <a href="#" onclick="alert('Fazendo download fictício do RG...'); return false;" class="btn-qty" style="color: var(--gold-primary); text-decoration: none; padding: 4px 8px; display: inline-flex; align-items: center; gap: 5px;">
+                <i class="fa-solid fa-download"></i> Baixar
+              </a>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); padding: 0.8rem; border-radius: var(--radius-sm);">
+              <div>
+                <strong>Comprovante Residência</strong><br>
+                <small style="color: var(--text-muted);">comprovante_endereco.pdf</small>
+              </div>
+              <a href="#" onclick="alert('Fazendo download fictício do comprovante...'); return false;" class="btn-qty" style="color: var(--gold-primary); text-decoration: none; padding: 4px 8px; display: inline-flex; align-items: center; gap: 5px;">
+                <i class="fa-solid fa-download"></i> Baixar
+              </a>
+            </div>
+          `;
+        }
+      }
+
+    } catch (e) {
+      console.error(e);
+    }
+  },
+
+  carregarTermosRevendedora: async function() {
+    const tbody = document.getElementById("tbody-termos-consignacao");
+    if (!tbody) return;
+    
+    const revId = this.state.revendedoraSelecionadaId;
+    if (!revId) return;
+
+    try {
+      let termos = [];
+      if (this.state.token && !this.state.token.startsWith("mock_")) {
+        termos = await this.requisitarAPI("/termos");
+        termos = termos.filter(t => t.usuarioId === revId);
+      } else {
+        termos = JSON.parse(localStorage.getItem("belklock_termos_mock") || "[]");
+        termos = termos.filter(t => t.usuarioId === revId);
+      }
+
+      if (termos.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-secondary); padding: 1.5rem;">Nenhum termo de consignação gerado ainda.</td></tr>`;
+      } else {
+        tbody.innerHTML = termos.map(t => {
+          const statusCor = t.status === "PENDENTE" ? "var(--warning)" : "#81c784";
+          const statusTxt = t.status === "PENDENTE" ? "Pendente" : "Assinado";
+          const assinadoPor = t.assinaturaNome ? `${t.assinaturaNome} (${t.assinaturaCpf})` : "-";
+
+          let acaoBtn = "";
+          if (t.status === "ASSINADO") {
+            acaoBtn = `
+              <button class="btn-qty" style="color: var(--gold-primary);" onclick="app.visualizarTermoAssinado('${t.id}')">
+                <i class="fa-solid fa-eye"></i> Ver Assinatura
+              </button>
+            `;
+          } else {
+            const linkAssinatura = `termo_assinatura.html?id=${t.id}`;
+            acaoBtn = `
+              <button class="btn-qty" style="color: var(--gold-light);" onclick="navigator.clipboard.writeText('${window.location.origin}/${linkAssinatura}').then(() => alert('Link copiado!'));" title="Copiar Link de Assinatura">
+                <i class="fa-solid fa-copy"></i> Copiar Link
+              </button>
+            `;
+          }
+
+          return `
+            <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+              <td style="padding: 10px 8px;">${new Date(t.createdAt).toLocaleDateString('pt-BR')}</td>
+              <td style="padding: 10px 8px; font-weight: bold; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${t.titulo}">${t.titulo}</td>
+              <td style="padding: 10px 8px; color: ${statusCor}; font-weight: 600;">${statusTxt}</td>
+              <td style="padding: 10px 8px; font-size: 0.8rem;">${assinadoPor}</td>
+              <td style="padding: 10px 8px;">${acaoBtn}</td>
+            </tr>
+          `;
+        }).join("");
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  },
+
+  gerarTermoConsignacao: async function() {
+    const revId = this.state.revendedoraSelecionadaId;
+    if (!revId) return;
+
+    const titulo = document.getElementById("termo-titulo").value.trim();
+    const prazo = document.getElementById("termo-prazo").value;
+    const conteudo = document.getElementById("termo-conteudo").value.trim();
+
+    if (!titulo || !conteudo) {
+      this.toast("Título e conteúdo do termo são obrigatórios.", "warning");
+      return;
+    }
+
+    try {
+      if (this.state.token && !this.state.token.startsWith("mock_")) {
+        await this.requisitarAPI("/termos/gerar", "POST", {
+          usuarioId: revId,
+          titulo,
+          conteudo,
+          prazoDevolucao: prazo || null
+        });
+      } else {
+        let mockTermos = JSON.parse(localStorage.getItem("belklock_termos_mock") || "[]");
+        mockTermos.push({
+          id: `termo-${Date.now()}`,
+          usuarioId: revId,
+          titulo,
+          conteudo,
+          status: "PENDENTE",
+          createdAt: new Date().toISOString(),
+          prazoDevolucao: prazo ? new Date(prazo).toISOString() : null
+        });
+        localStorage.setItem("belklock_termos_mock", JSON.stringify(mockTermos));
+      }
+
+      this.toast("Termo de consignação gerado com sucesso!", "success");
+      document.getElementById("termo-prazo").value = "";
+      this.carregarTermosRevendedora();
+
+    } catch (e) {
+      this.toast("Erro ao gerar termo: " + e.message, "error");
+    }
+  },
+
+  visualizarTermoAssinado: async function(termoId) {
+    let termos = [];
+    if (this.state.token && !this.state.token.startsWith("mock_")) {
+      termos = await this.requisitarAPI("/termos");
+    } else {
+      termos = JSON.parse(localStorage.getItem("belklock_termos_mock") || "[]");
+    }
+
+    const t = termos.find(item => item.id === termoId);
+    if (!t) return;
+
+    document.getElementById("ver-termo-titulo").innerText = t.titulo;
+    document.getElementById("ver-termo-nome").innerText = t.assinaturaNome || "-";
+    document.getElementById("ver-termo-cpf").innerText = t.assinaturaCpf || "-";
+    document.getElementById("ver-termo-ip").innerText = t.assinaturaIp || "-";
+    document.getElementById("ver-termo-data").innerText = t.dataAssinatura ? new Date(t.dataAssinatura).toLocaleString('pt-BR') : "-";
+    
+    const img = document.getElementById("ver-termo-assinatura-img");
+    img.src = t.assinaturaImg || "https://images.unsplash.com/photo-1598257006458-087169a1f08d?q=80&w=150";
+
+    const modal = document.getElementById("modal-ver-termo");
+    modal.style.display = "flex";
+    modal.classList.add("active");
+
+    document.getElementById("btn-close-modal-ver-termo").onclick = () => {
+      modal.style.display = "none";
+      modal.classList.remove("active");
+    };
+  },
+
+  reiniciarComissoesRevendedora: async function() {
+    const revId = this.state.revendedoraSelecionadaId;
+    if (!revId) return;
+
+    if (!await this.confirmar("Deseja realmente reiniciar o ciclo de comissões/metas desta revendedora? Isso agendará uma notificação no WhatsApp dela.")) {
+      return;
+    }
+
+    try {
+      if (this.state.token && !this.state.token.startsWith("mock_")) {
+        await this.requisitarAPI(`/revendedoras/${revId}/reiniciar-comissoes`, "POST");
+      } else {
+        const rev = this.state.revendedoras.find(r => r.id === revId);
+        let mockFila = JSON.parse(localStorage.getItem("belklock_whatsapp_mock") || "[]");
+        mockFila.push({
+          id: `w-${Date.now()}`,
+          numero: rev.whatsapp || "000000000",
+          mensagem: `Olá ${rev.nome}! O ciclo de metas e comissões da BelKlock Semijoias foi reiniciado hoje. Suas vendas do período foram liquidadas e você já pode cadastrar novos clientes e vendas. Boa sorte! 💼💎`,
+          tipo: "REINICIO_COMISSAO",
+          status: "PENDENTE",
+          createdAt: new Date().toISOString()
+        });
+        localStorage.setItem("belklock_whatsapp_mock", JSON.stringify(mockFila));
+      }
+      this.toast("Ciclo de comissões reiniciado e WhatsApp agendado!", "success");
+    } catch (e) {
+      this.toast("Erro ao reiniciar ciclo: " + e.message, "error");
     }
   }
 

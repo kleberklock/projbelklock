@@ -46,6 +46,16 @@ model Usuario {
   limiteIsencaoPerda Int            @default(0)
   periodoAcumulo String             @default("MANUAL") // "MANUAL" | "MENSAL"
 
+  // Campos para onboarding e documentos
+  documentoRg         String?
+  documentoCpf        String?
+  documentoEndereco   String?
+  termoAssinado       Boolean             @default(false)
+  respostaOnboarding  RespostaOnboarding?
+  documentos          DocumentoUsuario[]
+  termosConsignacao   TermoConsignacao[]
+  linksPagamento      LinkPagamento[]
+
   consignados  Consignado[]
   historico    HistoricoAcerto[]
   vendas       VendaRevendedora[]
@@ -102,6 +112,12 @@ model HistoricoAcerto {
   comissaoPaga       Float
   liquidoBelklock    Float
   formaPagamento     String?  @default("Pix")
+
+  // Novos campos de controle financeiro do acerto
+  totalRetidoRevendedora Float    @default(0.0)
+  totalRecebidoAdmin     Float    @default(0.0)
+  saldoFinalAcerto       Float    @default(0.0)
+
   usuario            Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
 }
 
@@ -133,6 +149,12 @@ model VendaRevendedora {
   comissaoValor Float
   clienteId     String?
   cliente       Cliente? @relation(fields: [clienteId], references: [id])
+
+  // Novos campos para controle de links de pagamento e canal
+  canalPagamento  String             @default("DINHEIRO_REVENDEDORA") // "LINK_PAGO_ADMIN" | "DINHEIRO_REVENDEDORA"
+  pago            Boolean            @default(true)
+  linkPagamentoId String?
+
   usuario       Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
 }
 
@@ -146,6 +168,7 @@ model Cliente {
   observacoes      String?
   vendas           VendaDireta[]
   vendasRevendedora VendaRevendedora[]
+  linksPagamento    LinkPagamento[]
   createdAt        DateTime           @default(now())
 }
 
@@ -192,4 +215,75 @@ model FaixaComissao {
   valorMin   Float    @default(0.0)
   valorMax   Float
   percentual Float
+}
+
+model RespostaOnboarding {
+  id                 String   @id @default(uuid())
+  usuarioId          String   @unique
+  usuario            Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  vendedoraPrincipal String
+  comoConheceu       String
+  experienciaVendas  String
+  comentarios        String?
+  createdAt          DateTime @default(now())
+}
+
+model LinkPagamento {
+  id             String   @id @default(uuid())
+  usuarioId      String
+  usuario        Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  clienteId      String?
+  cliente        Cliente? @relation(fields: [clienteId], references: [id], onDelete: SetNull)
+  valor          Float
+  formaEnvio     String   // "PIX" | "BOLETO" | "CARTAO"
+  status         String   @default("PENDENTE") // "PENDENTE" | "PAGO" | "EXPIRADO"
+  linkSimulado   String
+  vendaId        String?  // Id da venda associada, se houver
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model MensagemWhatsapp {
+  id        String   @id @default(uuid())
+  lojaId    String   @default("default-loja")
+  numero    String
+  mensagem  String
+  tipo      String   // "BOAS_VINDAS" | "ACERTO" | "REINICIO_COMISSAO"
+  status    String   @default("PENDENTE") // "PENDENTE" | "ENVIADO" | "ERRO"
+  createdAt DateTime @default(now())
+}
+
+model DocumentoUsuario {
+  id          String   @id @default(uuid())
+  usuarioId   String
+  usuario     Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  tipo        String   // "RG" | "CPF" | "COMPROVANTE_RESIDENCIA"
+  nomeArquivo String
+  caminhoUrl  String
+  createdAt   DateTime @default(now())
+}
+
+model TermoConsignacao {
+  id             String   @id @default(uuid())
+  usuarioId      String
+  usuario        Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  titulo         String
+  conteudo       String
+  status         String   @default("PENDENTE") // "PENDENTE" | "ASSINADO"
+  assinaturaNome String?
+  assinaturaCpf  String?
+  assinaturaIp   String?
+  dataAssinatura DateTime?
+  prazoDevolucao DateTime?
+  createdAt      DateTime @default(now())
+}
+
+model Treinamento {
+  id        String   @id @default(uuid())
+  lojaId    String   @default("default-loja")
+  titulo    String
+  descricao String?
+  tipo      String   // "VIDEO" | "PDF"
+  url       String
+  createdAt DateTime @default(now())
 }

@@ -47,11 +47,20 @@
           <li class="nav-item active" data-target="minha-maleta" id="menu-minha-maleta">
             <button id="btn-tab-minha-maleta"><i class="fa-solid fa-briefcase"></i>Minha Maleta</button>
           </li>
+          <li class="nav-item" data-target="estoque-central">
+            <button id="btn-tab-estoque-central"><i class="fa-solid fa-store"></i>Estoque Central</button>
+          </li>
           <li class="nav-item" data-target="clientes">
             <button id="btn-tab-clientes"><i class="fa-solid fa-address-book"></i>Meus Clientes</button>
           </li>
           <li class="nav-item" data-target="vendas-geral" id="menu-vendas-geral">
             <button id="btn-tab-vendas-geral"><i class="fa-solid fa-receipt"></i>Minhas Vendas</button>
+          </li>
+          <li class="nav-item" data-target="links-pagamento">
+            <button id="btn-tab-links-pagamento"><i class="fa-solid fa-link"></i>Links de Pagamento</button>
+          </li>
+          <li class="nav-item" data-target="treinamento-demand">
+            <button id="btn-tab-treinamentos"><i class="fa-solid fa-graduation-cap"></i>Treinamentos</button>
           </li>
           <li class="nav-item" data-target="marketing">
             <button id="btn-tab-marketing"><i class="fa-solid fa-wand-magic-sparkles"></i>Divulgação & Mkt</button>
@@ -78,6 +87,17 @@
          ========================================== -->
     <main class="main-content">
       
+      <!-- Alerta de Termo de Consignação Pendente -->
+      <div id="alerta-termo-consignacao-pendente" style="display: none; background: rgba(239, 83, 80, 0.15); border: 1px solid rgba(239, 83, 80, 0.4); padding: 1rem; border-radius: var(--radius-md); margin-bottom: 1.5rem; justify-content: space-between; align-items: center; gap: 1rem;">
+        <div style="display: flex; align-items: center; gap: 10px; color: #ff8a80;">
+          <i class="fa-solid fa-file-signature" style="font-size: 1.5rem;"></i>
+          <div>
+            <strong style="display: block;">Termo de Consignação Pendente!</strong>
+            <span style="font-size: 0.82rem; color: var(--text-secondary);">Você possui um termo de responsabilidade de maleta aguardando sua assinatura digital.</span>
+          </div>
+        </div>
+        <a id="btn-assinar-termo-pendente" href="#" class="btn-gold" style="padding: 0.5rem 1rem; font-size: 0.82rem; text-decoration: none; display: inline-flex; align-items: center; gap: 6px;"><i class="fa-solid fa-signature"></i> Assinar Termo Agora</a>
+      </div>
       <!-- ==========================================
            ABA: DASHBOARD (INATIVA PARA REVENDEDORA)
            ========================================== -->
@@ -1186,6 +1206,135 @@
               <p id="cfg-security-note">BelKlock Semijoias utiliza criptografia SSL ponta-a-ponta nas requisições da API e persistência reativa local para garantir a integridade dos seus dados em qualquer circunstância.</p>
             </div>
           </div>
+        </div>
+      </section>
+
+      <!-- ==========================================
+           ABA: ESTOQUE CENTRAL (VENDEDORA)
+           ========================================== -->
+      <section id="estoque-central" class="app-section">
+        <div class="section-header">
+          <div class="section-title">
+            <h2>Estoque Central - BelKlock</h2>
+            <p>Consulte as peças disponíveis no estoque central da administradora para solicitar novas consignações.</p>
+          </div>
+        </div>
+
+        <div class="dashboard-panel">
+          <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+            <h2><i class="fa-solid fa-store"></i> Catálogo Geral de Peças</h2>
+            <div style="display: flex; gap: 0.5rem;">
+              <input type="text" id="busca-estoque-central" class="form-control" placeholder="Buscar peça..." oninput="app.renderizarEstoqueCentral()" style="padding: 0.4rem; font-size: 0.85rem; width: 200px; background: var(--bg-primary); border-color: rgba(212, 175, 55, 0.3); color: var(--text-primary); border-radius: var(--radius-sm);">
+            </div>
+          </div>
+          <div class="table-responsive" style="margin-top: 1rem;">
+            <table class="premium-table">
+              <thead>
+                <tr>
+                  <th>Código</th>
+                  <th>Nome do Produto</th>
+                  <th>Categoria</th>
+                  <th>Preço Sugerido (Venda)</th>
+                  <th>Qtd Disponível (Central)</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-estoque-central">
+                <tr>
+                  <td colspan="5" style="text-align: center; color: var(--text-secondary);">Buscando produtos no estoque central...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==========================================
+           ABA: LINKS DE PAGAMENTO (VENDEDORA)
+           ========================================== -->
+      <section id="links-pagamento" class="app-section">
+        <div class="section-header">
+          <div class="section-title">
+            <h2>Geração de Links de Pagamento</h2>
+            <p>Gere links de PIX, Boleto e Cartão de Crédito direto para enviar aos seus clientes. O caixa é liquidado automaticamente.</p>
+          </div>
+        </div>
+
+        <div class="split-layout" style="grid-template-columns: 1.2fr 0.8fr; gap: 2rem;">
+          <!-- Histórico / Links Gerados -->
+          <div class="dashboard-panel">
+            <div class="panel-header">
+              <h2><i class="fa-solid fa-list-check"></i> Links Gerados</h2>
+            </div>
+            <div class="table-responsive" style="margin-top: 1rem;">
+              <table class="premium-table">
+                <thead>
+                  <tr>
+                    <th>Data</th>
+                    <th>Cliente</th>
+                    <th>Valor</th>
+                    <th>Forma</th>
+                    <th>Status</th>
+                    <th>Ações</th>
+                  </tr>
+                </thead>
+                <tbody id="tbody-links-pagamento">
+                  <tr>
+                    <td colspan="6" style="text-align: center; color: var(--text-secondary);">Nenhum link de pagamento gerado ainda.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Formulário de Geração -->
+          <div class="dashboard-panel">
+            <div class="panel-header">
+              <h2><i class="fa-solid fa-link"></i> Novo Link</h2>
+            </div>
+            <div style="margin-top: 1.5rem;">
+              <div class="form-group" style="margin-bottom: 1rem;">
+                <label for="link-cliente-id" style="display: block; margin-bottom: 0.3rem;">Cliente Destinatário *</label>
+                <select id="link-cliente-id" class="form-control" required style="width: 100%; padding: 0.5rem; background: var(--bg-primary); border-color: rgba(212, 175, 55, 0.3); color: var(--text-primary);">
+                  <option value="">Selecione um cliente...</option>
+                </select>
+              </div>
+              <div class="form-group" style="margin-bottom: 1rem;">
+                <label for="link-valor" style="display: block; margin-bottom: 0.3rem;">Valor Cobrado (R$) *</label>
+                <input type="number" id="link-valor" class="form-control" placeholder="Ex: 150.00" step="0.01" required style="width: 100%; padding: 0.5rem; background: var(--bg-primary); border-color: rgba(212, 175, 55, 0.3); color: var(--text-primary);">
+              </div>
+              <div class="form-group" style="margin-bottom: 1rem;">
+                <label for="link-forma" style="display: block; margin-bottom: 0.3rem;">Forma de Pagamento Aceita *</label>
+                <select id="link-forma" class="form-control" required style="width: 100%; padding: 0.5rem; background: var(--bg-primary); border-color: rgba(212, 175, 55, 0.3); color: var(--text-primary);">
+                  <option value="PIX">Apenas PIX</option>
+                  <option value="CARTAO">Cartão de Crédito (Simulado)</option>
+                  <option value="BOLETO">Boleto Bancário</option>
+                  <option value="TODOS" selected>PIX, Cartão e Boleto</option>
+                </select>
+              </div>
+              <div class="form-group" style="margin-bottom: 1.5rem;">
+                <label for="link-descricao" style="display: block; margin-bottom: 0.3rem;">Descrição do Pedido (opcional)</label>
+                <input type="text" id="link-descricao" class="form-control" placeholder="Ex: Brinco cravejado + Anel de Luxo" style="width: 100%; padding: 0.5rem; background: var(--bg-primary); border-color: rgba(212, 175, 55, 0.3); color: var(--text-primary);">
+              </div>
+              <button class="btn-gold" onclick="app.gerarLinkPagamento()" style="width: 100%; justify-content: center;"><i class="fa-solid fa-wand-magic-sparkles"></i> Gerar Link de Checkout</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==========================================
+           ABA: TREINAMENTOS ON-DEMAND (VENDEDORA)
+           ========================================== -->
+      <section id="treinamento-demand" class="app-section">
+        <div class="section-header">
+          <div class="section-title">
+            <h2>Capacitação e Treinamentos BelKlock</h2>
+            <p>Assista aos vídeos de dicas de vendas, manuais de produtos e boas práticas da marca.</p>
+          </div>
+        </div>
+
+        <div id="treinamento-cards-container" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.5rem; margin-top: 1rem;">
+          <!-- Renderizado via JS -->
+          <p style="color: var(--text-muted); font-style: italic;">Nenhum conteúdo de treinamento disponível no momento.</p>
         </div>
       </section>
 

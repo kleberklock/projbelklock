@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>BelKlock Semijoias - Cadastro & Onboarding Premium</title>
+  
+  <!-- Estilos base do aplicativo -->
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <style>
+    /* Estilos específicos premium para a tela de onboarding */
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      background: radial-gradient(circle at center, #111 0%, #000 100%);
+      padding: 1.5rem;
+    }
+
+    .onboarding-card {
+      width: 100%;
+      max-width: 680px;
+      background: var(--bg-card);
+      border: var(--border-gold);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-premium);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      animation: fadeIn 0.8s ease;
+    }
+
+    .onboarding-header {
+      text-align: center;
+      padding: 2.5rem 2rem 1.5rem 2rem;
+      border-bottom: 1px solid rgba(212, 175, 55, 0.1);
+      position: relative;
+    }
+
+    .onboarding-header img {
+      width: 90px;
+      margin-bottom: 1rem;
+    }
+
+    .onboarding-header h1 {
+      font-family: var(--font-title);
+      color: var(--gold-primary);
+      font-size: 2rem;
+      letter-spacing: 1px;
+    }
+
+    .onboarding-header p {
+      color: var(--text-secondary);
+      font-size: 0.95rem;
+      margin-top: 0.3rem;
+    }
+
+    /* Steps Tracker */
+    .steps-container {
+      display: flex;
+      justify-content: space-between;
+      padding: 1.5rem 3rem;
+      background: rgba(0, 0, 0, 0.3);
+      border-bottom: 1px solid rgba(212, 175, 55, 0.05);
+    }
+
+    .step-node {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      z-index: 2;
+      position: relative;
+      flex: 1;
+    }
+
+    .step-node::after {
+      content: "";
+      position: absolute;
+      top: 15px;
+      left: 50%;
+      width: 100%;
+      height: 2px;
+      background: rgba(212, 175, 55, 0.1);
+      z-index: -1;
+    }
+
+    .step-node:last-child::after {
+      display: none;
+    }
+
+    .step-circle {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: #1a1a1a;
+      border: 2px solid rgba(212, 175, 55, 0.2);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 0.85rem;
+      font-weight: bold;
+      color: var(--text-secondary);
+      transition: var(--transition);
+    }
+
+    .step-label {
+      font-size: 0.75rem;
+      margin-top: 0.4rem;
+      color: var(--text-muted);
+      font-weight: 500;
+      transition: var(--transition);
+    }
+
+    .step-node.active .step-circle {
+      background: var(--gold-primary);
+      border-color: var(--gold-light);
+      color: var(--text-dark);
+      box-shadow: var(--shadow-glow);
+    }
+
+    .step-node.active .step-label {
+      color: var(--gold-primary);
+      font-weight: bold;
+    }
+
+    .step-node.completed .step-circle {
+      background: rgba(212, 175, 55, 0.2);
+      border-color: var(--gold-primary);
+      color: var(--gold-primary);
+    }
+
+    .step-node.completed .step-label {
+      color: var(--text-secondary);
+    }
+
+    .step-node.completed::after {
+      background: var(--gold-primary);
+    }
+
+    /* Content Area */
+    .onboarding-body {
+      padding: 2.5rem 3rem;
+      flex-grow: 1;
+    }
+
+    .onboarding-step-content {
+      display: none;
+    }
+
+    .onboarding-step-content.active {
+      display: block;
+      animation: slideIn 0.4s ease;
+    }
+
+    /* Product Showcase */
+    .product-showcase {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1rem;
+      margin: 1.5rem 0;
+    }
+
+    .showcase-item {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(212, 175, 55, 0.08);
+      border-radius: var(--radius-md);
+      padding: 0.5rem;
+      text-align: center;
+      transition: var(--transition);
+    }
+
+    .showcase-item:hover {
+      border-color: var(--gold-primary);
+      transform: translateY(-3px);
+    }
+
+    .showcase-item img {
+      width: 100%;
+      height: 100px;
+      object-fit: cover;
+      border-radius: var(--radius-sm);
+      margin-bottom: 0.5rem;
+    }
+
+    .showcase-item h4 {
+      font-size: 0.85rem;
+      color: var(--text-primary);
+      margin-bottom: 0.2rem;
+    }
+
+    .showcase-item p {
+      font-size: 0.75rem;
+      color: var(--gold-primary);
+      font-weight: bold;
+    }
+
+    /* Form Controls */
+    .form-group {
+      margin-bottom: 1.2rem;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      margin-bottom: 0.4rem;
+      font-weight: 500;
+    }
+
+    .form-group input, .form-group select, .form-group textarea {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid rgba(212, 175, 55, 0.15);
+      border-radius: var(--radius-sm);
+      color: var(--text-primary);
+      font-family: var(--font-body);
+      font-size: 0.9rem;
+      transition: var(--transition);
+    }
+
+    .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+      border-color: var(--gold-primary);
+      box-shadow: 0 0 8px rgba(212, 175, 55, 0.15);
+      outline: none;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+
+    /* Upload Controls */
+    .file-upload-box {
+      border: 2px dashed rgba(212, 175, 55, 0.2);
+      border-radius: var(--radius-md);
+      padding: 1.5rem;
+      text-align: center;
+      cursor: pointer;
+      background: rgba(0, 0, 0, 0.2);
+      transition: var(--transition);
+      margin-bottom: 1rem;
+    }
+
+    .file-upload-box:hover {
+      border-color: var(--gold-primary);
+      background: rgba(212, 175, 55, 0.02);
+    }
+
+    .file-upload-box i {
+      font-size: 2rem;
+      color: var(--gold-primary);
+      margin-bottom: 0.6rem;
+    }
+
+    .file-upload-box span {
+      display: block;
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+    }
+
+    .file-upload-box small {
+      display: block;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 0.2rem;
+    }
+
+    .file-upload-input {
+      display: none;
+    }
+
+    .file-status {
+      display: none;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.85rem;
+      color: #81c784;
+      margin-top: 0.4rem;
+      text-align: left;
+    }
+
+    /* Footer Buttons */
+    .onboarding-footer {
+      padding: 1.5rem 3rem 2.5rem 3rem;
+      border-top: 1px solid rgba(212, 175, 55, 0.05);
+      display: flex;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+
+    .btn-onboarding {
+      padding: 0.8rem 2rem;
+      border-radius: var(--radius-sm);
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 0.95rem;
+      transition: var(--transition);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .btn-onboarding.btn-next {
+      background: var(--gold-gradient);
+      color: var(--text-dark);
+      border: none;
+      margin-left: auto;
+    }
+
+    .btn-onboarding.btn-next:hover {
+      box-shadow: var(--shadow-glow);
+      transform: translateY(-1px);
+    }
+
+    .btn-onboarding.btn-prev {
+      background: transparent;
+      border: 1px solid rgba(212, 175, 55, 0.3);
+      color: var(--text-secondary);
+    }
+
+    .btn-onboarding.btn-prev:hover {
+      border-color: var(--gold-primary);
+      color: var(--text-primary);
+    }
+
+    /* Success Card */
+    .success-panel {
+      text-align: center;
+      padding: 1.5rem 0;
+    }
+
+    .success-icon {
+      width: 70px;
+      height: 70px;
+      border-radius: 50%;
+      background: rgba(129, 199, 132, 0.1);
+      border: 2px solid #81c784;
+      color: #81c784;
+      display: inline-flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 2.2rem;
+      margin-bottom: 1.5rem;
+      box-shadow: 0 0 15px rgba(129, 199, 132, 0.2);
+    }
+
+    .credentials-box {
+      background: rgba(212, 175, 55, 0.05);
+      border: 1px solid rgba(212, 175, 55, 0.2);
+      border-radius: var(--radius-md);
+      padding: 1.5rem;
+      margin: 1.5rem 0;
+      text-align: left;
+    }
+
+    .credentials-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 0.6rem 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .credentials-item:last-child {
+      border-bottom: none;
+    }
+
+    .credentials-label {
+      color: var(--text-secondary);
+      font-size: 0.85rem;
+    }
+
+    .credentials-value {
+      color: var(--gold-primary);
+      font-family: monospace;
+      font-weight: bold;
+      font-size: 1rem;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateX(10px); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+
+    @media (max-width: 580px) {
+      .steps-container {
+        padding: 1rem;
+      }
+      .onboarding-body {
+        padding: 1.5rem;
+      }
+      .onboarding-footer {
+        padding: 1rem 1.5rem;
+      }
+      .form-row {
+        grid-template-columns: 1fr;
+        gap: 0;
+      }
+      .product-showcase {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="onboarding-card">
+    <div class="onboarding-header">
+      <img src="assets/logo.svg" alt="BelKlock" onerror="this.src='https://raw.githubusercontent.com/intelbras/assets/master/logo.png'; this.style.filter='hue-rotate(45deg)';">
+      <h1>BelKlock Semijoias</h1>
+      <p>Cadastre-se para se tornar uma Revendedora BelKlock</p>
+    </div>
+
+    <!-- Barra de Progresso de Etapas -->
+    <div class="steps-container">
+      <div class="step-node active" id="step-node-1">
+        <div class="step-circle">1</div>
+        <div class="step-label">Produtos</div>
+      </div>
+      <div class="step-node" id="step-node-2">
+        <div class="step-circle">2</div>
+        <div class="step-label">Dados</div>
+      </div>
+      <div class="step-node" id="step-node-3">
+        <div class="step-circle">3</div>
+        <div class="step-label">Indicação</div>
+      </div>
+      <div class="step-node" id="step-node-4">
+        <div class="step-circle">4</div>
+        <div class="step-label">Documentos</div>
+      </div>
+    </div>
+
+    <form id="onboarding-form" enctype="multipart/form-data">
+      <div class="onboarding-body">
+        
+        <!-- ETAPA 1: Apresentação da Marca & Produtos -->
+        <div class="onboarding-step-content active" id="step-content-1">
+          <h2 style="font-family: var(--font-title); font-size: 1.4rem; color: var(--gold-primary); margin-bottom: 0.5rem;">Sua Nova Jornada de Sucesso</h2>
+          <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1.5rem;">
+            A BelKlock Semijoias oferece a você peças de altíssima qualidade, com banhos nobres de Ouro 18k e Ródio, design exclusivo e garantia estendida. Veja alguns de nossos produtos que fazem mais sucesso:
+          </p>
+
+          <div class="product-showcase">
+            <div class="showcase-item">
+              <img src="https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?q=80&w=300" alt="Anéis Premium">
+              <h4>Anéis Cravejados</h4>
+              <p>Banho Ouro 18k</p>
+            </div>
+            <div class="showcase-item">
+              <img src="https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?q=80&w=300" alt="Colares Exclusivos">
+              <h4>Colar Veneziana</h4>
+              <p>Zircônia Esmeralda</p>
+            </div>
+            <div class="showcase-item">
+              <img src="https://images.unsplash.com/photo-1630019852942-f89202989a59?q=80&w=300" alt="Brincos de Luxo">
+              <h4>Brinco Gota Pérola</h4>
+              <p>Clássico Luxo</p>
+            </div>
+          </div>
+
+          <div style="background: rgba(212, 175, 55, 0.05); padding: 1.2rem; border-radius: var(--radius-md); border-left: 3px solid var(--gold-primary); margin-top: 1.5rem;">
+            <h4 style="color: var(--gold-primary); font-size: 0.95rem; margin-bottom: 0.3rem;"><i class="fa-solid fa-gem"></i> Por que revender BelKlock?</h4>
+            <p style="color: var(--text-secondary); font-size: 0.85rem; line-height: 1.4;">
+              Trabalhamos com o modelo de consignação premium sem investimento inicial de capital nas maletas. Você recebe a comissão progressiva das peças vendidas e devolve as peças restantes no fechamento do acerto.
+            </p>
+          </div>
+        </div>
+
+        <!-- ETAPA 2: Dados Pessoais -->
+        <div class="onboarding-step-content" id="step-content-2">
+          <h2 style="font-family: var(--font-title); font-size: 1.4rem; color: var(--gold-primary); margin-bottom: 1.2rem;">Dados Cadastrais</h2>
+          
+          <div class="form-group">
+            <label for="nome">Nome Completo *</label>
+            <input type="text" id="nome" name="nome" placeholder="Digite seu nome completo" required>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="email">E-mail *</label>
+              <input type="email" id="email" name="email" placeholder="exemplo@email.com" required>
+            </div>
+            <div class="form-group">
+              <label for="whatsapp">WhatsApp *</label>
+              <input type="text" id="whatsapp" name="whatsapp" placeholder="(00) 00000-0000" required>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="cpf">CPF *</label>
+              <input type="text" id="cpf" name="cpf" placeholder="000.000.000-00" required>
+            </div>
+            <div class="form-group">
+              <label for="rg">RG</label>
+              <input type="text" id="rg" name="rg" placeholder="Digite seu número de identidade">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="endereco">Endereço Residencial Completo</label>
+            <input type="text" id="endereco" name="endereco" placeholder="Rua, número, bairro, cidade, CEP">
+          </div>
+        </div>
+
+        <!-- ETAPA 3: Questionário de Indicação / Vendedora Principal -->
+        <div class="onboarding-step-content" id="step-content-3">
+          <h2 style="font-family: var(--font-title); font-size: 1.4rem; color: var(--gold-primary); margin-bottom: 1.2rem;">Questionário de Integração</h2>
+          
+          <div class="form-group">
+            <label for="vendedoraPrincipal">Quem é a sua Vendedora Principal (Quem indicou você)? *</label>
+            <input type="text" id="vendedoraPrincipal" name="vendedoraPrincipal" placeholder="Nome da vendedora principal ou administradora" required>
+          </div>
+
+          <div class="form-group">
+            <label for="comoConheceu">Como você conheceu a BelKlock Semijoias? *</label>
+            <select id="comoConheceu" name="comoConheceu" required>
+              <option value="">Selecione uma opção</option>
+              <option value="Indicacao">Indicação de vendedora principal</option>
+              <option value="Instagram">Instagram / Redes Sociais</option>
+              <option value="Site">Pesquisa na internet / Site</option>
+              <option value="Outro">Outros</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="experienciaVendas">Você possui experiência com vendas de semijoias ou cosméticos? *</label>
+            <select id="experienciaVendas" name="experienciaVendas" required>
+              <option value="">Selecione uma opção</option>
+              <option value="Nenhuma">Não possuo experiência com vendas</option>
+              <option value="Pouca">Tenho pouca experiência</option>
+              <option value="Experiente">Já vendo outros produtos (semijoias, roupas, cosméticos, etc.)</option>
+              <option value="Profissional">Trabalho profissionalmente com vendas há anos</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="comentarios">Comentários Adicionais / Objetivos</label>
+            <textarea id="comentarios" name="comentarios" rows="3" placeholder="Fale um pouco sobre você ou o que você busca na BelKlock..."></textarea>
+          </div>
+        </div>
+
+        <!-- ETAPA 4: Envio de Documentos (Upload) -->
+        <div class="onboarding-step-content" id="step-content-4">
+          <h2 style="font-family: var(--font-title); font-size: 1.4rem; color: var(--gold-primary); margin-bottom: 0.5rem;">Envio de Documentos</h2>
+          <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 1.5rem;">
+            Para garantir a segurança do processo de consignação da maleta, precisamos armazenar cópias digitais legíveis dos seus documentos.
+          </p>
+
+          <!-- Upload RG -->
+          <div class="form-group">
+            <label>RG / Documento de Identificação Oficial (Frente e Verso)</label>
+            <div class="file-upload-box" onclick="document.getElementById('rgFile').click()">
+              <i class="fa-solid fa-id-card"></i>
+              <span>Clique para tirar foto ou selecionar arquivo</span>
+              <small>Formatos aceitos: JPG, PNG, PDF (Max 10MB)</small>
+            </div>
+            <input type="file" id="rgFile" name="rgFile" class="file-upload-input" accept="image/*,.pdf" onchange="atualizarStatusArquivo(this, 'status-rg')">
+            <div id="status-rg" class="file-status">
+              <i class="fa-solid fa-circle-check"></i> <span class="file-name"></span>
+            </div>
+          </div>
+
+          <!-- Upload CPF -->
+          <div class="form-group">
+            <label>CPF (Caso não conste no RG)</label>
+            <div class="file-upload-box" onclick="document.getElementById('cpfFile').click()">
+              <i class="fa-solid fa-file-invoice"></i>
+              <span>Clique para tirar foto ou selecionar arquivo</span>
+              <small>Formatos aceitos: JPG, PNG, PDF (Max 10MB)</small>
+            </div>
+            <input type="file" id="cpfFile" name="cpfFile" class="file-upload-input" accept="image/*,.pdf" onchange="atualizarStatusArquivo(this, 'status-cpf')">
+            <div id="status-cpf" class="file-status">
+              <i class="fa-solid fa-circle-check"></i> <span class="file-name"></span>
+            </div>
+          </div>
+
+          <!-- Upload Comprovante de Residência -->
+          <div class="form-group">
+            <label>Comprovante de Residência Atual (Últimos 90 dias) *</label>
+            <div class="file-upload-box" onclick="document.getElementById('enderecoFile').click()">
+              <i class="fa-solid fa-house-chimney-window"></i>
+              <span>Clique para tirar foto ou selecionar arquivo</span>
+              <small>Formatos aceitos: JPG, PNG, PDF (Max 10MB)</small>
+            </div>
+            <input type="file" id="enderecoFile" name="enderecoFile" class="file-upload-input" accept="image/*,.pdf" onchange="atualizarStatusArquivo(this, 'status-endereco')" required>
+            <div id="status-endereco" class="file-status">
+              <i class="fa-solid fa-circle-check"></i> <span class="file-name"></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- ETAPA DE SUCESSO (FINAL) -->
+        <div class="onboarding-step-content" id="step-content-success">
+          <div class="success-panel">
+            <div class="success-icon">
+              <i class="fa-solid fa-check"></i>
+            </div>
+            <h2 style="font-family: var(--font-title); font-size: 1.8rem; color: var(--gold-primary); margin-bottom: 0.5rem;">Seja Bem-Vinda à Família BelKlock!</h2>
+            <p style="color: var(--text-secondary); font-size: 0.95rem;">
+              Seu cadastro foi enviado e aprovado! Uma mensagem de boas-vindas foi criada em nosso sistema de WhatsApp.
+            </p>
+
+            <div class="credentials-box">
+              <h3 style="font-size: 1rem; color: var(--gold-primary); margin-bottom: 1rem; border-bottom: 1px solid rgba(212, 175, 55, 0.1); padding-bottom: 0.5rem;"><i class="fa-solid fa-key"></i> Suas Credenciais de Acesso</h3>
+              <div class="credentials-item">
+                <span class="credentials-label">Login (Código PIN):</span>
+                <span class="credentials-value" id="cred-pin">xxxx</span>
+              </div>
+              <div class="credentials-item">
+                <span class="credentials-label">Senha Temporária:</span>
+                <span class="credentials-value" id="cred-senha">xxxxxx</span>
+              </div>
+              <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 1rem; text-align: center;">
+                Anote suas credenciais. Você será redirecionada para a página de login do portal.
+              </p>
+            </div>
+
+            <button type="button" class="btn-onboarding btn-next" style="margin: 0 auto; display: flex;" onclick="irParaPortal()">
+              <i class="fa-solid fa-right-to-bracket"></i> Acessar Portal da Revendedora
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="onboarding-footer" id="onboarding-buttons-footer">
+        <button type="button" class="btn-onboarding btn-prev" id="btn-back" style="display: none;" onclick="navegarEtapa(-1)">
+          <i class="fa-solid fa-chevron-left"></i> Voltar
+        </button>
+        <button type="button" class="btn-onboarding btn-next" id="btn-next" onclick="proximaEtapa()">
+          Avançar <i class="fa-solid fa-chevron-right"></i>
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <div id="toast-container" style="position: fixed; bottom: 20px; right: 20px; z-index: 9999;"></div>
+
+  <script src="onboarding.js"></script>
+</body>
+</html>

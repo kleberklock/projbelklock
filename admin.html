@@ -59,6 +59,15 @@
           <li class="nav-item" data-target="vendas-geral" id="menu-vendas-geral">
             <button id="btn-tab-vendas-geral"><i class="fa-solid fa-receipt"></i>Histórico de Vendas</button>
           </li>
+          <li class="nav-item" data-target="notas-fiscais">
+            <button id="btn-tab-notas-fiscais"><i class="fa-solid fa-file-invoice"></i>Notas Fiscais</button>
+          </li>
+          <li class="nav-item" data-target="central-whatsapp">
+            <button id="btn-tab-central-whatsapp"><i class="fa-brands fa-whatsapp"></i>Fila WhatsApp</button>
+          </li>
+          <li class="nav-item" data-target="admin-treinamentos">
+            <button id="btn-tab-admin-treinamentos"><i class="fa-solid fa-graduation-cap"></i>Treinamentos</button>
+          </li>
           <li class="nav-item" data-target="marketing">
             <button id="btn-tab-marketing"><i class="fa-solid fa-wand-magic-sparkles"></i>Divulgação & Mkt</button>
           </li>
@@ -648,6 +657,8 @@
               <button class="mkt-tab-btn active" id="btn-subtab-maleta" onclick="app.mudarSubAbaRevendedora('maleta')"><i class="fa-solid fa-briefcase"></i> Maleta Atual</button>
               <button class="mkt-tab-btn" id="btn-subtab-vendas-rev" onclick="app.mudarSubAbaRevendedora('vendas')"><i class="fa-solid fa-receipt"></i> Histórico de Vendas</button>
               <button class="mkt-tab-btn" id="btn-subtab-historico" onclick="app.mudarSubAbaRevendedora('historico')"><i class="fa-solid fa-clock-rotate-left"></i> Histórico de Acertos</button>
+              <button class="mkt-tab-btn" id="btn-subtab-termos" onclick="app.mudarSubAbaRevendedora('termos')"><i class="fa-solid fa-file-contract"></i> Termos Maleta</button>
+              <button class="mkt-tab-btn" id="btn-subtab-documentos" onclick="app.mudarSubAbaRevendedora('documentos')"><i class="fa-solid fa-vault"></i> Cofre Virtual</button>
             </div>
 
             <!-- Conteúdo Sub-Aba: Maleta Atual -->
@@ -718,6 +729,71 @@
                     </tr>
                   </tbody>
                 </table>
+              </div>
+            </div>
+
+            <!-- Conteúdo Sub-Aba: Termos de Consignação -->
+            <div id="sub-aba-rev-termos" class="sub-aba-rev" style="display: none;">
+              <div style="display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 1.5rem; margin-top: 1rem;">
+                <!-- Lista de Termos -->
+                <div>
+                  <h4 style="font-family: var(--font-title); font-size: 1.15rem; color: var(--gold-light); margin-bottom: 1rem;"><i class="fa-solid fa-file-contract"></i> Termos Emitidos</h4>
+                  <div class="table-responsive">
+                    <table class="premium-table">
+                      <thead>
+                        <tr>
+                          <th>Data</th>
+                          <th>Título</th>
+                          <th>Status</th>
+                          <th>Assinado Por</th>
+                          <th>Ações</th>
+                        </tr>
+                      </thead>
+                      <tbody id="tbody-termos-consignacao">
+                        <tr>
+                          <td colspan="5" style="text-align: center; color: var(--text-secondary);">Nenhum termo gerado para esta revendedora.</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+                <!-- Formulário para Gerar Termo -->
+                <div style="background: rgba(0, 0, 0, 0.3); border: 1px solid rgba(212, 175, 55, 0.1); padding: 1.2rem; border-radius: var(--radius-md);">
+                  <h4 style="font-family: var(--font-title); font-size: 1.1rem; color: var(--gold-primary); margin-bottom: 1rem;"><i class="fa-solid fa-file-signature"></i> Novo Termo de Responsabilidade</h4>
+                  <div class="form-group" style="margin-bottom: 0.8rem;">
+                    <label for="termo-titulo" style="font-size: 0.8rem; color: var(--text-secondary);">Título do Termo</label>
+                    <input type="text" id="termo-titulo" class="form-control" value="Termo de Responsabilidade da Maleta de Consignação" style="padding: 0.5rem; font-size: 0.85rem;">
+                  </div>
+                  <div class="form-group" style="margin-bottom: 0.8rem;">
+                    <label for="termo-prazo" style="font-size: 0.8rem; color: var(--text-secondary);">Prazo de Devolução</label>
+                    <input type="date" id="termo-prazo" class="form-control" style="padding: 0.5rem; font-size: 0.85rem;">
+                  </div>
+                  <div class="form-group" style="margin-bottom: 1rem;">
+                    <label for="termo-conteudo" style="font-size: 0.8rem; color: var(--text-secondary);">Conteúdo / Regras</label>
+                    <textarea id="termo-conteudo" class="form-control" rows="5" style="padding: 0.5rem; font-size: 0.8rem; font-family: var(--font-body); line-height: 1.4;">Declaro para os devidos fins que recebi em perfeito estado de conservação a maleta BelKlock contendo peças em consignação comercial. Comprometo-me a zelar pela integridade física dos produtos e realizar o acerto de contas dentro do prazo determinado, sob pena de ressarcimento integral do valor bruto de venda sugerida das peças extraviadas ou danificadas.</textarea>
+                  </div>
+                  <button class="btn-gold" onclick="app.gerarTermoConsignacao()" style="width: 100%; justify-content: center; padding: 0.6rem; font-size: 0.85rem;"><i class="fa-solid fa-paper-plane"></i> Gerar e Enviar Termo</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Conteúdo Sub-Aba: Documentos e Cofre Virtual -->
+            <div id="sub-aba-rev-documentos" class="sub-aba-rev" style="display: none;">
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-top: 1rem;">
+                <!-- Respostas do Onboarding -->
+                <div style="background: rgba(0, 0, 0, 0.2); border: 1px solid rgba(255, 255, 255, 0.05); padding: 1.5rem; border-radius: var(--radius-md);">
+                  <h4 style="font-family: var(--font-title); font-size: 1.15rem; color: var(--gold-light); margin-bottom: 1rem; border-bottom: 1px solid rgba(212, 175, 55, 0.1); padding-bottom: 0.5rem;"><i class="fa-solid fa-clipboard-question"></i> Respostas do Onboarding</h4>
+                  <div id="onboarding-respostas-container" style="font-size: 0.85rem; line-height: 1.5;">
+                    <p style="color: var(--text-muted); font-style: italic;">Buscando questionário de onboarding...</p>
+                  </div>
+                </div>
+                <!-- Documentos Anexados (Cofre Virtual) -->
+                <div style="background: rgba(0, 0, 0, 0.2); border: 1px solid rgba(255, 255, 255, 0.05); padding: 1.5rem; border-radius: var(--radius-md);">
+                  <h4 style="font-family: var(--font-title); font-size: 1.15rem; color: var(--gold-light); margin-bottom: 1rem; border-bottom: 1px solid rgba(212, 175, 55, 0.1); padding-bottom: 0.5rem;"><i class="fa-solid fa-vault"></i> Cofre Virtual de Documentos</h4>
+                  <div id="cofre-documentos-list" style="display: flex; flex-direction: column; gap: 1rem;">
+                    <p style="color: var(--text-muted); font-style: italic;">Buscando arquivos da revendedora...</p>
+                  </div>
+                </div>
               </div>
             </div>
             
@@ -1216,6 +1292,183 @@
             </div>
             <div style="border-top: 1px solid var(--border-color); padding-top: 1.5rem; margin-top: 1.5rem; font-size: 0.85rem; color: var(--text-secondary);">
               <p id="cfg-security-note">BelKlock Semijoias utiliza criptografia SSL ponta-a-ponta nas requisições da API e persistência reativa local para garantir a integridade dos seus dados em qualquer circunstância.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==========================================
+           ABA: NOTAS FISCAIS (ADMIN)
+           ========================================== -->
+      <section id="notas-fiscais" class="app-section">
+        <div class="section-header">
+          <div class="section-title">
+            <h2>Gestão de Notas Fiscais Eletrônicas</h2>
+            <p>Monitore o faturamento e emita notas fiscais (NF-e/NFC-e) de vendas e acertos homologados.</p>
+          </div>
+        </div>
+
+        <div class="mkt-tabs" style="margin-bottom: 2rem;">
+          <button class="mkt-tab-btn active" id="btn-nf-pendentes" onclick="app.mudarAbaNF('pendentes')"><i class="fa-solid fa-clock"></i> Faturamento Pendente</button>
+          <button class="mkt-tab-btn" id="btn-nf-emitidas" onclick="app.mudarAbaNF('emitidas')"><i class="fa-solid fa-circle-check"></i> Notas Fiscais Emitidas</button>
+        </div>
+
+        <!-- Painel 1: Pendentes de Emissão -->
+        <div id="painel-nf-pendentes" class="nf-aba-panel">
+          <div class="dashboard-panel">
+            <div class="panel-header">
+              <h2><i class="fa-solid fa-calculator"></i> Vendas e Acertos sem Nota Fiscal</h2>
+            </div>
+            <div class="table-responsive">
+              <table class="premium-table">
+                <thead>
+                  <tr>
+                    <th>Data</th>
+                    <th>Origem / Tipo</th>
+                    <th>Destinatário</th>
+                    <th>Valor Total</th>
+                    <th>Status Fiscal</th>
+                    <th>Ações</th>
+                  </tr>
+                </thead>
+                <tbody id="tbody-nf-pendentes">
+                  <tr>
+                    <td colspan="6" style="text-align: center; color: var(--text-secondary);">Carregando faturamentos pendentes...</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Painel 2: Emitidas -->
+        <div id="painel-nf-emitidas" class="nf-aba-panel" style="display: none;">
+          <div class="dashboard-panel">
+            <div class="panel-header">
+              <h2><i class="fa-solid fa-receipt"></i> Notas Fiscais Homologadas na SEFAZ</h2>
+            </div>
+            <div class="table-responsive">
+              <table class="premium-table">
+                <thead>
+                  <tr>
+                    <th>Data Emissão</th>
+                    <th>Chave de Acesso (44 dígitos)</th>
+                    <th>Destinatário</th>
+                    <th>Valor Nota</th>
+                    <th>Modelo</th>
+                    <th>Ações</th>
+                  </tr>
+                </thead>
+                <tbody id="tbody-nf-emitidas">
+                  <tr>
+                    <td colspan="6" style="text-align: center; color: var(--text-secondary);">Nenhuma nota fiscal emitida ainda.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==========================================
+           ABA: CENTRAL DE DISPAROS WHATSAPP (ADMIN)
+           ========================================== -->
+      <section id="central-whatsapp" class="app-section">
+        <div class="section-header">
+          <div class="section-title">
+            <h2>Fila de Disparos - WhatsApp</h2>
+            <p>Monitore e realize o envio manual das notificações de acertos, onboarding e comissão.</p>
+          </div>
+        </div>
+
+        <div class="dashboard-panel">
+          <div class="panel-header">
+            <h2><i class="fa-brands fa-whatsapp"></i> Fila de Mensagens Pendentes / Histórico</h2>
+          </div>
+          <div class="table-responsive">
+            <table class="premium-table">
+              <thead>
+                <tr>
+                  <th>Data Registro</th>
+                  <th>Destinatário</th>
+                  <th>Tipo Evento</th>
+                  <th>Mensagem</th>
+                  <th>Status</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-whatsapp-fila">
+                <tr>
+                  <td colspan="6" style="text-align: center; color: var(--text-secondary);">Nenhuma notificação na fila.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==========================================
+           ABA: GESTÃO DE TREINAMENTOS (ADMIN)
+           ========================================== -->
+      <section id="admin-treinamentos" class="app-section">
+        <div class="section-header">
+          <div class="section-title">
+            <h2>Repositório de Treinamentos On-Demand</h2>
+            <p>Gerencie os vídeos e arquivos em PDF que serão disponibilizados no portal das revendedoras.</p>
+          </div>
+        </div>
+
+        <div class="split-layout" style="grid-template-columns: 1.2fr 0.8fr; gap: 2rem;">
+          <!-- Lista de Treinamentos -->
+          <div class="dashboard-panel">
+            <div class="panel-header">
+              <h2><i class="fa-solid fa-photo-film"></i> Conteúdos Cadastrados</h2>
+            </div>
+            <div class="table-responsive" style="margin-top: 1rem;">
+              <table class="premium-table">
+                <thead>
+                  <tr>
+                    <th>Título</th>
+                    <th>Tipo</th>
+                    <th>URL Recurso</th>
+                    <th>Ações</th>
+                  </tr>
+                </thead>
+                <tbody id="tbody-admin-treinamentos">
+                  <tr>
+                    <td colspan="4" style="text-align: center; color: var(--text-secondary);">Nenhum conteúdo de treinamento cadastrado.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Formulário Cadastro -->
+          <div class="dashboard-panel">
+            <div class="panel-header">
+              <h2><i class="fa-solid fa-plus"></i> Novo Conteúdo</h2>
+            </div>
+            <div style="margin-top: 1.5rem;">
+              <div class="form-group" style="margin-bottom: 1rem;">
+                <label for="trein-titulo" style="display: block; margin-bottom: 0.3rem;">Título do Conteúdo *</label>
+                <input type="text" id="trein-titulo" class="form-control" placeholder="Ex: Como gerar Links de Pagamento" required>
+              </div>
+              <div class="form-group" style="margin-bottom: 1rem;">
+                <label for="trein-desc" style="display: block; margin-bottom: 0.3rem;">Descrição</label>
+                <input type="text" id="trein-desc" class="form-control" placeholder="Breve explicação sobre o conteúdo">
+              </div>
+              <div class="form-group" style="margin-bottom: 1rem;">
+                <label for="trein-tipo" style="display: block; margin-bottom: 0.3rem;">Tipo de Conteúdo *</label>
+                <select id="trein-tipo" class="form-control" required>
+                  <option value="VIDEO">Vídeo (YouTube/Vimeo)</option>
+                  <option value="PDF">Manual em PDF / Link Externo</option>
+                </select>
+              </div>
+              <div class="form-group" style="margin-bottom: 1.5rem;">
+                <label for="trein-url" style="display: block; margin-bottom: 0.3rem;">URL do Recurso *</label>
+                <input type="text" id="trein-url" class="form-control" placeholder="https://youtube.com/embed/... ou link pdf" required>
+              </div>
+              <button class="btn-gold" onclick="app.cadastrarTreinamento()" style="width: 100%; justify-content: center;"><i class="fa-solid fa-circle-check"></i> Cadastrar Conteúdo</button>
             </div>
           </div>
         </div>
@@ -1729,8 +1982,17 @@
               </div>
             </div>
 
+            <div class="pricing-row" style="color: #81c784;">
+              <span>Vendas pagas via Link (Caixa Administradora)</span>
+              <span id="acerto-vendas-link">R$ 0,00</span>
+            </div>
+            <div class="pricing-row" style="color: #ffb74d;">
+              <span>Vendas em Dinheiro (Em Mãos com Revendedora)</span>
+              <span id="acerto-vendas-dinheiro">R$ 0,00</span>
+            </div>
+
             <div class="pricing-row total" style="margin: 0.8rem 0; padding: 0.8rem 0; font-size: 1.15rem; background: rgba(212, 175, 55, 0.05); padding-left: 0.5rem; padding-right: 0.5rem; border-radius: var(--radius-sm);">
-              <span class="lbl-a-pagar-empresa">A pagar para BelKlock</span>
+              <span id="acerto-lbl-saldo-final">Saldo Final a Pagar Revendedora</span>
               <span id="acerto-total-liquido-receber">R$ 0,00</span>
             </div>
 
@@ -2093,6 +2355,123 @@
         <button class="btn-gold" id="btn-confirmar-venda-admin" style="background: linear-gradient(135deg, #2e7d32, #43a047); border-color: #43a047;">
           <i class="fa-solid fa-check"></i> Confirmar Venda
         </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================
+       MODAL: VISUALIZAÇÃO DE NOTA FISCAL (DANFE SIMULADA)
+       ========================================== -->
+  <div class="modal-backdrop" id="modal-danfe" style="display: none;">
+    <div class="modal-card" style="max-width: 800px;">
+      <div class="modal-title-row">
+        <h3>Documento Auxiliar da Nota Fiscal Eletrônica (DANFE)</h3>
+        <button class="btn-close-modal" id="btn-close-modal-danfe"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="danfe-container" style="background: white; color: black; padding: 1.5rem; font-family: 'Courier New', Courier, monospace; border: 1px solid black; font-size: 0.75rem; margin-top: 1rem; max-height: 500px; overflow-y: scroll;">
+        <!-- Cabeçalho DANFE -->
+        <div style="display: grid; grid-template-columns: 2fr 1fr 1fr; border-bottom: 2px solid black; padding-bottom: 0.5rem; gap: 0.5rem;">
+          <div>
+            <strong>BELKLOCK SEMIJOIAS LTDA</strong><br>
+            Rua do Ouro, 1000 - Centro - São Paulo/SP<br>
+            CNPJ: 12.345.678/0001-99 | IE: 111.222.333.444
+          </div>
+          <div style="border-left: 1px solid black; padding-left: 0.5rem; text-align: center;">
+            <strong>DANFE</strong><br>
+            Documento Auxiliar da<br>Nota Fiscal Eletrônica
+          </div>
+          <div style="border-left: 1px solid black; padding-left: 0.5rem;">
+            <strong>CHAVE DE ACESSO:</strong><br>
+            <span id="danfe-chave" style="font-size: 0.65rem;">3526 0612 3456 7800 0199 5500 1000 0001 2345 6789 0123</span>
+          </div>
+        </div>
+
+        <!-- Dados do Destinatário -->
+        <div style="border-bottom: 1px solid black; padding: 0.5rem 0; margin-top: 0.5rem;">
+          <strong>DESTINATÁRIO / REMETENTE</strong>
+          <div style="display: grid; grid-template-columns: 2fr 1fr 1fr; margin-top: 0.3rem;">
+            <div>NOME: <span id="danfe-dest-nome">-</span></div>
+            <div>CNPJ/CPF: <span id="danfe-dest-cpf">-</span></div>
+            <div>DATA EMISSÃO: <span id="danfe-data-emissao">-</span></div>
+          </div>
+        </div>
+
+        <!-- Dados de Valores -->
+        <div style="border-bottom: 1px solid black; padding: 0.5rem 0;">
+          <strong>CÁLCULO DO IMPOSTO</strong>
+          <div style="display: grid; grid-template-columns: repeat(4, 1fr); margin-top: 0.3rem;">
+            <div>BASE DE CÁLC.: R$ 0,00</div>
+            <div>VALOR DO ICMS: R$ 0,00</div>
+            <div>VALOR DO IPI: R$ 0,00</div>
+            <div>VALOR TOTAL DA NOTA: <strong id="danfe-valor-total">R$ 0,00</strong></div>
+          </div>
+        </div>
+
+        <!-- Itens da Nota -->
+        <div style="padding: 0.5rem 0;">
+          <strong>DADOS DOS PRODUTOS / SERVIÇOS</strong>
+          <table style="width: 100%; border-collapse: collapse; margin-top: 0.5rem; font-size: 0.7rem;">
+            <thead>
+              <tr style="border-bottom: 1px solid black; text-align: left;">
+                <th>CÓD.</th>
+                <th>DESCRIÇÃO DO PRODUTO/SERVIÇO</th>
+                <th>QTD</th>
+                <th>VALOR UNIT</th>
+                <th>VALOR TOTAL</th>
+              </tr>
+            </thead>
+            <tbody id="danfe-itens-tbody">
+              <!-- Renderizado via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-outline-gold" id="btn-danfe-imprimir" onclick="window.print()"><i class="fa-solid fa-print"></i> Imprimir</button>
+        <button class="btn-gold" id="btn-danfe-xml" onclick="alert('XML da NF-e gerado e baixado no computador com sucesso!')"><i class="fa-solid fa-download"></i> Baixar XML</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================
+       MODAL: DETALHES DO TERMO ASSINADO
+       ========================================== -->
+  <div class="modal-backdrop" id="modal-ver-termo" style="display: none;">
+    <div class="modal-card" style="max-width: 600px;">
+      <div class="modal-title-row">
+        <h3>Termo Assinado Eletronicamente</h3>
+        <button class="btn-close-modal" id="btn-close-modal-ver-termo"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div style="margin-top: 1rem; font-size: 0.85rem; line-height: 1.5;">
+        <div class="form-group">
+          <label><strong>Título do Termo:</strong></label>
+          <div id="ver-termo-titulo" style="padding: 0.5rem; background: rgba(0,0,0,0.2); border-radius: var(--radius-sm);"></div>
+        </div>
+        <div class="form-group">
+          <label><strong>Assinante:</strong></label>
+          <div id="ver-termo-nome" style="padding: 0.5rem; background: rgba(0,0,0,0.2); border-radius: var(--radius-sm); font-weight: bold; color: var(--gold-light);"></div>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+          <div class="form-group">
+            <label><strong>CPF informado:</strong></label>
+            <div id="ver-termo-cpf" style="padding: 0.5rem; background: rgba(0,0,0,0.2); border-radius: var(--radius-sm);"></div>
+          </div>
+          <div class="form-group">
+            <label><strong>IP de Registro:</strong></label>
+            <div id="ver-termo-ip" style="padding: 0.5rem; background: rgba(0,0,0,0.2); border-radius: var(--radius-sm);"></div>
+          </div>
+        </div>
+        <div class="form-group">
+          <label><strong>Data da Assinatura:</strong></label>
+          <div id="ver-termo-data" style="padding: 0.5rem; background: rgba(0,0,0,0.2); border-radius: var(--radius-sm);"></div>
+        </div>
+        <div class="form-group" style="margin-top: 1rem; text-align: center;">
+          <label style="display: block; margin-bottom: 0.5rem;"><strong>Assinatura Eletrônica Registrada:</strong></label>
+          <div style="background: white; border-radius: var(--radius-md); padding: 1rem; display: inline-block;">
+            <!-- Usamos um icone para representar a assinatura ou o base64 real que sera injetado via JS -->
+            <img id="ver-termo-assinatura-img" src="" alt="Assinatura" style="max-height: 120px; filter: contrast(1.5);">
+          </div>
+        </div>
       </div>
     </div>
   </div>

@@ -46,7 +46,7 @@ async function main() {
         email: emailAdmin,
         pin: pinAdmin,
         senhaHash: senhaHash,
-        role: "admin",
+        role: "ADMIN_LOJA",
         whatsapp: "(11) 99999-9999",
         comissao: 0.0
       }

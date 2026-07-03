@@ -6,6 +6,8 @@ const multer = require('multer');
 const { PrismaClient } = require('@prisma/client');
 const { BlobServiceClient } = require('@azure/storage-blob');
 const rateLimit = require('express-rate-limit');
+const fs = require('fs');
+const path = require('path');
 require('dotenv').config();
 
 const app = express();
@@ -34,11 +36,40 @@ app.use(cors({
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
-// Configuração do Multer (Upload de Imagens em Memória)
+// Criação automática das pastas de uploads locais
+const UPLOADS_DIR = path.join(__dirname, 'uploads');
+const DOCUMENTOS_DIR = path.join(UPLOADS_DIR, 'documentos');
+if (!fs.existsSync(UPLOADS_DIR)) {
+  fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+}
+if (!fs.existsSync(DOCUMENTOS_DIR)) {
+  fs.mkdirSync(DOCUMENTOS_DIR, { recursive: true });
+}
+
+// Servir a pasta uploads de forma estática
+app.use('/uploads', express.static(UPLOADS_DIR));
+
+// Configuração do Multer para Imagens em Memória
 const storage = multer.memoryStorage();
 const upload = multer({ 
   storage: storage,
   limits: { fileSize: 5 * 1024 * 1024 } // limite de 5MB
+});
+
+// Configuração do Multer para Documentos em Disco
+const docStorage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, DOCUMENTOS_DIR);
+  },
+  filename: function (req, file, cb) {
+    const ext = path.extname(file.originalname);
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, file.fieldname + '-' + uniqueSuffix + ext);
+  }
+});
+const uploadDocs = multer({ 
+  storage: docStorage,
+  limits: { fileSize: 10 * 1024 * 1024 } // limite de 10MB para documentos
 });
 
 // Configuração do Azure Blob Storage (se houver Connection String)
@@ -945,6 +976,9 @@ app.post('/api/acertos', autenticarJWT, autorizarRole(['ADMIN_LOJA', 'SUPER_ADMI
 
     const comissaoPaga = Math.max(0, comissaoBruta - valorDescontoPerda);
     const liquidoBelklock = faturamentoBruto - comissaoPaga;
+    const totalRetidoRev = parseFloat(req.body.totalRetidoRevendedora) || 0.0;
+    const totalRecAdmin = parseFloat(req.body.totalRecebidoAdmin) || 0.0;
+    const saldoFinal = comissaoPaga - totalRetidoRev;
 
     // Salva o histórico de acerto
     const acerto = await prisma.historicoAcerto.create({
@@ -960,7 +994,22 @@ app.post('/api/acertos', autenticarJWT, autorizarRole(['ADMIN_LOJA', 'SUPER_ADMI
         comissaoPaga,
         liquidoBelklock,
         formaPagamento: formaPagamento || "Pix",
+        totalRetidoRevendedora: totalRetidoRev,
+        totalRecebidoAdmin: totalRecAdmin,
+        saldoFinalAcerto: saldoFinal,
         lojaId: req.lojaId
+      }
+    });
+
+    // Enviar mensagem de WhatsApp ao realizar acerto de contas (criar na fila)
+    const msgTexto = `Olá ${revendedora.nome}! Seu acerto de contas da BelKlock Semijoias foi concluído com sucesso. Resumo do acerto: Faturamento Bruto: R$ ${faturamentoBruto.toFixed(2)} | Comissão Devida: R$ ${comissaoPaga.toFixed(2)} | Retido em Mãos: R$ ${totalRetidoRev.toFixed(2)} | Saldo Final: R$ ${Math.abs(saldoFinal).toFixed(2)} (${saldoFinal >= 0 ? 'A receber da BelKlock' : 'A repassar para a BelKlock'}). Obrigado pela parceria! ✨`;
+    
+    await prisma.mensagemWhatsapp.create({
+      data: {
+        numero: revendedora.whatsapp,
+        mensagem: msgTexto,
+        tipo: 'ACERTO',
+        status: 'PENDENTE'
       }
     });
 
@@ -1866,6 +1915,481 @@ app.get('/api/admin/lojas/:id', autenticarJWT, autorizarRole(['SUPER_ADMIN']), a
   } catch (error) {
     console.error('Erro ao buscar loja:', error);
     res.status(500).json({ error: 'Erro ao buscar loja.' });
+  }
+});
+
+
+// ==========================================
+// NOVAS ROTAS - GESTÃO DE REVENDEDORAS E PAGAMENTOS
+// ==========================================
+
+// 1. Onboarding público de revendedora (Sem autenticação)
+app.post('/api/public/onboarding', uploadDocs.fields([
+  { name: 'rgFile', maxCount: 1 },
+  { name: 'cpfFile', maxCount: 1 },
+  { name: 'enderecoFile', maxCount: 1 }
+]), async (req, res) => {
+  const { nome, email, whatsapp, cpf, rg, endereco, vendedoraPrincipal, comoConheceu, experienciaVendas, comentarios, lojaId } = req.body;
+  
+  if (!nome || !email || !whatsapp || !cpf) {
+    return res.status(400).json({ error: 'Campos obrigatórios ausentes: nome, e-mail, whatsapp e CPF.' });
+  }
+
+  const lid = lojaId || 'default-loja';
+
+  try {
+    // Verifica e-mail ou cpf existente
+    const usuarioExiste = await prisma.usuario.findFirst({
+      where: {
+        OR: [
+          { email },
+          { pin: whatsapp.replace(/\D/g, '').slice(-4) }
+        ]
+      }
+    });
+
+    if (usuarioExiste) {
+      return res.status(400).json({ error: 'Este e-mail ou um número com final de WhatsApp semelhante já possui cadastro.' });
+    }
+
+    const pin = await gerarPinUnico();
+    const senhaProvisoria = Math.floor(100000 + Math.random() * 900000).toString(); // senha provisória de 6 dígitos
+    const senhaHash = await bcrypt.hash(senhaProvisoria, 10);
+
+    const novoUsuario = await prisma.usuario.create({
+      data: {
+        nome,
+        email,
+        whatsapp,
+        pin,
+        senhaHash,
+        role: 'VENDEDORA',
+        documentoCpf: cpf,
+        documentoRg: rg,
+        documentoEndereco: endereco,
+        lojaId: lid,
+        respostaOnboarding: {
+          create: {
+            vendedoraPrincipal,
+            comoConheceu,
+            experienciaVendas,
+            comentarios
+          }
+        }
+      }
+    });
+
+    // Salvar caminhos dos arquivos do upload no cofre virtual
+    const arquivos = req.files;
+    if (arquivos) {
+      const docsToCreate = [];
+      if (arquivos.rgFile && arquivos.rgFile[0]) {
+        docsToCreate.push({
+          tipo: 'RG',
+          nomeArquivo: arquivos.rgFile[0].originalname,
+          caminhoUrl: `/uploads/documentos/${arquivos.rgFile[0].filename}`
+        });
+      }
+      if (arquivos.cpfFile && arquivos.cpfFile[0]) {
+        docsToCreate.push({
+          tipo: 'CPF',
+          nomeArquivo: arquivos.cpfFile[0].originalname,
+          caminhoUrl: `/uploads/documentos/${arquivos.cpfFile[0].filename}`
+        });
+      }
+      if (arquivos.enderecoFile && arquivos.enderecoFile[0]) {
+        docsToCreate.push({
+          tipo: 'COMPROVANTE_RESIDENCIA',
+          nomeArquivo: arquivos.enderecoFile[0].originalname,
+          caminhoUrl: `/uploads/documentos/${arquivos.enderecoFile[0].filename}`
+        });
+      }
+
+      if (docsToCreate.length > 0) {
+        for (const doc of docsToCreate) {
+          await prisma.documentoUsuario.create({
+            data: {
+              usuarioId: novoUsuario.id,
+              tipo: doc.tipo,
+              nomeArquivo: doc.nomeArquivo,
+              caminhoUrl: doc.caminhoUrl
+            }
+          });
+        }
+      }
+    }
+
+    // Criar mensagem de boas-vindas na fila do WhatsApp
+    const mensagemTexto = `Olá ${nome}, seja muito bem-vinda à BelKlock Semijoias! ✨ Seu cadastro de Revendedora foi realizado com sucesso. Aqui estão suas credenciais para entrar no portal: Login (PIN): ${pin} | Senha Temporária: ${senhaProvisoria} | Link do portal: ${frontendUrl}/vendedora.html`;
+    
+    await prisma.mensagemWhatsapp.create({
+      data: {
+        numero: whatsapp,
+        mensagem: mensagemTexto,
+        tipo: 'BOAS_VINDAS',
+        status: 'PENDENTE'
+      }
+    });
+
+    // Log de auditoria
+    await prisma.logAcao.create({
+      data: {
+        usuarioId: novoUsuario.id,
+        usuarioNome: nome,
+        acao: 'VENDEDORA_ONBOARDING',
+        detalhes: `Revendedora preencheu o questionário e cadastrou-se pelo link de onboarding. PIN: ${pin}`
+      }
+    });
+
+    res.status(201).json({
+      message: 'Onboarding realizado com sucesso!',
+      pin,
+      senha: senhaProvisoria
+    });
+
+  } catch (error) {
+    console.error('Erro no onboarding público:', error);
+    res.status(500).json({ error: `Erro no processamento do cadastro: ${error.message}` });
+  }
+});
+
+// 2. Listar documentos do Cofre Virtual de uma revendedora específica (Admin)
+app.get('/api/usuarios/:id/documentos', autenticarJWT, autorizarRole(['ADMIN_LOJA', 'SUPER_ADMIN']), async (req, res) => {
+  const { id } = req.params;
+  try {
+    const documentos = await prisma.documentoUsuario.findMany({
+      where: { usuarioId: id }
+    });
+    const respostaOnb = await prisma.respostaOnboarding.findUnique({
+      where: { usuarioId: id }
+    });
+    res.json({ documentos, respostaOnboarding: respostaOnb });
+  } catch (error) {
+    res.status(500).json({ error: 'Erro ao listar documentos.' });
+  }
+});
+
+// 3. Criar link de pagamento (Revendedora ou Admin)
+app.post('/api/pagamentos/link', autenticarJWT, identificarLoja, async (req, res) => {
+  const { clienteId, valor, formaEnvio, vendaId } = req.body;
+  if (!valor || !formaEnvio) {
+    return res.status(400).json({ error: 'Valor e Forma de Envio (PIX, BOLETO, CARTAO) são obrigatórios.' });
+  }
+
+  try {
+    const linkId = Math.random().toString(36).substring(2, 15);
+    const linkSimulado = `${frontendUrl}/pagamento.html?id=${linkId}`;
+
+    const link = await prisma.linkPagamento.create({
+      data: {
+        id: linkId,
+        usuarioId: req.user.id,
+        clienteId: clienteId || null,
+        valor: parseFloat(valor),
+        formaEnvio,
+        status: 'PENDENTE',
+        linkSimulado,
+        vendaId: vendaId || null
+      }
+    });
+
+    // Se houver uma vendaId, vamos atualizar a venda para apontar para o link e marcar como não paga temporariamente
+    if (vendaId) {
+      await prisma.vendaRevendedora.updateMany({
+        where: { id: vendaId },
+        data: {
+          pago: false,
+          linkPagamentoId: linkId
+        }
+      });
+    }
+
+    res.status(201).json(link);
+  } catch (error) {
+    console.error('Erro ao gerar link de pagamento:', error);
+    res.status(500).json({ error: 'Erro ao gerar link de pagamento.' });
+  }
+});
+
+// Buscar detalhes de um link de pagamento (Público - sem JWT para o cliente final)
+app.get('/api/public/pagamento/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const link = await prisma.linkPagamento.findUnique({
+      where: { id },
+      include: {
+        usuario: { select: { nome: true } },
+        cliente: { select: { nome: true } }
+      }
+    });
+    if (!link) {
+      return res.status(404).json({ error: 'Link de pagamento não encontrado.' });
+    }
+    res.json(link);
+  } catch (error) {
+    res.status(500).json({ error: 'Erro ao buscar link de pagamento.' });
+  }
+});
+
+// Listar links de pagamento da revendedora
+app.get('/api/pagamentos/link', autenticarJWT, async (req, res) => {
+  try {
+    const links = await prisma.linkPagamento.findMany({
+      where: { usuarioId: req.user.id },
+      include: {
+        cliente: { select: { nome: true } }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+    res.json(links);
+  } catch (error) {
+    res.status(500).json({ error: 'Erro ao buscar links de pagamento.' });
+  }
+});
+
+// Simular confirmação de pagamento (Webhook / Baixa Automática)
+app.post('/api/public/pagamento/:id/confirmar', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const link = await prisma.linkPagamento.findUnique({ where: { id } });
+    if (!link) {
+      return res.status(404).json({ error: 'Link de pagamento não encontrado.' });
+    }
+
+    if (link.status === 'PAGO') {
+      return res.json({ message: 'Este link já foi pago anteriormente.', link });
+    }
+
+    // Atualiza o link para PAGO
+    const linkAtualizado = await prisma.linkPagamento.update({
+      where: { id },
+      data: { status: 'PAGO' }
+    });
+
+    // Se estiver associado a uma venda, dá a baixa automática
+    if (link.vendaId) {
+      await prisma.vendaRevendedora.updateMany({
+        where: { id: link.vendaId },
+        data: {
+          pago: true,
+          canalPagamento: 'LINK_PAGO_ADMIN'
+        }
+      });
+
+      // Registrar logs de auditoria
+      await prisma.logAcao.create({
+        data: {
+          usuarioId: link.usuarioId,
+          acao: 'VENDA_BAIXA_AUTOMATICA',
+          detalhes: `Baixa automática executada para a venda ${link.vendaId} após compensação do link de pagamento (${link.formaEnvio}) de R$ ${link.valor.toFixed(2)}.`
+        }
+      });
+    }
+
+    res.json({ message: 'Pagamento confirmado e baixa automática realizada!', link: linkAtualizado });
+  } catch (error) {
+    console.error('Erro ao confirmar pagamento:', error);
+    res.status(500).json({ error: 'Erro ao processar a confirmação de pagamento.' });
+  }
+});
+
+// 4. Criar Termo de Responsabilidade/Consignação (Admin)
+app.post('/api/termos/gerar', autenticarJWT, autorizarRole(['ADMIN_LOJA', 'SUPER_ADMIN']), identificarLoja, async (req, res) => {
+  const { usuarioId, titulo, conteudo, prazoDevolucao } = req.body;
+  if (!usuarioId || !titulo || !conteudo) {
+    return res.status(400).json({ error: 'Revendedora, título e conteúdo do termo são obrigatórios.' });
+  }
+
+  try {
+    const termo = await prisma.termoConsignacao.create({
+      data: {
+        usuarioId,
+        titulo,
+        conteudo,
+        prazoDevolucao: prazoDevolucao ? new Date(prazoDevolucao) : null,
+        status: 'PENDENTE'
+      }
+    });
+
+    res.status(201).json(termo);
+  } catch (error) {
+    console.error('Erro ao criar termo:', error);
+    res.status(500).json({ error: 'Erro ao gerar termo de consignação.' });
+  }
+});
+
+// Listar Termos de Consignação (Geral/Admin)
+app.get('/api/termos', autenticarJWT, identificarLoja, async (req, res) => {
+  try {
+    let where = {};
+    if (req.user.role === 'VENDEDORA') {
+      where.usuarioId = req.user.id;
+    }
+    const termos = await prisma.termoConsignacao.findMany({
+      where,
+      include: {
+        usuario: { select: { nome: true, pin: true } }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+    res.json(termos);
+  } catch (error) {
+    res.status(500).json({ error: 'Erro ao listar termos de consignação.' });
+  }
+});
+
+// Assinar Termo Digitalmente
+app.post('/api/public/termos/:id/assinar', async (req, res) => {
+  const { id } = req.params;
+  const { nome, cpf, assinaturaImg, ip } = req.body;
+  if (!nome || !cpf || !assinaturaImg) {
+    return res.status(400).json({ error: 'Nome, CPF e Assinatura Gráfica são obrigatórios.' });
+  }
+
+  try {
+    const termo = await prisma.termoConsignacao.findUnique({ where: { id } });
+    if (!termo) {
+      return res.status(404).json({ error: 'Termo de consignação não encontrado.' });
+    }
+
+    const termoAssinado = await prisma.termoConsignacao.update({
+      where: { id },
+      data: {
+        status: 'ASSINADO',
+        assinaturaNome: nome,
+        assinaturaCpf: cpf,
+        assinaturaIp: ip || '127.0.0.1',
+        dataAssinatura: new Date()
+      }
+    });
+
+    // Atualiza status no usuário também
+    await prisma.usuario.update({
+      where: { id: termo.usuarioId },
+      data: { termoAssinado: true }
+    });
+
+    // Grava no log de auditoria
+    await prisma.logAcao.create({
+      data: {
+        usuarioId: termo.usuarioId,
+        acao: 'TERMO_ASSINATURA_DIGITAL',
+        detalhes: `Termo de Consignação "${termo.titulo}" assinado eletronicamente por ${nome} (CPF: ${cpf}) sob o IP ${ip || '127.0.0.1'}.`
+      }
+    });
+
+    res.json({ message: 'Termo assinado com sucesso!', termo: termoAssinado });
+  } catch (error) {
+    console.error('Erro ao assinar termo:', error);
+    res.status(500).json({ error: 'Erro ao processar assinatura eletrônica.' });
+  }
+});
+
+// 5. Listar fila de mensagens pendentes do WhatsApp (Admin)
+app.get('/api/whatsapp/fila', autenticarJWT, autorizarRole(['ADMIN_LOJA', 'SUPER_ADMIN']), async (req, res) => {
+  try {
+    const fila = await prisma.mensagemWhatsapp.findMany({
+      orderBy: { createdAt: 'desc' }
+    });
+    res.json(fila);
+  } catch (error) {
+    res.status(500).json({ error: 'Erro ao obter fila de mensagens.' });
+  }
+});
+
+// Marcar mensagem do WhatsApp como enviada (Admin)
+app.post('/api/whatsapp/enviar/:id', autenticarJWT, autorizarRole(['ADMIN_LOJA', 'SUPER_ADMIN']), async (req, res) => {
+  const { id } = req.params;
+  try {
+    const msg = await prisma.mensagemWhatsapp.update({
+      where: { id },
+      data: { status: 'ENVIADO' }
+    });
+    res.json({ message: 'Mensagem marcada como enviada com sucesso.', msg });
+  } catch (error) {
+    res.status(500).json({ error: 'Erro ao atualizar status da mensagem.' });
+  }
+});
+
+// 6. Listar treinamentos cadastrados
+app.get('/api/treinamentos', autenticarJWT, async (req, res) => {
+  try {
+    const treinamentos = await prisma.treinamento.findMany({
+      orderBy: { createdAt: 'desc' }
+    });
+    res.json(treinamentos);
+  } catch (error) {
+    res.status(500).json({ error: 'Erro ao carregar treinamentos.' });
+  }
+});
+
+// Adicionar treinamento (Admin)
+app.post('/api/treinamentos', autenticarJWT, autorizarRole(['ADMIN_LOJA', 'SUPER_ADMIN']), identificarLoja, async (req, res) => {
+  const { titulo, descricao, tipo, url } = req.body;
+  if (!titulo || !tipo || !url) {
+    return res.status(400).json({ error: 'Título, Tipo (VIDEO, PDF) e URL do conteúdo são obrigatórios.' });
+  }
+
+  try {
+    const novoTreinamento = await prisma.treinamento.create({
+      data: {
+        titulo,
+        descricao,
+        tipo,
+        url,
+        lojaId: req.lojaId
+      }
+    });
+    res.status(201).json(novoTreinamento);
+  } catch (error) {
+    res.status(500).json({ error: 'Erro ao cadastrar treinamento.' });
+  }
+});
+
+// Excluir treinamento (Admin)
+app.delete('/api/treinamentos/:id', autenticarJWT, autorizarRole(['ADMIN_LOJA', 'SUPER_ADMIN']), async (req, res) => {
+  const { id } = req.params;
+  try {
+    await prisma.treinamento.delete({ where: { id } });
+    res.json({ message: 'Treinamento excluído com sucesso!' });
+  } catch (error) {
+    res.status(500).json({ error: 'Erro ao excluir treinamento.' });
+  }
+});
+
+// 7. Reiniciar ciclo de comissões/metas e alertar a revendedora via WhatsApp (Admin)
+app.post('/api/revendedoras/:id/reiniciar-comissoes', autenticarJWT, autorizarRole(['ADMIN_LOJA', 'SUPER_ADMIN']), async (req, res) => {
+  const { id } = req.params;
+  try {
+    const rev = await prisma.usuario.findFirst({ where: { id, role: 'VENDEDORA' } });
+    if (!rev) {
+      return res.status(404).json({ error: 'Revendedora não encontrada.' });
+    }
+
+    const dataAtual = new Date().toLocaleDateString('pt-BR');
+    const msgTexto = `Olá ${rev.nome}! O ciclo de metas e comissões da BelKlock Semijoias foi reiniciado hoje (${dataAtual}). Suas vendas do período foram liquidadas e você já pode cadastrar novos clientes e vendas. Boa sorte e boas vendas no novo ciclo! 💼💎`;
+
+    await prisma.mensagemWhatsapp.create({
+      data: {
+        numero: rev.whatsapp,
+        mensagem: msgTexto,
+        tipo: 'REINICIO_COMISSAO',
+        status: 'PENDENTE'
+      }
+    });
+
+    await prisma.logAcao.create({
+      data: {
+        usuarioId: id,
+        acao: 'REVENDEDORA_REINICIO_COMISSAO',
+        detalhes: `Reinício do ciclo de comissões da revendedora ${rev.nome} executado. Mensagem de WhatsApp agendada.`
+      }
+    });
+
+    res.json({ message: 'Ciclo de comissões reiniciado e WhatsApp agendado com sucesso!' });
+  } catch (error) {
+    console.error('Erro ao reiniciar comissão:', error);
+    res.status(500).json({ error: 'Erro ao processar o reinício da comissão.' });
   }
 });
 

@@ -533,6 +533,7 @@ const app = {
       const el = document.getElementById("maleta-boas-vindas");
       if (el) el.innerText = `Olá, ${this.state.usuarioLogado.nome.split(' ')[0]}! 💎`;
       this.carregarPreferenciaPagamento();
+      this.checarTermosPendentes();
     }
     
     console.log("BelKlock Semijoias inicializado com sucesso!");
@@ -1546,6 +1547,15 @@ const app = {
     }
     if (tabId === "configuracoes") {
       this.renderizarConfiguracoes();
+    }
+    if (tabId === "estoque-central") {
+      this.carregarEstoqueCentral();
+    }
+    if (tabId === "links-pagamento") {
+      this.carregarLinksPagamento();
+    }
+    if (tabId === "treinamento-demand") {
+      this.carregarTreinamentosVendedora();
     }
   },
 
@@ -4772,6 +4782,248 @@ const app = {
     }
     
     this.toast("Preferência de pagamento salva com sucesso!", "success");
+  },
+
+  checarTermosPendentes: async function() {
+    const alerta = document.getElementById("alerta-termo-consignacao-pendente");
+    const btnAssinar = document.getElementById("btn-assinar-termo-pendente");
+    if (!alerta) return;
+
+    try {
+      let termos = [];
+      if (this.state.token && !this.state.token.startsWith("mock_")) {
+        termos = await this.requisitarAPI("/termos");
+        termos = termos.filter(t => t.usuarioId === this.state.usuarioLogado.id && t.status === "PENDENTE");
+      } else {
+        termos = JSON.parse(localStorage.getItem("belklock_termos_mock") || "[]");
+        termos = termos.filter(t => t.usuarioId === (this.state.usuarioLogado ? this.state.usuarioLogado.id : "default") && t.status === "PENDENTE");
+      }
+
+      if (termos.length > 0) {
+        const termoPendente = termos[0];
+        alerta.style.display = "flex";
+        if (btnAssinar) {
+          btnAssinar.href = `termo_assinatura.html?id=${termoPendente.id}`;
+        }
+      } else {
+        alerta.style.display = "none";
+      }
+    } catch (e) {
+      console.error("Erro ao checar termos pendentes:", e);
+    }
+  },
+
+  renderizarEstoqueCentral: function() {
+    const busca = document.getElementById("busca-estoque-central")?.value.toLowerCase() || "";
+    const tbody = document.getElementById("tbody-estoque-central");
+    if (!tbody) return;
+
+    let filtrados = this.state.produtos.filter(p => {
+      return p.nome.toLowerCase().includes(busca) || p.codigo.toLowerCase().includes(busca);
+    });
+
+    if (filtrados.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-secondary); padding: 1.5rem;">Nenhum produto correspondente no estoque central.</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = filtrados.map(p => `
+      <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+        <td style="padding: 12px; font-weight: bold; color: var(--gold-light);">${p.codigo}</td>
+        <td style="padding: 12px;">${p.nome}</td>
+        <td style="padding: 12px;">${p.categoria || "Geral"}</td>
+        <td style="padding: 12px; font-weight: bold;">R$ ${Number(p.precoVenda || 0).toFixed(2).replace(".", ",")}</td>
+        <td style="padding: 12px;">${p.quantidade || 0} pçs</td>
+      </tr>
+    `).join("");
+  },
+
+  carregarEstoqueCentral: async function() {
+    this.renderizarEstoqueCentral();
+  },
+
+  carregarLinksPagamento: async function() {
+    const select = document.getElementById("link-cliente-id");
+    if (select) {
+      select.innerHTML = '<option value="">Selecione um cliente...</option>' + 
+        this.state.clientes.map(c => `<option value="${c.id}">${c.nome}</option>`).join("");
+    }
+
+    const tbody = document.getElementById("tbody-links-pagamento");
+    if (!tbody) return;
+
+    try {
+      let links = [];
+      if (this.state.token && !this.state.token.startsWith("mock_")) {
+        links = await this.requisitarAPI("/pagamentos/links");
+      } else {
+        links = JSON.parse(localStorage.getItem("belklock_links_pagamento_mock") || "[]");
+        const revId = this.state.usuarioLogado ? this.state.usuarioLogado.id : "default";
+        links = links.filter(l => l.usuarioId === revId);
+      }
+
+      if (links.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-secondary); padding: 1.5rem;">Nenhum link de pagamento gerado ainda.</td></tr>`;
+      } else {
+        tbody.innerHTML = links.map(l => {
+          const statusCor = l.status === "PENDENTE" ? "var(--warning)" : "#81c784";
+          const statusTxt = l.status === "PENDENTE" ? "Pendente" : "Compensado";
+          
+          let acoes = "";
+          if (l.status === "PENDENTE") {
+            const urlCheckout = `pagamento.html?id=${l.id}`;
+            acoes = `
+              <button class="btn-qty" style="color: var(--gold-primary);" onclick="navigator.clipboard.writeText('${window.location.origin}/${urlCheckout}').then(() => alert('Link de checkout copiado!'));" title="Copiar Link de Pagamento">
+                <i class="fa-solid fa-copy"></i> Copiar
+              </button>
+              <a href="${urlCheckout}" target="_blank" class="btn-qty" style="color: var(--gold-light); text-decoration: none;" title="Abrir Checkout Externo">
+                <i class="fa-solid fa-up-right-from-square"></i> Abrir
+              </a>
+            `;
+          } else {
+            acoes = `<span style="font-size: 0.8rem; color: var(--text-muted);"><i class="fa-solid fa-circle-check"></i> Pago</span>`;
+          }
+
+          return `
+            <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+              <td style="padding: 12px; font-size: 0.8rem;">${new Date(l.createdAt).toLocaleDateString('pt-BR')}</td>
+              <td style="padding: 12px; font-weight: bold;">${l.clienteNome}</td>
+              <td style="padding: 12px; font-weight: bold;">R$ ${Number(l.valor).toFixed(2).replace(".", ",")}</td>
+              <td style="padding: 12px; font-size: 0.85rem; color: var(--gold-light);">${l.forma}</td>
+              <td style="padding: 12px; color: ${statusCor}; font-weight: 600;">${statusTxt}</td>
+              <td style="padding: 12px; display: flex; gap: 0.5rem;">${acoes}</td>
+            </tr>
+          `;
+        }).join("");
+      }
+    } catch (error) {
+      console.error(error);
+    }
+  },
+
+  gerarLinkPagamento: async function() {
+    const clienteId = document.getElementById("link-cliente-id").value;
+    const valor = Number(document.getElementById("link-valor").value);
+    const forma = document.getElementById("link-forma").value;
+    const descricao = document.getElementById("link-descricao").value.trim();
+
+    if (!clienteId || !valor || valor <= 0) {
+      this.toast("Selecione o cliente e informe um valor de cobrança válido.", "warning");
+      return;
+    }
+
+    const cliente = this.state.clientes.find(c => c.id === clienteId);
+    const clienteNome = cliente ? cliente.nome : "Cliente Avulso";
+
+    try {
+      if (this.state.token && !this.state.token.startsWith("mock_")) {
+        await this.requisitarAPI("/pagamentos/link", "POST", {
+          clienteId,
+          valor,
+          forma,
+          descricao
+        });
+      } else {
+        let mockLinks = JSON.parse(localStorage.getItem("belklock_links_pagamento_mock") || "[]");
+        mockLinks.push({
+          id: `link-${Date.now()}`,
+          usuarioId: this.state.usuarioLogado ? this.state.usuarioLogado.id : "default",
+          clienteId,
+          clienteNome,
+          valor,
+          forma,
+          descricao,
+          status: "PENDENTE",
+          createdAt: new Date().toISOString()
+        });
+        localStorage.setItem("belklock_links_pagamento_mock", JSON.stringify(mockLinks));
+      }
+
+      this.toast("Link de pagamento gerado com sucesso!", "success");
+      document.getElementById("link-valor").value = "";
+      document.getElementById("link-descricao").value = "";
+      this.carregarLinksPagamento();
+    } catch (e) {
+      this.toast("Erro ao gerar link de pagamento: " + e.message, "error");
+    }
+  },
+
+  carregarTreinamentosVendedora: async function() {
+    const container = document.getElementById("treinamento-cards-container");
+    if (!container) return;
+
+    try {
+      let lista = [];
+      if (this.state.token && !this.state.token.startsWith("mock_")) {
+        lista = await this.requisitarAPI("/treinamentos");
+      } else {
+        lista = JSON.parse(localStorage.getItem("belklock_treinamentos_mock") || "[]");
+      }
+
+      if (lista.length === 0) {
+        container.innerHTML = `
+          <div style="grid-column: 1 / -1; text-align: center; padding: 3rem; background: rgba(0,0,0,0.2); border-radius: var(--radius-md); color: var(--text-secondary);">
+            <i class="fa-solid fa-graduation-cap" style="font-size: 2.5rem; color: var(--gold-light); margin-bottom: 1rem; opacity: 0.3;"></i>
+            <p>Nenhum conteúdo de treinamento ou manual foi cadastrado pela administração ainda.</p>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = lista.map(t => {
+        let previewHtml = "";
+        if (t.tipo === "VIDEO") {
+          let videoId = "";
+          if (t.url.includes("youtube.com/watch?v=")) {
+            videoId = t.url.split("v=")[1]?.split("&")[0];
+          } else if (t.url.includes("youtu.be/")) {
+            videoId = t.url.split("youtu.be/")[1]?.split("?")[0];
+          } else if (t.url.includes("embed/")) {
+            videoId = t.url.split("embed/")[1]?.split("?")[0];
+          }
+
+          if (videoId) {
+            previewHtml = `
+              <div style="position: relative; width: 100%; padding-bottom: 56.25%; height: 0; overflow: hidden; border-radius: var(--radius-sm); margin-bottom: 1rem;">
+                <iframe src="https://www.youtube.com/embed/${videoId}" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0;" allowfullscreen></iframe>
+              </div>
+            `;
+          } else {
+            previewHtml = `
+              <div style="background: #151515; height: 150px; display: flex; align-items: center; justify-content: center; border-radius: var(--radius-sm); margin-bottom: 1rem;">
+                <a href="${t.url}" target="_blank" style="color: var(--gold-primary); text-decoration: none; display: flex; flex-direction: column; align-items: center; gap: 8px;">
+                  <i class="fa-solid fa-circle-play" style="font-size: 2.5rem;"></i>
+                  <span>Abrir Vídeo Externo</span>
+                </a>
+              </div>
+            `;
+          }
+        } else {
+          previewHtml = `
+            <div style="background: rgba(212,175,55,0.05); height: 150px; display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: var(--radius-sm); margin-bottom: 1rem; border: 1px dashed rgba(212,175,55,0.2);">
+              <i class="fa-solid fa-file-pdf" style="font-size: 3rem; color: #ff8a80; margin-bottom: 0.8rem;"></i>
+              <a href="${t.url}" target="_blank" class="btn-outline-gold" style="padding: 0.35rem 0.8rem; font-size: 0.8rem; text-decoration: none;"><i class="fa-solid fa-download"></i> Baixar Manual PDF</a>
+            </div>
+          `;
+        }
+
+        return `
+          <div class="dashboard-panel" style="display: flex; flex-direction: column; justify-content: space-between; border: 1px solid rgba(255,255,255,0.05);">
+            <div>
+              ${previewHtml}
+              <h3 style="font-family: var(--font-title); font-size: 1.05rem; color: var(--gold-light); margin-bottom: 0.4rem;">${t.titulo}</h3>
+              <p style="font-size: 0.82rem; color: var(--text-secondary); line-height: 1.4; margin-bottom: 1rem;">${t.descricao || "Instruções e dicas essenciais BelKlock."}</p>
+            </div>
+            <div style="border-top: 1px solid rgba(255,255,255,0.05); padding-top: 0.8rem; font-size: 0.72rem; color: var(--text-muted); display: flex; justify-content: space-between; align-items: center;">
+              <span>TIPO: <strong>${t.tipo}</strong></span>
+              <a href="${t.url}" target="_blank" style="color: var(--gold-primary);"><i class="fa-solid fa-arrow-up-right-from-square"></i> Link Completo</a>
+            </div>
+          </div>
+        `;
+      }).join("");
+    } catch (e) {
+      console.error(e);
+    }
   }
 
 };

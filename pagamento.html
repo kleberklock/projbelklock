@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>BelKlock Semijoias - Checkout de Pagamento Premium</title>
+  
+  <!-- Estilos base do aplicativo -->
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <style>
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      background: radial-gradient(circle at center, #151515 0%, #050505 100%);
+      padding: 1.5rem;
+    }
+
+    .checkout-container {
+      width: 100%;
+      max-width: 540px;
+      background: var(--bg-card);
+      border: var(--border-gold);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-premium);
+      overflow: hidden;
+      animation: fadeIn 0.8s ease;
+    }
+
+    .checkout-header {
+      text-align: center;
+      padding: 2rem 1.5rem;
+      border-bottom: 1px solid rgba(212, 175, 55, 0.1);
+      background: rgba(0, 0, 0, 0.2);
+    }
+
+    .checkout-header img {
+      width: 80px;
+      margin-bottom: 0.8rem;
+    }
+
+    .checkout-header h1 {
+      font-family: var(--font-title);
+      color: var(--gold-primary);
+      font-size: 1.6rem;
+    }
+
+    .checkout-header p {
+      color: var(--text-secondary);
+      font-size: 0.85rem;
+    }
+
+    .checkout-body {
+      padding: 2rem;
+    }
+
+    /* Detalhes do Pagamento */
+    .payment-summary {
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(212, 175, 55, 0.08);
+      border-radius: var(--radius-md);
+      padding: 1.2rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .summary-row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 0.5rem;
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+    }
+
+    .summary-row:last-child {
+      margin-bottom: 0;
+      border-top: 1px solid rgba(255, 255, 255, 0.05);
+      padding-top: 0.5rem;
+    }
+
+    .summary-total {
+      font-size: 1.2rem;
+      color: var(--gold-primary);
+      font-weight: bold;
+    }
+
+    /* Abas de Formas de Pagamento */
+    .payment-tabs {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .pay-tab {
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid rgba(212, 175, 55, 0.15);
+      padding: 0.8rem 0.5rem;
+      border-radius: var(--radius-sm);
+      color: var(--text-secondary);
+      text-align: center;
+      cursor: pointer;
+      transition: var(--transition);
+      font-size: 0.85rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .pay-tab:hover {
+      border-color: var(--gold-primary);
+      color: var(--text-primary);
+    }
+
+    .pay-tab.active {
+      background: var(--gold-translucent);
+      border-color: var(--gold-primary);
+      color: var(--gold-primary);
+      box-shadow: 0 0 10px rgba(212, 175, 55, 0.1);
+    }
+
+    .pay-tab i {
+      font-size: 1.2rem;
+    }
+
+    /* Conteúdos das Abas */
+    .tab-content {
+      display: none;
+      animation: slideIn 0.4s ease;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    /* PIX Showcase */
+    .pix-box {
+      text-align: center;
+      padding: 1rem 0;
+    }
+
+    .qr-code-placeholder {
+      width: 180px;
+      height: 180px;
+      background: white;
+      border-radius: var(--radius-md);
+      padding: 0.8rem;
+      margin: 0 auto 1.2rem auto;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      border: 3px solid var(--gold-primary);
+      box-shadow: var(--shadow-glow);
+    }
+
+    .qr-code-placeholder img {
+      width: 100%;
+      height: 100%;
+    }
+
+    .pix-copia-cola {
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px dashed rgba(212, 175, 55, 0.3);
+      padding: 0.8rem;
+      border-radius: var(--radius-sm);
+      font-family: monospace;
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      word-break: break-all;
+      margin-bottom: 1rem;
+      position: relative;
+      text-align: left;
+    }
+
+    /* Cartão Formulário */
+    .card-form .form-group {
+      margin-bottom: 1rem;
+    }
+
+    .card-form label {
+      display: block;
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      margin-bottom: 0.3rem;
+    }
+
+    .card-form input {
+      width: 100%;
+      padding: 0.7rem 0.9rem;
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid rgba(212, 175, 55, 0.15);
+      border-radius: var(--radius-sm);
+      color: var(--text-primary);
+      font-size: 0.85rem;
+    }
+
+    .card-form input:focus {
+      border-color: var(--gold-primary);
+      outline: none;
+    }
+
+    .card-row {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 0.8rem;
+    }
+
+    /* Boleto */
+    .boleto-box {
+      text-align: center;
+      padding: 1rem 0;
+    }
+
+    .boleto-barcode {
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid rgba(212, 175, 55, 0.15);
+      padding: 1rem;
+      border-radius: var(--radius-sm);
+      font-family: monospace;
+      font-size: 0.85rem;
+      color: var(--text-primary);
+      letter-spacing: 1px;
+      margin: 1rem 0;
+    }
+
+    /* Botões */
+    .btn-checkout {
+      width: 100%;
+      padding: 0.85rem;
+      border: none;
+      border-radius: var(--radius-sm);
+      background: var(--gold-gradient);
+      color: var(--text-dark);
+      font-weight: 700;
+      cursor: pointer;
+      font-size: 1rem;
+      transition: var(--transition);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 0.5rem;
+      margin-top: 1rem;
+    }
+
+    .btn-checkout:hover {
+      box-shadow: var(--shadow-glow);
+      transform: translateY(-1px);
+    }
+
+    .btn-outline-checkout {
+      width: 100%;
+      padding: 0.75rem;
+      border: 1px solid rgba(212, 175, 55, 0.3);
+      border-radius: var(--radius-sm);
+      background: transparent;
+      color: var(--text-secondary);
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 0.85rem;
+      transition: var(--transition);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 0.5rem;
+      margin-top: 0.8rem;
+    }
+
+    .btn-outline-checkout:hover {
+      border-color: var(--gold-primary);
+      color: var(--text-primary);
+    }
+
+    /* Tela de Sucesso */
+    .payment-success-card {
+      display: none;
+      text-align: center;
+      padding: 3rem 2rem;
+    }
+
+    .payment-success-card.active {
+      display: block;
+      animation: fadeIn 0.6s ease;
+    }
+
+    .success-badge {
+      width: 75px;
+      height: 75px;
+      border-radius: 50%;
+      background: rgba(129, 199, 132, 0.1);
+      border: 2px solid #81c784;
+      color: #81c784;
+      display: inline-flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 2.5rem;
+      margin: 0 auto 1.5rem auto;
+      box-shadow: 0 0 15px rgba(129, 199, 132, 0.15);
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateX(5px); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="checkout-container">
+    <!-- Bloco Principal do Checkout -->
+    <div id="checkout-main-content">
+      <div class="checkout-header">
+        <img src="assets/logo.svg" alt="BelKlock" onerror="this.src='https://raw.githubusercontent.com/intelbras/assets/master/logo.png'; this.style.filter='hue-rotate(45deg)';">
+        <h1>Checkout Seguro</h1>
+        <p>BelKlock Semijoias & Conveniadas</p>
+      </div>
+
+      <div class="checkout-body">
+        <!-- Sumário do Pagamento -->
+        <div class="payment-summary">
+          <div class="summary-row">
+            <span>Recebedor:</span>
+            <span id="pay-recebedor" style="font-weight: 600;">BelKlock Semijoias</span>
+          </div>
+          <div class="summary-row">
+            <span>Revendedora:</span>
+            <span id="pay-vendedora" style="color: var(--text-primary);">-</span>
+          </div>
+          <div class="summary-row">
+            <span>Cliente / Pagador:</span>
+            <span id="pay-cliente" style="color: var(--text-primary);">-</span>
+          </div>
+          <div class="summary-row">
+            <span style="font-weight: bold; color: var(--text-primary);">Total a pagar:</span>
+            <span class="summary-total" id="pay-valor">R$ 0,00</span>
+          </div>
+        </div>
+
+        <!-- Abas de Pagamento -->
+        <div class="payment-tabs">
+          <div class="pay-tab active" data-tab="pix">
+            <i class="fa-brands fa-pix"></i>
+            <span>PIX</span>
+          </div>
+          <div class="pay-tab" data-tab="cartao">
+            <i class="fa-solid fa-credit-card"></i>
+            <span>Cartão</span>
+          </div>
+          <div class="pay-tab" data-tab="boleto">
+            <i class="fa-solid fa-barcode"></i>
+            <span>Boleto</span>
+          </div>
+        </div>
+
+        <!-- Conteúdo 1: PIX -->
+        <div class="tab-content active" id="tab-content-pix">
+          <div class="pix-box">
+            <div class="qr-code-placeholder">
+              <!-- Gerador estático de QR code premium fictício -->
+              <img id="pix-qr-img" src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=belklock-pagamento-simulado-pix-2026" alt="QR Code PIX">
+            </div>
+            <p style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.8rem;">Escaneie o QR Code acima com o app do seu banco ou copie o código abaixo:</p>
+            <div class="pix-copia-cola" id="pix-code-text">
+              00020101021226850014br.gov.bcb.pix2563pix.belklock.com.br/qr/v2/5012b74a56a0496c9e1193a388ec1dd85204000053039865406150.005802BR5917BELKLOCKSEMIJOIAS6009SAOPAULO62070503***6304
+            </div>
+            
+            <button class="btn-outline-checkout" onclick="copiarPix()">
+              <i class="fa-solid fa-copy"></i> Copiar Código PIX
+            </button>
+
+            <!-- Botão de Teste Simulado -->
+            <button class="btn-checkout" style="margin-top: 2rem; background: #2e7d32; color: white;" onclick="confirmarPagamentoSimulado()">
+              <i class="fa-solid fa-circle-check"></i> Confirmar Pagamento (Simulação)
+            </button>
+          </div>
+        </div>
+
+        <!-- Conteúdo 2: CARTÃO -->
+        <div class="tab-content" id="tab-content-cartao">
+          <form class="card-form" onsubmit="confirmarCartao(event)">
+            <div class="form-group">
+              <label for="card-holder">Nome no Cartão</label>
+              <input type="text" id="card-holder" placeholder="Como está impresso no cartão" required>
+            </div>
+            <div class="form-group">
+              <label for="card-number">Número do Cartão</label>
+              <input type="text" id="card-number" placeholder="0000 0000 0000 0000" required>
+            </div>
+            <div class="card-row">
+              <div class="form-group">
+                <label for="card-expiry">Validade</label>
+                <input type="text" id="card-expiry" placeholder="MM/AA" required>
+              </div>
+              <div class="form-group">
+                <label for="card-cvv">CVV</label>
+                <input type="password" id="card-cvv" placeholder="123" maxlength="4" required>
+              </div>
+            </div>
+
+            <button type="submit" class="btn-checkout" id="btn-submit-cartao">
+              <i class="fa-solid fa-shield-halved"></i> Pagar Agora com Cartão
+            </button>
+          </form>
+        </div>
+
+        <!-- Conteúdo 3: BOLETO -->
+        <div class="tab-content" id="tab-content-boleto">
+          <div class="boleto-box">
+            <i class="fa-solid fa-file-invoice-dollar" style="font-size: 3rem; color: var(--gold-primary); margin-bottom: 1rem;"></i>
+            <h3 style="font-family: var(--font-title); font-size: 1.1rem; color: var(--text-primary);">Boleto Bancário</h3>
+            <p style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.3rem;">O boleto será compensado em até 1 dia útil após o pagamento.</p>
+            
+            <div class="boleto-barcode" id="boleto-barcode-text">
+              34191.79001 01043.513184 91020.150008 7 96250000015000
+            </div>
+
+            <button class="btn-outline-checkout" onclick="copiarBoleto()">
+              <i class="fa-solid fa-copy"></i> Copiar Código de Barras
+            </button>
+            <button class="btn-checkout" onclick="baixarBoletoPDF()">
+              <i class="fa-solid fa-file-pdf"></i> Baixar Boleto em PDF (Simulado)
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Tela de Sucesso -->
+    <div class="payment-success-card" id="payment-success-content">
+      <div class="success-badge">
+        <i class="fa-solid fa-check"></i>
+      </div>
+      <h2 style="font-family: var(--font-title); font-size: 1.8rem; color: var(--gold-primary); margin-bottom: 0.5rem;">Pagamento Confirmado!</h2>
+      <p style="color: var(--text-secondary); font-size: 0.95rem; margin-bottom: 1.5rem;" id="success-desc">
+        Sua transação foi processada e aprovada pelo banco. A baixa no sistema foi realizada de forma automática!
+      </p>
+
+      <div style="background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.05); padding: 1.2rem; border-radius: var(--radius-md); text-align: left; font-size: 0.85rem; margin-bottom: 2rem;">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 0.4rem;">
+          <span style="color: var(--text-muted);">ID do Pagamento:</span>
+          <span style="color: var(--text-secondary); font-family: monospace;" id="success-id">-</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; margin-bottom: 0.4rem;">
+          <span style="color: var(--text-muted);">Data/Hora:</span>
+          <span style="color: var(--text-secondary);" id="success-date">-</span>
+        </div>
+        <div style="display: flex; justify-content: space-between;">
+          <span style="color: var(--text-muted);">Status:</span>
+          <span style="color: #81c784; font-weight: bold;">Compensado / Baixado</span>
+        </div>
+      </div>
+
+      <p style="font-size: 0.8rem; color: var(--text-muted);">Você já pode fechar esta aba com segurança.</p>
+    </div>
+  </div>
+
+  <div id="toast-container" style="position: fixed; bottom: 20px; right: 20px; z-index: 9999;"></div>
+
+  <script src="pagamento.js"></script>
+</body>
+</html>
