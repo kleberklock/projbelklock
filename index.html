@@ -22,7 +22,8 @@
        TELA DE LOGIN PREMIUM
        ========================================== -->
   <div class="login-container" id="login-container" style="display: flex; position: relative; z-index: 10;">
-    <div class="login-card">
+    <!-- Card de Login -->
+    <div class="login-card" id="login-card">
       <div class="login-logo">
         <img src="assets/logo.svg" alt="BelKlock Semijoias" id="login-logo-img">
       </div>
@@ -45,8 +46,52 @@
         <i class="fa-solid fa-right-to-bracket"></i> Entrar na Plataforma
       </button>
       
+      <div style="margin-top: 1.5rem; text-align: center; font-size: 0.85rem;">
+        <p>Não possui uma conta? <a href="#" id="link-ir-para-cadastro" style="color: var(--gold-primary); text-decoration: none; font-weight: 500;">Cadastre sua Marca</a></p>
+      </div>
+      
       <div class="login-footer">
         <p id="login-footer-text">BelKlock Semijoias &copy; 2026 - Controle de Luxo</p>
+      </div>
+    </div>
+
+    <!-- Card de Cadastro (Sign Up) -->
+    <div class="login-card" id="signup-card" style="display: none;">
+      <div class="login-logo">
+        <img src="assets/logo.svg" alt="BelKlock Semijoias" id="signup-logo-img">
+      </div>
+      <h2>Cadastrar Gestão</h2>
+      <p>Crie sua conta para gerenciar sua marca</p>
+      
+      <div id="signup-error-msg" class="login-error-box" style="display: none;"></div>
+      <div id="signup-success-msg" class="login-success-box" style="display: none; background: rgba(129,199,132,0.1); border: 1px solid #81c784; color: #81c784; padding: 0.8rem; border-radius: var(--radius-sm); margin-bottom: 1rem; font-size: 0.85rem; text-align: center;"></div>
+ 
+      <div class="form-group">
+        <label for="signup-name">Nome Completo *</label>
+        <input type="text" id="signup-name" class="form-control" placeholder="Seu nome" required>
+      </div>
+
+      <div class="form-group">
+        <label for="signup-email">E-mail *</label>
+        <input type="email" id="signup-email" class="form-control" placeholder="seu-email@exemplo.com" required>
+      </div>
+
+      <div class="form-group">
+        <label for="signup-loja">Nome da Loja / Marca *</label>
+        <input type="text" id="signup-loja" class="form-control" placeholder="Sua Marca de Semijoias" required>
+      </div>
+
+      <div class="form-group">
+        <label for="signup-senha">Senha de Acesso *</label>
+        <input type="password" id="signup-senha" class="form-control" placeholder="••••••••" required>
+      </div>
+
+      <button class="btn-gold" id="btn-executar-cadastro" style="width: 100%; justify-content: center; padding: 1.1rem; margin-top: 1.2rem; font-size: 1rem;">
+        <i class="fa-solid fa-user-plus"></i> Registrar e Iniciar
+      </button>
+
+      <div class="login-footer" style="margin-top: 1.5rem;">
+        <p>Já possui uma conta? <a href="#" id="link-ir-para-login" style="color: var(--gold-primary); text-decoration: none; font-weight: 500;">Faça Login</a></p>
       </div>
     </div>
   </div>

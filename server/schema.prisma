@@ -26,13 +26,13 @@ model Loja {
 
 model Usuario {
   id           String             @id @default(uuid())
-  lojaId       String?            // Opcional: SUPER_ADMIN não pertence a nenhuma loja específica
+  lojaId       String?            // Opcional: SuperAdmin não pertence a nenhuma loja específica
   loja         Loja?              @relation(fields: [lojaId], references: [id], onDelete: Cascade)
   nome         String
   email        String             @unique
-  pin          String?            @unique // Código PIN de 4 dígitos para revendedoras
+  pin          String?            @unique // Código PIN de 4 dígitos para consultoras
   senhaHash    String
-  role         String             // Roles: "SUPER_ADMIN" | "ADMIN_LOJA" | "VENDEDORA"
+  role         String             // Roles: "SuperAdmin" | "Manager" | "Consultant"
   whatsapp     String?
   comissao     Float              @default(30.0) // padrão 30%
   

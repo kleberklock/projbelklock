@@ -501,7 +501,7 @@ const app = {
     // Dispara carregamento assíncrono dos dados da API
     await this.carregarProdutosDaAPI();
     
-    if (['ADMIN_LOJA', 'SUPER_ADMIN', 'admin'].includes(this.state.usuarioLogado.role)) {
+    if (['Manager', 'SuperAdmin', 'ADMIN_LOJA', 'SUPER_ADMIN', 'admin'].includes(this.state.usuarioLogado.role)) {
       await this.carregarRevendedorasDaAPI();
       await this.carregarClientesDaAPI();
       await this.carregarVendasConsolidadas();
@@ -3520,7 +3520,7 @@ const app = {
       // Se estiver conectado ao servidor, recarrega os dados diretamente do banco de dados para garantir sincronia total
       if (this.state.token) {
         await this.carregarProdutosDaAPI();
-        if (['ADMIN_LOJA', 'SUPER_ADMIN', 'admin'].includes(this.state.usuarioLogado.role)) {
+        if (['Manager', 'SuperAdmin', 'ADMIN_LOJA', 'SUPER_ADMIN', 'admin'].includes(this.state.usuarioLogado.role)) {
           await this.carregarRevendedorasDaAPI();
         }
       } else {

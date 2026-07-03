@@ -179,14 +179,14 @@ const app = {
       const usuario = JSON.parse(usuarioJson);
       const roleUpper = (usuario.role || "").toUpperCase();
       
-      // Permitir ADMIN_LOJA, SUPER_ADMIN e legado "ADMIN" na página admin.html
-      if (roleUpper === 'ADMIN_LOJA' || roleUpper === 'SUPER_ADMIN' || roleUpper === 'ADMIN') {
+      // Permitir Manager, SuperAdmin na página superadmin.html
+      if (roleUpper === 'MANAGER' || roleUpper === 'SUPERADMIN') {
         this.state.token = token;
         this.state.usuarioLogado = usuario;
         this.exibirInterfacePosLogin();
         this.carregarDadosIniciais();
-      } else if (roleUpper === 'VENDEDORA' || roleUpper === 'REVENDEDORA') {
-        window.location.href = "vendedora.html";
+      } else if (roleUpper === 'CONSULTANT') {
+        window.location.href = "manager.html";
       } else {
         console.warn("Role desconhecida ou inválida:", usuario.role);
         this.fazerLogout();
@@ -269,15 +269,15 @@ const app = {
                             error.message.includes("Você está offline");
       
       if (conexaoFalhou) {
-        if ((email === "admin@belklock.com" || email === "0001") && senha === "belklock") {
-          console.warn("Servidor Azure API offline. Iniciando em Modo de Demonstração (Admin local).");
-          this.state.token = "mock_admin_token_" + Date.now();
+        if ((email === "superadmin@plataforma.com" || email === "0001") && senha === "admin0001") {
+          console.warn("Servidor Azure API offline. Iniciando em Modo de Demonstração (SuperAdmin local).");
+          this.state.token = "mock_superadmin_token_" + Date.now();
           this.state.usuarioLogado = {
-            id: "admin_local",
-            nome: "Admin Local",
-            email: "admin@belklock.com",
+            id: "superadmin_local",
+            nome: "Super Admin Local",
+            email: "superadmin@plataforma.com",
             pin: "0001",
-            role: "ADMIN_LOJA",
+            role: "SuperAdmin",
             comissao: 0.0
           };
           localStorage.setItem("belklock_token", this.state.token);
@@ -285,20 +285,38 @@ const app = {
           
           this.exibirInterfacePosLogin();
           this.carregarDadosIniciais();
-          this.toast("Aviso: Servidor local offline. Iniciando em Modo de Demonstração (Perfil Administrador).", "warning");
+          this.toast("Aviso: Servidor local offline. Iniciando em Modo de Demonstração (Perfil Administrador do Sistema).", "warning");
+          return;
+        } else if ((email === "admin@belklock.com" || email === "0002") && senha === "belklock") {
+          console.warn("Servidor Azure API offline. Iniciando em Modo de Demonstração (Gestora local).");
+          this.state.token = "mock_admin_token_" + Date.now();
+          this.state.usuarioLogado = {
+            id: "admin_local",
+            nome: "Admin Local",
+            email: "admin@belklock.com",
+            pin: "0002",
+            role: "Manager",
+            comissao: 0.0
+          };
+          localStorage.setItem("belklock_token", this.state.token);
+          localStorage.setItem("belklock_usuario", JSON.stringify(this.state.usuarioLogado));
+          
+          this.exibirInterfacePosLogin();
+          this.carregarDadosIniciais();
+          this.toast("Aviso: Servidor local offline. Iniciando em Modo de Demonstração (Perfil Gestora).", "warning");
           return;
         } else {
           // Permite logar localmente em Modo de Demonstração se o PIN e senha inseridos forem válidos
           const revLocal = this.state.revendedoras.find(r => r.pin === email || r.email === email);
           if (revLocal) {
-            console.warn("Servidor Azure API offline. Iniciando em Modo de Demonstração (Revendedora local).");
+            console.warn("Servidor Azure API offline. Iniciando em Modo de Demonstração (Consultora local).");
             this.state.token = "mock_rev_token_" + Date.now();
             this.state.usuarioLogado = {
               id: revLocal.id,
               nome: revLocal.nome,
               email: revLocal.email || (revLocal.pin + "@loja.com"),
               pin: revLocal.pin,
-              role: "VENDEDORA",
+              role: "Consultant",
               comissao: revLocal.comissao
             };
             localStorage.setItem("belklock_token", this.state.token);
@@ -306,7 +324,7 @@ const app = {
             
             this.exibirInterfacePosLogin();
             this.carregarDadosIniciais();
-            this.toast(`Aviso: Servidor local offline. Iniciando em Modo de Demonstração (Perfil Revendedora: ${revLocal.nome}).`, "warning");
+            this.toast(`Aviso: Servidor local offline. Iniciando em Modo de Demonstração (Perfil Consultora: ${revLocal.nome}).`, "warning");
             return;
           }
         }
@@ -452,12 +470,15 @@ const app = {
       
       // Mapeia os roles para labels amigáveis
       const roleLabels = {
-        'SUPER_ADMIN': 'Super Admin',
-        'ADMIN_LOJA': 'Administrador',
-        'VENDEDORA': 'Revendedora',
+        'SuperAdmin': 'Administrador do Sistema',
+        'Manager': 'Gestora',
+        'Consultant': 'Consultora',
         // Compatibilidade com roles antigos (fallback offline)
-        'admin': 'Administrador',
-        'revendedora': 'Revendedora'
+        'SUPER_ADMIN': 'Administrador do Sistema',
+        'ADMIN_LOJA': 'Gestora',
+        'VENDEDORA': 'Consultora',
+        'admin': 'Gestora',
+        'revendedora': 'Consultora'
       };
       roleEl.innerText = roleLabels[usuario.role] || usuario.role;
       const inicial = usuario.nome ? usuario.nome.charAt(0) : "U";
@@ -469,9 +490,9 @@ const app = {
   },
 
   aplicarRestricoesPerfil: function() {
-    const role = this.state.usuarioLogado ? this.state.usuarioLogado.role : "VENDEDORA";
-    const isAdmin = ['ADMIN_LOJA', 'SUPER_ADMIN', 'admin'].includes(role);
-    const isSuperAdmin = role === 'SUPER_ADMIN';
+    const role = this.state.usuarioLogado ? this.state.usuarioLogado.role : "Consultant";
+    const isAdmin = ['Manager', 'SuperAdmin', 'ADMIN_LOJA', 'SUPER_ADMIN', 'admin'].includes(role);
+    const isSuperAdmin = ['SuperAdmin', 'SUPER_ADMIN'].includes(role);
     
     const menuPlanilhas = document.querySelector('.nav-item[data-target="planilhas"]');
     const menuRevendedoras = document.querySelector('.nav-item[data-target="revendedoras"]');
@@ -487,7 +508,7 @@ const app = {
     const btnCriarNovaLoja = document.getElementById("btn-criar-nova-loja");
  
     if (!isAdmin) {
-      // VENDEDORA: oculta todos os menus administrativos
+      // Consultant: oculta todos os menus administrativos
       if (menuPlanilhas) menuPlanilhas.style.display = "none";
       if (menuRevendedoras) menuRevendedoras.style.display = "none";
       if (menuEstoque) menuEstoque.style.display = "none";
@@ -502,7 +523,7 @@ const app = {
       if (btnCriarNovaLoja) btnCriarNovaLoja.style.display = "none";
       this.state.abaAtiva = "minha-maleta";
     } else {
-      // ADMIN_LOJA ou SUPER_ADMIN: exibe menus administrativos
+      // Manager ou SuperAdmin: exibe menus administrativos
       if (menuPlanilhas) menuPlanilhas.style.display = "block";
       if (menuRevendedoras) menuRevendedoras.style.display = "block";
       if (menuEstoque) menuEstoque.style.display = "block";
@@ -514,7 +535,7 @@ const app = {
       if (menuMinhaMaleta) menuMinhaMaleta.style.display = "none";
       if (btnCadastrarProduto) btnCadastrarProduto.style.display = "inline-flex";
       if (divHeaderActions) divHeaderActions.style.display = "block";
-      // Botão 'Criar Nova Loja' só visível para SUPER_ADMIN
+      // Botão 'Criar Nova Loja' só visível para SuperAdmin
       if (btnCriarNovaLoja) btnCriarNovaLoja.style.display = isSuperAdmin ? "inline-flex" : "none";
       if (this.state.abaAtiva === "minha-maleta") {
         this.state.abaAtiva = "dashboard";
@@ -532,8 +553,8 @@ const app = {
     // Dispara carregamento assíncrono dos dados da API
     await this.carregarProdutosDaAPI();
     
-    const role = this.state.usuarioLogado ? this.state.usuarioLogado.role : 'VENDEDORA';
-    const isAdmin = ['ADMIN_LOJA', 'SUPER_ADMIN', 'admin'].includes(role);
+    const role = this.state.usuarioLogado ? this.state.usuarioLogado.role : 'Consultant';
+    const isAdmin = ['Manager', 'SuperAdmin', 'ADMIN_LOJA', 'SUPER_ADMIN', 'admin'].includes(role);
 
     if (isAdmin) {
       await this.carregarRevendedorasDaAPI();

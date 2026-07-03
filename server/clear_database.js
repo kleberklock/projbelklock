@@ -1,5 +1,6 @@
 const { PrismaClient } = require('@prisma/client');
 const bcrypt = require('bcryptjs');
+require('dotenv').config();
 const prisma = new PrismaClient();
 
 async function main() {
@@ -33,30 +34,49 @@ async function main() {
 
     console.log("Todos os dados foram excluídos com sucesso!");
 
-    // 3. Criar a conta Administradora principal padrão
-    console.log("\nCriando conta administradora principal padrão...");
-    const emailAdmin = "admin@belklock.com";
-    const pinAdmin = "0001";
-    const senhaPadrao = "belklock";
-    const senhaHash = await bcrypt.hash(senhaPadrao, 10);
+    // 3. Criar a conta de SuperAdmin e Manager de forma segura
+    console.log("\nCriando conta do SuperAdmin e da Gestora padrão...");
+    const superAdminEmail = process.env.SUPER_ADMIN_EMAIL || "superadmin@plataforma.com";
+    const superAdminSenha = process.env.SUPER_ADMIN_SENHA || "admin0001";
+    const superAdminPin = process.env.SUPER_ADMIN_PIN || "0001";
+    
+    const superAdminSenhaHash = await bcrypt.hash(superAdminSenha, 10);
+    const superAdmin = await prisma.usuario.create({
+      data: {
+        nome: "Super Admin",
+        email: superAdminEmail,
+        pin: superAdminPin,
+        senhaHash: superAdminSenhaHash,
+        role: "SuperAdmin",
+        comissao: 0.0
+      }
+    });
 
-    const novoAdmin = await prisma.usuario.create({
+    const managerEmail = "admin@belklock.com";
+    const managerPin = "0002";
+    const managerSenha = "belklock";
+    const managerSenhaHash = await bcrypt.hash(managerSenha, 10);
+    const manager = await prisma.usuario.create({
       data: {
         nome: "Bel Klock Admin",
-        email: emailAdmin,
-        pin: pinAdmin,
-        senhaHash: senhaHash,
-        role: "ADMIN_LOJA",
+        email: managerEmail,
+        pin: managerPin,
+        senhaHash: managerSenhaHash,
+        role: "Manager",
+        lojaId: "default-loja",
         whatsapp: "(11) 99999-9999",
         comissao: 0.0
       }
     });
 
     console.log("=========================================");
-    console.log("Administrador padrão criado com sucesso!");
-    console.log(`E-mail: ${novoAdmin.email}`);
-    console.log(`PIN (Login): ${pinAdmin}`);
-    console.log(`Senha padrão: ${senhaPadrao}`);
+    console.log("SuperAdmin criado com sucesso!");
+    console.log(`E-mail: ${superAdmin.email}`);
+    console.log(`PIN (Login): ${superAdminPin}`);
+    console.log("-----------------------------------------");
+    console.log("Gestora (Manager) criada com sucesso!");
+    console.log(`E-mail: ${manager.email}`);
+    console.log(`PIN (Login): ${managerPin}`);
     console.log("=========================================");
 
   } catch (err) {

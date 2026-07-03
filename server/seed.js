@@ -26,9 +26,43 @@ async function main() {
     console.log("ℹ️ Loja Padrão já existe.");
   }
 
-  // 2. Criar ou Atualizar Administrador Principal
+  // 2. Criar ou Atualizar SuperAdmin Principal baseado nas variáveis de ambiente
+  const superAdminEmail = process.env.SUPER_ADMIN_EMAIL || "superadmin@plataforma.com";
+  const superAdminSenha = process.env.SUPER_ADMIN_SENHA || "admin0001";
+  const superAdminPin = process.env.SUPER_ADMIN_PIN || "0001";
+  const superAdminSenhaHash = await bcrypt.hash(superAdminSenha, 10);
+
+  const superAdminExiste = await prisma.usuario.findUnique({
+    where: { email: superAdminEmail }
+  });
+
+  if (superAdminExiste) {
+    await prisma.usuario.update({
+      where: { email: superAdminEmail },
+      data: {
+        pin: superAdminPin,
+        senhaHash: superAdminSenhaHash,
+        role: "SuperAdmin"
+      }
+    });
+    console.log("✅ SuperAdmin atualizado.");
+  } else {
+    await prisma.usuario.create({
+      data: {
+        nome: "Super Admin",
+        email: superAdminEmail,
+        pin: superAdminPin,
+        senhaHash: superAdminSenhaHash,
+        role: "SuperAdmin",
+        comissao: 0.0
+      }
+    });
+    console.log("✅ SuperAdmin criado.");
+  }
+
+  // 2.5 Criar ou Atualizar Administrador Principal (Manager)
   const emailAdmin = "admin@belklock.com";
-  const pinAdmin = "0001";
+  const pinAdmin = "0002";
   const senhaPadrao = "belklock";
   const senhaHash = await bcrypt.hash(senhaPadrao, 10);
 
@@ -43,11 +77,11 @@ async function main() {
       data: {
         pin: pinAdmin,
         senhaHash: senhaHash,
-        role: "ADMIN_LOJA",
+        role: "Manager",
         lojaId: "default-loja"
       }
     });
-    console.log("✅ Administrador atualizado.");
+    console.log("✅ Administrador (Manager) atualizado.");
   } else {
     adminUser = await prisma.usuario.create({
       data: {
@@ -55,13 +89,13 @@ async function main() {
         email: emailAdmin,
         pin: pinAdmin,
         senhaHash: senhaHash,
-        role: "ADMIN_LOJA",
+        role: "Manager",
         lojaId: "default-loja",
         whatsapp: "(11) 99999-9999",
         comissao: 0.0
       }
     });
-    console.log("✅ Administrador criado.");
+    console.log("✅ Administrador (Manager) criado.");
   }
 
   // 3. Criar ou Atualizar Revendedora Gabriela Santos
@@ -80,7 +114,7 @@ async function main() {
       data: {
         pin: pinGabriela,
         senhaHash: senhaHashGabi,
-        role: "VENDEDORA",
+        role: "Consultant",
         lojaId: "default-loja"
       }
     });
@@ -92,7 +126,7 @@ async function main() {
         email: emailGabriela,
         pin: pinGabriela,
         senhaHash: senhaHashGabi,
-        role: "VENDEDORA",
+        role: "Consultant",
         lojaId: "default-loja",
         whatsapp: "(11) 98765-4321",
         comissao: 30.0

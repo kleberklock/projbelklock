@@ -111,6 +111,33 @@ const loginApp = {
       btnLogin.addEventListener("click", () => this.fazerLogin());
     }
 
+    const btnSignup = document.getElementById("btn-executar-cadastro");
+    if (btnSignup) {
+      btnSignup.addEventListener("click", () => this.fazerCadastro());
+    }
+
+    // Links de alternância
+    const linkIrCadastro = document.getElementById("link-ir-para-cadastro");
+    const linkIrLogin = document.getElementById("link-ir-para-login");
+    const loginCard = document.getElementById("login-card");
+    const signupCard = document.getElementById("signup-card");
+
+    if (linkIrCadastro && loginCard && signupCard) {
+      linkIrCadastro.addEventListener("click", (e) => {
+        e.preventDefault();
+        loginCard.style.display = "none";
+        signupCard.style.display = "block";
+      });
+    }
+
+    if (linkIrLogin && loginCard && signupCard) {
+      linkIrLogin.addEventListener("click", (e) => {
+        e.preventDefault();
+        signupCard.style.display = "none";
+        loginCard.style.display = "block";
+      });
+    }
+
     const inputEmail = document.getElementById("login-email");
     const inputSenha = document.getElementById("login-senha");
 
@@ -120,6 +147,21 @@ const loginApp = {
 
     if (inputEmail) inputEmail.addEventListener("keypress", enterHandler);
     if (inputSenha) inputSenha.addEventListener("keypress", enterHandler);
+
+    // Tecla Enter no Cadastro
+    const inputSignupName = document.getElementById("signup-name");
+    const inputSignupEmail = document.getElementById("signup-email");
+    const inputSignupLoja = document.getElementById("signup-loja");
+    const inputSignupSenha = document.getElementById("signup-senha");
+
+    const signupEnterHandler = (e) => {
+      if (e.key === "Enter") this.fazerCadastro();
+    };
+
+    if (inputSignupName) inputSignupName.addEventListener("keypress", signupEnterHandler);
+    if (inputSignupEmail) inputSignupEmail.addEventListener("keypress", signupEnterHandler);
+    if (inputSignupLoja) inputSignupLoja.addEventListener("keypress", signupEnterHandler);
+    if (inputSignupSenha) inputSignupSenha.addEventListener("keypress", signupEnterHandler);
   },
 
   fazerLogin: async function() {
@@ -167,14 +209,29 @@ const loginApp = {
                             error.message.includes("Failed to execute");
       
       if (conexaoFalhou) {
-        if ((email === "admin@belklock.com" || email === "0001") && senha === "belklock") {
-          console.warn("Servidor offline. Iniciando em Modo de Demonstração (Admin local).");
+        if ((email === "superadmin@plataforma.com" || email === "0001") && senha === "admin0001") {
+          console.warn("Servidor offline. Iniciando em Modo de Demonstração (SuperAdmin local).");
+          const userMock = {
+            id: "superadmin_local",
+            nome: "Super Admin Local",
+            email: "superadmin@plataforma.com",
+            pin: "0001",
+            role: "SuperAdmin",
+            comissao: 0.0
+          };
+          localStorage.setItem("belklock_token", "mock_superadmin_token_" + Date.now());
+          localStorage.setItem("belklock_usuario", JSON.stringify(userMock));
+          
+          this.redirecionarPorPerfil(userMock.role);
+          return;
+        } else if ((email === "admin@belklock.com" || email === "0002") && senha === "belklock") {
+          console.warn("Servidor offline. Iniciando em Modo de Demonstração (Gestora local).");
           const userMock = {
             id: "admin_local",
             nome: "Admin Local",
             email: "admin@belklock.com",
-            pin: "0001",
-            role: "ADMIN_LOJA",
+            pin: "0002",
+            role: "Manager",
             comissao: 0.0
           };
           localStorage.setItem("belklock_token", "mock_admin_token_" + Date.now());
@@ -183,13 +240,13 @@ const loginApp = {
           this.redirecionarPorPerfil(userMock.role);
           return;
         } else if (email === "2120" && senha === "belklock") {
-          console.warn("Servidor offline. Iniciando em Modo de Demonstração (Revendedora local).");
+          console.warn("Servidor offline. Iniciando em Modo de Demonstração (Consultora local).");
           const userMock = {
             id: "rev_local_junior",
             nome: "junior",
             email: "junior_254@loja.com",
             pin: "2120",
-            role: "VENDEDORA",
+            role: "Consultant",
             comissao: 30.0
           };
           localStorage.setItem("belklock_token", "mock_rev_token_" + Date.now());
@@ -209,14 +266,102 @@ const loginApp = {
   },
 
   redirecionarPorPerfil: function(role) {
-    if (role === 'SUPER_ADMIN') {
-      // SUPER_ADMIN é redirecionado para o painel de admin com flag especial
+    if (role === 'SuperAdmin') {
+      // SuperAdmin é redirecionado para o painel de admin com flag especial
       sessionStorage.setItem('saas_super_admin', 'true');
-      window.location.href = "admin.html";
-    } else if (role === 'ADMIN_LOJA') {
-      window.location.href = "admin.html";
+      window.location.href = "superadmin.html";
+    } else if (role === 'Manager') {
+      window.location.href = "superadmin.html";
     } else {
-      window.location.href = "vendedora.html";
+      window.location.href = "manager.html";
+    }
+  },
+
+  fazerCadastro: async function() {
+    const nome = document.getElementById("signup-name").value.trim();
+    const email = document.getElementById("signup-email").value.trim();
+    const nomeLoja = document.getElementById("signup-loja").value.trim();
+    const senha = document.getElementById("signup-senha").value.trim();
+    const errorBox = document.getElementById("signup-error-msg");
+    const successBox = document.getElementById("signup-success-msg");
+
+    if (!nome || !email || !nomeLoja || !senha) {
+      errorBox.innerText = "Por favor, preencha todos os campos obrigatórios.";
+      errorBox.style.display = "block";
+      successBox.style.display = "none";
+      return;
+    }
+
+    errorBox.style.display = "none";
+    successBox.style.display = "none";
+
+    const btnSignup = document.getElementById("btn-executar-cadastro");
+    btnSignup.disabled = true;
+    btnSignup.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Registrando...';
+
+    try {
+      const response = await fetch(`${this.apiUrl}/auth/signup`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nome, email, senha, nomeLoja })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Erro ao tentar realizar o cadastro.");
+      }
+
+      successBox.innerText = "Cadastro realizado com sucesso! Redirecionando...";
+      successBox.style.display = "block";
+
+      // Salva dados no LocalStorage
+      localStorage.setItem("belklock_token", data.token);
+      localStorage.setItem("belklock_usuario", JSON.stringify(data.usuario));
+      localStorage.setItem("belklock_loja_id", data.usuario.lojaId);
+
+      setTimeout(() => {
+        this.redirecionarPorPerfil(data.usuario.role);
+      }, 1500);
+
+    } catch (error) {
+      console.error(error);
+
+      // LÓGICA DE FALLBACK OFFLINE (Modo de Demonstração):
+      const conexaoFalhou = error instanceof TypeError || 
+                            error.message.includes("Failed to fetch") || 
+                            error.message.includes("fetch") || 
+                            error.message.includes("Failed to execute");
+
+      if (conexaoFalhou) {
+        console.warn("Servidor offline. Registrando Gestora em Modo de Demonstração local.");
+        const userMock = {
+          id: "gestora_local_mock_" + Date.now(),
+          nome: nome,
+          email: email,
+          pin: "0002",
+          role: "Manager",
+          lojaId: "default-loja",
+          comissao: 0.0
+        };
+        localStorage.setItem("belklock_token", "mock_admin_token_" + Date.now());
+        localStorage.setItem("belklock_usuario", JSON.stringify(userMock));
+        localStorage.setItem("belklock_nome_empresa", nomeLoja);
+
+        successBox.innerText = "Modo de Demonstração: Cadastro simulado localmente. Redirecionando...";
+        successBox.style.display = "block";
+
+        setTimeout(() => {
+          this.redirecionarPorPerfil(userMock.role);
+        }, 1500);
+        return;
+      }
+
+      errorBox.innerText = error.message || "Erro de conexão com o servidor local.";
+      errorBox.style.display = "block";
+    } finally {
+      btnSignup.disabled = false;
+      btnSignup.innerHTML = '<i class="fa-solid fa-user-plus"></i> Registrar e Iniciar';
     }
   }
 };

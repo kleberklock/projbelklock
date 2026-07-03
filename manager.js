@@ -174,20 +174,20 @@ const app = {
       const usuario = JSON.parse(usuarioJson);
       const roleUpper = (usuario.role || "").toUpperCase();
       
-      // Permitir VENDEDORA e legado "REVENDEDORA" na página vendedora.html
-      if (roleUpper === 'VENDEDORA' || roleUpper === 'REVENDEDORA') {
+      // Permitir Consultant na página manager.html
+      if (roleUpper === 'CONSULTANT') {
         this.state.token = token;
         this.state.usuarioLogado = usuario;
         this.exibirInterfacePosLogin();
         this.carregarDadosIniciais();
-      } else if (roleUpper === 'ADMIN_LOJA' || roleUpper === 'SUPER_ADMIN' || roleUpper === 'ADMIN') {
-        window.location.href = "admin.html";
+      } else if (roleUpper === 'MANAGER' || roleUpper === 'SUPERADMIN') {
+        window.location.href = "superadmin.html";
       } else {
         console.warn("Role desconhecida ou inválida:", usuario.role);
         this.fazerLogout();
       }
     } catch (e) {
-      console.error("Erro na inicialização da Revendedora:", e);
+      console.error("Erro na inicialização da Consultora:", e);
       this.fazerLogout();
     }
   },
@@ -280,7 +280,7 @@ const app = {
           
           this.exibirInterfacePosLogin();
           this.carregarDadosIniciais();
-          this.toast("Aviso: Servidor local offline. Iniciando em Modo de Demonstração (Perfil Administrador).", "warning");
+          this.toast("Aviso: Servidor local offline. Iniciando em Modo de Demonstração (Perfil Gestora).", "warning");
           return;
         } else {
           // Permite logar localmente em Modo de Demonstração se o PIN e senha inseridos forem válidos
@@ -293,7 +293,7 @@ const app = {
               nome: revLocal.nome,
               email: revLocal.email || (revLocal.pin + "@belklock.com"),
               pin: revLocal.pin,
-              role: "revendedora",
+              role: "Consultant",
               comissao: revLocal.comissao
             };
             localStorage.setItem("belklock_token", this.state.token);
@@ -301,7 +301,7 @@ const app = {
             
             this.exibirInterfacePosLogin();
             this.carregarDadosIniciais();
-            this.toast(`Aviso: Servidor local offline. Iniciando em Modo de Demonstração (Perfil Revendedora: ${revLocal.nome}).`, "warning");
+            this.toast(`Aviso: Servidor local offline. Iniciando em Modo de Demonstração (Perfil Consultora: ${revLocal.nome}).`, "warning");
             return;
           }
         }
@@ -440,7 +440,17 @@ const app = {
     if (this.state.usuarioLogado) {
       const usuario = this.state.usuarioLogado;
       nameEl.innerText = usuario.nome || "Usuário";
-      const roleLabels = { 'SUPER_ADMIN': 'Super Admin', 'ADMIN_LOJA': 'Administrador', 'VENDEDORA': 'Revendedora', 'admin': 'Administrador', 'revendedora': 'Revendedora' };
+      const roleLabels = {
+        'SuperAdmin': 'Administrador do Sistema',
+        'Manager': 'Gestora',
+        'Consultant': 'Consultora',
+        // Fallback para compatibilidade
+        'SUPER_ADMIN': 'Administrador do Sistema',
+        'ADMIN_LOJA': 'Gestora',
+        'VENDEDORA': 'Consultora',
+        'admin': 'Gestora',
+        'revendedora': 'Consultora'
+      };
       roleEl.innerText = roleLabels[usuario.role] || usuario.role;
       const inicial = usuario.nome ? usuario.nome.charAt(0) : "U";
       avatarEl.innerText = inicial;
@@ -451,7 +461,7 @@ const app = {
   },
 
   aplicarRestricoesPerfil: function() {
-    const role = this.state.usuarioLogado ? this.state.usuarioLogado.role : "revendedora";
+    const role = this.state.usuarioLogado ? this.state.usuarioLogado.role : "Consultant";
     
     const menuPlanilhas = document.querySelector('.nav-item[data-target="planilhas"]');
     const menuRevendedoras = document.querySelector('.nav-item[data-target="revendedoras"]');
@@ -465,7 +475,7 @@ const app = {
     const menuVendasGeral = document.getElementById("menu-vendas-geral");
     const menuConfiguracoes = document.getElementById("menu-configuracoes");
  
-    if (role === "VENDEDORA") {
+    if (role === "Consultant" || role === "VENDEDORA" || role === "revendedora") {
       if (menuPlanilhas) menuPlanilhas.style.display = "none";
       if (menuRevendedoras) menuRevendedoras.style.display = "none";
       if (menuEstoque) menuEstoque.style.display = "none";
@@ -506,7 +516,7 @@ const app = {
     // Dispara carregamento assíncrono dos dados da API
     await this.carregarProdutosDaAPI();
     
-    if (['ADMIN_LOJA', 'SUPER_ADMIN', 'admin'].includes(this.state.usuarioLogado.role)) {
+    if (['Manager', 'SuperAdmin', 'ADMIN_LOJA', 'SUPER_ADMIN', 'admin'].includes(this.state.usuarioLogado.role)) {
       await this.carregarRevendedorasDaAPI();
       await this.carregarClientesDaAPI();
       await this.carregarVendasConsolidadas();

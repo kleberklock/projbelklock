@@ -1,7 +1,7 @@
 /**
  * Script de Migração de Roles — Etapa 2 RBAC
  * Converte os roles antigos ("admin", "revendedora") para os novos valores uppercase
- * ("ADMIN_LOJA", "VENDEDORA").
+ * ("Manager", "Consultant").
  * 
  * Execute uma única vez: node migrar-roles.js
  */
@@ -14,19 +14,26 @@ const prisma = new PrismaClient();
 async function migrarRoles() {
   console.log('Iniciando migração de roles...\n');
 
-  // 1. Migrar "admin" → "ADMIN_LOJA"
+  // 1. Migrar "admin" e "ADMIN_LOJA" → "Manager"
   const resultAdmin = await prisma.usuario.updateMany({
-    where: { role: 'admin' },
-    data: { role: 'ADMIN_LOJA' }
+    where: { role: { in: ['admin', 'ADMIN_LOJA'] } },
+    data: { role: 'Manager' }
   });
-  console.log(`✅ Migrados ${resultAdmin.count} usuário(s) de "admin" → "ADMIN_LOJA"`);
+  console.log(`✅ Migrados ${resultAdmin.count} usuário(s) para "Manager"`);
 
-  // 2. Migrar "revendedora" → "VENDEDORA"
+  // 2. Migrar "revendedora" e "VENDEDORA" → "Consultant"
   const resultVendedora = await prisma.usuario.updateMany({
-    where: { role: 'revendedora' },
-    data: { role: 'VENDEDORA' }
+    where: { role: { in: ['revendedora', 'VENDEDORA'] } },
+    data: { role: 'Consultant' }
   });
-  console.log(`✅ Migrados ${resultVendedora.count} usuário(s) de "revendedora" → "VENDEDORA"`);
+  console.log(`✅ Migrados ${resultVendedora.count} usuário(s) para "Consultant"`);
+
+  // 3. Migrar "SUPER_ADMIN" → "SuperAdmin"
+  const resultSuper = await prisma.usuario.updateMany({
+    where: { role: 'SUPER_ADMIN' },
+    data: { role: 'SuperAdmin' }
+  });
+  console.log(`✅ Migrados ${resultSuper.count} usuário(s) para "SuperAdmin"`);
 
   // Verificação final
   const todos = await prisma.usuario.findMany({ select: { nome: true, email: true, role: true } });

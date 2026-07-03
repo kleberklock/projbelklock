@@ -240,7 +240,7 @@ function atualizarStatusArquivo(input, statusId) {
 }
 
 function irParaPortal() {
-  window.location.href = "vendedora.html";
+  window.location.href = "manager.html";
 }
 
 // Inicializar
