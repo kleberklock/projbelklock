@@ -52,13 +52,13 @@ async function main() {
       }
     });
 
-    const managerEmail = "admin@belklock.com";
+    const managerEmail = "admin@conectajoias.com";
     const managerPin = "0002";
-    const managerSenha = "belklock";
+    const managerSenha = "conectajoias";
     const managerSenhaHash = await bcrypt.hash(managerSenha, 10);
     const manager = await prisma.usuario.create({
       data: {
-        nome: "Bel Klock Admin",
+        nome: "Conecta Joias Admin",
         email: managerEmail,
         pin: managerPin,
         senhaHash: managerSenhaHash,

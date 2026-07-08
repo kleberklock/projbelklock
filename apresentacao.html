@@ -1,0 +1,2492 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Conecta Joias - O Luxo da Gestão Inteligente</title>
+
+  <!-- Fontes de Luxo - Montserrat e Cormorant Garamond -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=Montserrat:wght@300;400;500;600;700&display=swap"
+    rel="stylesheet">
+
+  <!-- CSS Principal para Herdar Variáveis do Tema de Luxo -->
+  <link rel="stylesheet" href="style.css">
+
+  <!-- FontAwesome para Ícones -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <style>
+    :root {
+      --gold-gradient: linear-gradient(135deg, #b38728 0%, #fbf5b7 25%, #daac3c 50%, #fbf5b7 75%, #aa771c 100%);
+      --gold-primary: #daac3c;
+      --gold-light: #fbf5b7;
+      --gold-dark: #b38728;
+
+      /* Gemas Preciosas */
+      --sapphire-deep: #050814;
+      --sapphire-light: #2563eb;
+      --sapphire-gradient: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 50%, #60a5fa 100%);
+
+      --amethyst-deep: #0f051d;
+      --amethyst-light: #8b5cf6;
+      --amethyst-gradient: linear-gradient(135deg, #4c1d95 0%, #7c3aed 50%, #a78bfa 100%);
+
+      --emerald-deep: #020c08;
+      --emerald-light: #10b981;
+
+      --bronze-gradient: linear-gradient(135deg, #7c2d12 0%, #ea580c 50%, #f97316 100%);
+
+      --shadow-premium: 0 15px 35px rgba(0, 0, 0, 0.7), 0 0 20px rgba(218, 172, 60, 0.08);
+      --shadow-glow: 0 0 20px rgba(218, 172, 60, 0.3);
+    }
+
+    /* Animações de Scroll Reveal */
+    .reveal {
+      opacity: 0;
+      transform: translateY(30px);
+      transition: opacity 0.8s cubic-bezier(0.25, 1, 0.5, 1), transform 0.8s cubic-bezier(0.25, 1, 0.5, 1);
+    }
+
+    .reveal.active {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* Reset e Layout Customizado da Landing Page de Luxo */
+    body {
+      background-color: var(--sapphire-deep);
+      background-image:
+        radial-gradient(circle at 10% 20%, rgba(37, 99, 235, 0.06) 0%, transparent 40%),
+        radial-gradient(circle at 90% 80%, rgba(139, 92, 246, 0.06) 0%, transparent 45%),
+        radial-gradient(circle at 50% 50%, rgba(15, 5, 29, 0.96) 0%, #050814 100%);
+      color: #f5f5f5;
+      font-family: 'Montserrat', sans-serif;
+      margin: 0;
+      padding: 0;
+      overflow-x: hidden;
+      scroll-behavior: smooth;
+    }
+
+    /* Efeitos de Luz de Fundo Dinâmicos (Glow de Luxo) */
+    .ambient-glow {
+      position: absolute;
+      width: 600px;
+      height: 600px;
+      background: radial-gradient(circle, rgba(218, 172, 60, 0.07) 0%, transparent 70%);
+      top: -100px;
+      left: 50%;
+      transform: translateX(-50%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .ambient-glow-sapphire {
+      position: absolute;
+      width: 700px;
+      height: 700px;
+      background: radial-gradient(circle, rgba(37, 99, 235, 0.06) 0%, transparent 75%);
+      top: 300px;
+      left: -100px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .ambient-glow-amethyst {
+      position: absolute;
+      width: 800px;
+      height: 800px;
+      background: radial-gradient(circle, rgba(139, 92, 246, 0.06) 0%, transparent 75%);
+      top: 1200px;
+      right: -100px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Navbar de Luxo Flutuante */
+    .landing-nav {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      background: rgba(5, 8, 20, 0.45);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid rgba(218, 172, 60, 0.1);
+      z-index: 1000;
+      padding: 0.5rem 0;
+      transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), padding 0.3s ease, background-color 0.3s ease;
+    }
+
+    .landing-nav.scrolled {
+      padding: 0.25rem 0;
+      background: rgba(5, 8, 20, 0.9);
+      border-bottom: 1px solid rgba(218, 172, 60, 0.18);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    }
+
+    .landing-nav.nav-hidden {
+      transform: translateY(-100%);
+    }
+
+    .landing-nav-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 2rem;
+      flex-wrap: nowrap;
+    }
+
+    .landing-nav .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.8rem;
+      white-space: nowrap;
+      margin: 0 !important;
+      padding: 0 !important;
+    }
+
+    .landing-nav .brand i {
+      font-size: 1.35rem;
+      color: var(--gold-primary);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.3s ease;
+    }
+    .landing-nav.scrolled .brand i {
+      font-size: 1.15rem;
+    }
+
+    .landing-nav .brand-title {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--gold-primary);
+      letter-spacing: 2px;
+      line-height: 1;
+      display: inline-flex;
+      align-items: center;
+      transition: font-size 0.3s ease;
+    }
+    .landing-nav.scrolled .brand-title {
+      font-size: 1.25rem;
+    }
+
+    .landing-menu {
+      display: flex;
+      gap: 2.2rem;
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      align-items: center;
+    }
+
+    .landing-menu a {
+      color: var(--text-secondary);
+      text-decoration: none;
+      font-size: 0.85rem;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      transition: color 0.3s ease;
+    }
+
+    .landing-menu a:hover {
+      color: var(--gold-primary);
+    }
+
+    .btn-portal {
+      border: 1px solid var(--gold-primary);
+      padding: 0.6rem 1.5rem;
+      border-radius: 40px;
+      color: var(--gold-primary) !important;
+      font-weight: 600 !important;
+      transition: all 0.3s ease !important;
+      background: rgba(212, 175, 55, 0.03);
+    }
+
+    .btn-portal:hover {
+      background: var(--gold-gradient);
+      color: #0a0a0a !important;
+      box-shadow: var(--shadow-glow);
+      border-color: transparent;
+    }
+
+    /* Menu Hambúrguer */
+    .menu-toggle {
+      display: none;
+      flex-direction: column;
+      justify-content: space-between;
+      width: 26px;
+      height: 18px;
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      z-index: 1100;
+      padding: 0;
+    }
+
+    .menu-toggle span {
+      width: 100%;
+      height: 2px;
+      background-color: var(--gold-primary);
+      border-radius: 2px;
+      transition: all 0.3s ease;
+    }
+
+    /* Mobile Drawer */
+    .mobile-drawer {
+      position: fixed;
+      top: 0;
+      right: -100%;
+      width: 300px;
+      height: 100vh;
+      background: rgba(5, 5, 5, 0.98);
+      backdrop-filter: blur(20px);
+      border-left: 1px solid rgba(212, 175, 55, 0.15);
+      z-index: 1050;
+      padding: 6rem 2rem 2rem;
+      transition: right 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+      box-shadow: -10px 0 30px rgba(0, 0, 0, 0.8);
+      display: flex;
+      flex-direction: column;
+      gap: 2rem;
+    }
+
+    .mobile-drawer.open {
+      right: 0;
+    }
+
+    .drawer-close {
+      position: absolute;
+      top: 1.5rem;
+      right: 2rem;
+      background: transparent;
+      border: none;
+      color: var(--gold-primary);
+      font-size: 2.5rem;
+      cursor: pointer;
+      line-height: 1;
+    }
+
+    .mobile-menu-links {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 1.8rem;
+    }
+
+    .mobile-menu-links a {
+      color: #fff;
+      text-decoration: none;
+      font-size: 1.1rem;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      display: block;
+      transition: color 0.3s;
+    }
+
+    .mobile-menu-links a:hover {
+      color: var(--gold-primary);
+    }
+
+    /* Hero Section */
+    .hero-section {
+      padding: 12rem 2rem 6rem;
+      position: relative;
+      z-index: 1;
+      background: radial-gradient(circle at 10% 30%, rgba(212, 175, 55, 0.04) 0%, transparent 50%);
+    }
+
+    .hero-container-grid {
+      display: grid;
+      grid-template-columns: 1.15fr 0.85fr;
+      gap: 3.5rem;
+      max-width: 1200px;
+      margin: 0 auto;
+      align-items: center;
+      text-align: left;
+    }
+
+    .hero-content {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+    }
+
+    .hero-image-wrapper {
+      position: relative;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      width: 100%;
+    }
+
+    .hero-image-frame {
+      position: relative;
+      border-radius: 24px;
+      padding: 6px;
+      background: linear-gradient(135deg, rgba(212, 175, 55, 0.4) 0%, rgba(212, 175, 55, 0.05) 50%, rgba(212, 175, 55, 0.4) 100%);
+      box-shadow: 0 30px 70px rgba(0, 0, 0, 0.8), 0 0 40px rgba(212, 175, 55, 0.12);
+      border: 1px solid rgba(212, 175, 55, 0.25);
+      max-width: 100%;
+      transition: all 0.5s cubic-bezier(0.25, 0.8, 0.25, 1);
+    }
+
+    .hero-image-frame:hover {
+      transform: translateY(-10px) scale(1.02);
+      box-shadow: 0 40px 80px rgba(0, 0, 0, 0.9), 0 0 50px rgba(212, 175, 55, 0.3);
+      border-color: rgba(212, 175, 55, 0.5);
+    }
+
+    .hero-image-frame img {
+      width: 100%;
+      border-radius: 18px;
+      display: block;
+      filter: brightness(0.95) contrast(1.05);
+    }
+
+    /* Partículas de Brilho (Sparkles) */
+    .sparkle {
+      position: absolute;
+      background: radial-gradient(circle, #fff 20%, rgba(212, 175, 55, 0.9) 50%, transparent 80%);
+      border-radius: 50%;
+      pointer-events: none;
+      animation: float-sparkle 3.5s infinite ease-in-out;
+      opacity: 0;
+      box-shadow: 0 0 10px rgba(212, 175, 55, 0.8);
+    }
+
+    @keyframes float-sparkle {
+      0% {
+        transform: translateY(0) scale(0) rotate(0deg);
+        opacity: 0;
+      }
+
+      50% {
+        opacity: 0.9;
+      }
+
+      100% {
+        transform: translateY(-70px) scale(1.3) rotate(180deg);
+        opacity: 0;
+      }
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: rgba(212, 175, 55, 0.08);
+      border: 1px solid rgba(212, 175, 55, 0.3);
+      color: var(--gold-light);
+      padding: 0.4rem 1.1rem;
+      border-radius: 50px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      margin-bottom: 2rem;
+      animation: pulse 2.5s infinite;
+    }
+
+    .hero-tagline {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 3.8rem;
+      font-weight: 600;
+      line-height: 1.15;
+      color: #fff;
+      margin: 0 0 1.8rem 0;
+      letter-spacing: 0.5px;
+    }
+
+    .hero-tagline span {
+      background: var(--gold-gradient);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      font-style: italic;
+    }
+
+    .hero-desc {
+      color: var(--text-secondary);
+      font-size: 1.05rem;
+      margin: 0 0 2.8rem 0;
+      line-height: 1.7;
+      font-weight: 300;
+    }
+
+    .hero-ctas {
+      display: flex;
+      justify-content: flex-start;
+      gap: 1.2rem;
+    }
+
+    .hero-ctas .btn-gold {
+      padding: 1.1rem 2.5rem;
+      font-size: 0.95rem;
+      border-radius: 40px;
+      box-shadow: 0 4px 15px rgba(212, 175, 55, 0.15);
+    }
+
+    .hero-ctas .btn-outline-gold {
+      padding: 1.1rem 2.5rem;
+      font-size: 0.95rem;
+      border-radius: 40px;
+    }
+
+    /* Seção: O Ciclo de Valor da Semijoia (Linha do Tempo) */
+    .ciclo-section {
+      max-width: 1200px;
+      margin: 6rem auto;
+      padding: 0 2rem;
+      position: relative;
+    }
+
+    .ciclo-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 1.5rem;
+      position: relative;
+      margin-top: 3.5rem;
+    }
+
+    .ciclo-step {
+      background: rgba(255, 255, 255, 0.01);
+      border: 1px solid rgba(255, 255, 255, 0.04);
+      border-radius: 12px;
+      padding: 1.8rem 1.4rem;
+      text-align: center;
+      transition: all 0.3s ease;
+      position: relative;
+    }
+
+    .ciclo-step:hover {
+      background: rgba(212, 175, 55, 0.02);
+      border-color: rgba(212, 175, 55, 0.25);
+      transform: translateY(-5px);
+    }
+
+    .ciclo-number {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 2.2rem;
+      color: var(--gold-primary);
+      font-weight: 700;
+      margin-bottom: 0.8rem;
+      display: block;
+    }
+
+    .ciclo-step h3 {
+      font-size: 0.95rem;
+      color: #fff;
+      margin-bottom: 0.6rem;
+      font-weight: 600;
+    }
+
+    .ciclo-step p {
+      font-size: 0.78rem;
+      color: var(--text-secondary);
+      line-height: 1.5;
+      margin: 0;
+    }
+
+    /* Seção: Simulador de ROI Interativo (A peça de convencimento) */
+    .roi-section {
+      background: radial-gradient(circle at 80% 20%, rgba(139, 92, 246, 0.08) 0%, transparent 60%),
+        linear-gradient(180deg, rgba(5, 8, 20, 0.85) 0%, rgba(15, 5, 29, 0.95) 100%);
+      border-top: 1px solid rgba(212, 175, 55, 0.15);
+      border-bottom: 1px solid rgba(212, 175, 55, 0.15);
+      padding: 6rem 2rem;
+    }
+
+    .roi-container {
+      max-width: 1100px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 1.2fr 1fr;
+      gap: 4rem;
+      align-items: center;
+    }
+
+    .roi-info h2 {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 3rem;
+      font-weight: 600;
+      color: #fff;
+      margin-bottom: 1rem;
+    }
+
+    .roi-info p {
+      color: var(--text-secondary);
+      font-size: 0.95rem;
+      line-height: 1.7;
+      margin-bottom: 2rem;
+    }
+
+    .roi-calculator {
+      background: rgba(15, 8, 30, 0.5);
+      border: 1px solid rgba(218, 172, 60, 0.25);
+      border-radius: 16px;
+      padding: 2.5rem;
+      backdrop-filter: blur(16px);
+      box-shadow: var(--shadow-premium), 0 0 15px rgba(139, 92, 246, 0.15);
+    }
+
+    .slider-group {
+      margin-bottom: 2rem;
+    }
+
+    .slider-header {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.82rem;
+      color: var(--text-secondary);
+      margin-bottom: 0.6rem;
+      font-weight: 500;
+    }
+
+    .slider-header span.value-badge {
+      color: var(--gold-light);
+      font-weight: 700;
+      font-size: 0.9rem;
+    }
+
+    .slider-control {
+      width: 100%;
+      -webkit-appearance: none;
+      height: 5px;
+      border-radius: 5px;
+      background: rgba(255, 255, 255, 0.1);
+      outline: none;
+      transition: background 0.3s;
+    }
+
+    .slider-control::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: var(--gold-gradient);
+      cursor: pointer;
+      box-shadow: 0 0 10px rgba(212, 175, 55, 0.6);
+    }
+
+    .roi-results {
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+      padding-top: 1.8rem;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+    }
+
+    .roi-res-card {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.03);
+      padding: 1rem;
+      border-radius: 8px;
+      text-align: center;
+    }
+
+    .roi-res-card h4 {
+      margin: 0 0 0.4rem 0;
+      font-size: 0.72rem;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .roi-res-card .res-val {
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: var(--gold-light);
+    }
+
+    .roi-res-card .res-val.green {
+      color: #66bb6a;
+    }
+
+    /* Seção: O Smartphone Virtual (Aplicativo de Luxo da Revendedora) */
+    .mobile-showcase-section {
+      max-width: 1200px;
+      margin: 8rem auto;
+      padding: 0 2rem;
+      display: grid;
+      grid-template-columns: 1fr 1.2fr;
+      gap: 5rem;
+      align-items: center;
+    }
+
+    /* Celular Renderizado em CSS */
+    .phone-container {
+      position: relative;
+      width: 290px;
+      height: 580px;
+      background: #000;
+      border-radius: 40px;
+      border: 12px solid #1a1a1a;
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.8), 0 0 30px rgba(212, 175, 55, 0.08);
+      margin: 0 auto;
+      overflow: hidden;
+    }
+
+    .phone-notch {
+      position: absolute;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 120px;
+      height: 18px;
+      background: #1a1a1a;
+      border-bottom-left-radius: 12px;
+      border-bottom-right-radius: 12px;
+      z-index: 10;
+    }
+
+    .phone-screen {
+      width: 100%;
+      height: 100%;
+      background: #0a0a0a;
+      color: #fff;
+      font-family: 'Montserrat', sans-serif;
+      box-sizing: border-box;
+      padding: 1.8rem 1rem 1rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .phone-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.2rem;
+    }
+
+    .phone-header .logo-mini {
+      height: 20px;
+    }
+
+    .phone-header .pin-badge {
+      font-size: 0.65rem;
+      background: rgba(212, 175, 55, 0.15);
+      border: 1px solid rgba(212, 175, 55, 0.3);
+      color: var(--gold-light);
+      padding: 0.15rem 0.45rem;
+      border-radius: 4px;
+      font-family: monospace;
+    }
+
+    .phone-body {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 0.9rem;
+    }
+
+    .phone-welcome {
+      font-size: 0.85rem;
+      font-weight: 500;
+    }
+
+    .phone-welcome span {
+      display: block;
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: var(--gold-primary);
+    }
+
+    .phone-card {
+      background: #121212;
+      border: 1px solid rgba(255, 255, 255, 0.04);
+      border-radius: 10px;
+      padding: 0.8rem;
+    }
+
+    .phone-card h5 {
+      margin: 0 0 0.3rem 0;
+      font-size: 0.6rem;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+    }
+
+    .phone-card .val {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: #66bb6a;
+    }
+
+    .phone-btn-action {
+      background: var(--gold-gradient);
+      color: #0a0a0a;
+      border: none;
+      padding: 0.75rem;
+      border-radius: 8px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem;
+      cursor: pointer;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      box-shadow: 0 4px 10px rgba(212, 175, 55, 0.2);
+    }
+
+    .phone-footer {
+      border-top: 1px solid rgba(255, 255, 255, 0.05);
+      padding-top: 0.6rem;
+      text-align: center;
+      font-size: 0.6rem;
+      color: var(--text-muted);
+    }
+
+    /* Seção: Tabela Comparativa de Dores */
+    .comparativo-section {
+      max-width: 1000px;
+      margin: 6rem auto;
+      padding: 0 2rem;
+    }
+
+    .comparativo-table {
+      width: 100%;
+      border-collapse: collapse;
+      background: rgba(18, 18, 18, 0.4);
+      border: 1px solid rgba(255, 255, 255, 0.03);
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 10px 35px rgba(0, 0, 0, 0.5);
+    }
+
+    .comparativo-table th,
+    .comparativo-table td {
+      padding: 1.4rem;
+      text-align: left;
+      font-size: 0.88rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+    }
+
+    .comparativo-table th {
+      background: rgba(0, 0, 0, 0.4);
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .comparativo-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    .comparativo-table td.pain {
+      color: var(--text-secondary);
+      border-right: 1px solid rgba(255, 255, 255, 0.03);
+    }
+
+    .comparativo-table td.solution {
+      color: #fff;
+      background: rgba(212, 175, 55, 0.01);
+    }
+
+    .comparativo-table td.solution i {
+      color: var(--gold-primary);
+      margin-right: 0.5rem;
+    }
+
+    /* Seção de Planos */
+    .planos-section {
+      background: linear-gradient(180deg, rgba(15, 5, 29, 0.95) 0%, rgba(5, 8, 20, 0.95) 100%);
+      border-top: 1px solid rgba(212, 175, 55, 0.15);
+      border-bottom: 1px solid rgba(212, 175, 55, 0.15);
+      padding: 7rem 2rem;
+    }
+
+    .planos-container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .planos-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 2rem;
+      margin-top: 3.5rem;
+    }
+
+    .plano-box {
+      background: #0d0d0d;
+      border: 1px solid rgba(255, 255, 255, 0.03);
+      border-radius: 12px;
+      padding: 3rem 2rem;
+      display: flex;
+      flex-direction: column;
+      transition: all 0.3s;
+      position: relative;
+    }
+
+    .plano-box.destaque {
+      border: 1px solid transparent;
+      background: linear-gradient(#0f0b03, #0f0b03) padding-box,
+        var(--gold-gradient) border-box;
+      box-shadow: 0 20px 45px rgba(218, 172, 60, 0.12);
+      transform: scale(1.04);
+    }
+
+    /* Customizações Criativas dos Planos Padrão */
+    .plano-box.bronze {
+      border: 1px solid transparent;
+      background: linear-gradient(#0e0a08, #0e0a08) padding-box,
+        var(--bronze-gradient) border-box;
+    }
+
+    .plano-badge-bronze {
+      position: absolute;
+      top: -12px;
+      right: 20px;
+      background: var(--bronze-gradient);
+      color: #fff;
+      font-size: 0.65rem;
+      font-weight: 700;
+      padding: 0.25rem 0.8rem;
+      border-radius: 20px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .btn-bronze {
+      border-color: #ea580c;
+      color: #f97316;
+    }
+
+    .btn-bronze:hover {
+      background: var(--bronze-gradient) !important;
+      color: #fff !important;
+      border-color: transparent;
+      box-shadow: 0 0 15px rgba(234, 88, 12, 0.3);
+    }
+
+    .plano-box.platinum {
+      border: 1px solid transparent;
+      background: linear-gradient(#08060f, #08060f) padding-box,
+        var(--amethyst-gradient) border-box;
+    }
+
+    .plano-badge-platinum {
+      position: absolute;
+      top: -12px;
+      right: 20px;
+      background: var(--amethyst-gradient);
+      color: #fff;
+      font-size: 0.65rem;
+      font-weight: 700;
+      padding: 0.25rem 0.8rem;
+      border-radius: 20px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .btn-platinum {
+      border-color: #7c3aed;
+      color: #a78bfa;
+    }
+
+    .btn-platinum:hover {
+      background: var(--amethyst-gradient) !important;
+      color: #fff !important;
+      border-color: transparent;
+      box-shadow: 0 0 15px rgba(124, 58, 237, 0.3);
+    }
+
+    .plano-badge {
+      position: absolute;
+      top: -12px;
+      right: 20px;
+      background: var(--gold-gradient);
+      color: #0a0a0a;
+      font-size: 0.65rem;
+      font-weight: 700;
+      padding: 0.25rem 0.8rem;
+      border-radius: 20px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .plano-box h3 {
+      font-size: 1.4rem;
+      color: #fff;
+      margin: 0 0 0.5rem 0;
+      font-family: 'Cormorant Garamond', serif;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+    }
+
+    .plano-box.destaque h3 {
+      color: var(--gold-primary);
+    }
+
+    .plano-box p {
+      color: var(--text-secondary);
+      font-size: 0.8rem;
+      margin: 0 0 1.5rem 0;
+      line-height: 1.6;
+      flex: 1;
+    }
+
+    .plano-price {
+      font-size: 2.4rem;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 1.8rem;
+    }
+
+    .plano-price span {
+      font-size: 0.85rem;
+      font-weight: normal;
+      color: var(--text-muted);
+    }
+
+    .plano-list {
+      list-style: none;
+      padding: 0;
+      margin: 0 0 2rem 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0.9rem;
+      font-size: 0.82rem;
+      color: var(--text-secondary);
+    }
+
+    .plano-list li {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+
+    .plano-list li i {
+      color: var(--gold-primary);
+      font-size: 0.85rem;
+    }
+
+    .plano-btn {
+      width: 100%;
+      padding: 0.95rem;
+      border-radius: 40px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      background: transparent;
+      color: #fff;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+      text-decoration: none;
+      text-align: center;
+      font-size: 0.85rem;
+    }
+
+    .plano-box.destaque .plano-btn {
+      background: var(--gold-gradient);
+      color: #0a0a0a;
+      border: none;
+    }
+
+    .plano-box.destaque .plano-btn:hover {
+      opacity: 0.9;
+    }
+
+    .plano-btn:hover {
+      border-color: var(--gold-primary);
+      color: var(--gold-primary);
+    }
+
+    /* FAQ accordion */
+    .faq-section {
+      max-width: 800px;
+      margin: 7rem auto;
+      padding: 0 2rem;
+    }
+
+    .faq-item {
+      background: rgba(18, 18, 18, 0.4);
+      border: 1px solid rgba(255, 255, 255, 0.03);
+      border-radius: 8px;
+      margin-bottom: 1rem;
+      overflow: hidden;
+      transition: all 0.3s;
+    }
+
+    .faq-question {
+      padding: 1.3rem;
+      font-weight: 600;
+      font-size: 0.95rem;
+      color: #fff;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .faq-question i {
+      color: var(--gold-primary);
+      transition: transform 0.3s;
+    }
+
+    .faq-answer {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.35s ease;
+      color: var(--text-secondary);
+      font-size: 0.85rem;
+      line-height: 1.6;
+      padding: 0 1.3rem;
+    }
+
+    .faq-item.open .faq-answer {
+      padding-bottom: 1.3rem;
+    }
+
+    .faq-item.open .faq-question i {
+      transform: rotate(180deg);
+    }
+
+    /* Section Contato */
+    .contato-section {
+      max-width: 600px;
+      margin: 7rem auto;
+      padding: 0 2rem;
+      text-align: center;
+    }
+
+    .contato-form-container {
+      background: #0d0d0d;
+      border: 1px solid rgba(212, 175, 55, 0.2);
+      border-radius: 12px;
+      padding: 3rem 2.5rem;
+      box-shadow: var(--shadow-premium);
+      margin-top: 2rem;
+    }
+
+    .contato-form-container .form-group {
+      text-align: left;
+      margin-bottom: 1.2rem;
+    }
+
+    .contato-form-container label {
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      display: block;
+      margin-bottom: 0.4rem;
+    }
+
+    .contato-form-container .form-control {
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 6px;
+      padding: 0.8rem;
+      color: #fff;
+      width: 100%;
+      box-sizing: border-box;
+      outline: none;
+      font-family: inherit;
+    }
+
+    .contato-form-container .form-control:focus {
+      border-color: var(--gold-primary);
+    }
+
+    /* Footer */
+    .landing-footer {
+      border-top: 1px solid rgba(255, 255, 255, 0.05);
+      padding: 4rem 0;
+      text-align: center;
+      background: #030303;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .landing-footer p {
+      margin: 0.5rem 0;
+    }
+
+    .footer-logo {
+      height: 38px;
+      margin-bottom: 1rem;
+    }
+
+    /* Responsividade */
+    @media (max-width: 1080px) {
+      .landing-menu {
+        display: none;
+      }
+
+      .menu-toggle {
+        display: flex;
+      }
+
+      .ciclo-grid,
+      .planos-grid {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+      }
+
+      .roi-container,
+      .mobile-showcase-section {
+        grid-template-columns: 1fr;
+        gap: 3rem;
+      }
+
+      .hero-tagline {
+        font-size: 2.5rem;
+      }
+
+      .hero-ctas {
+        flex-direction: column;
+        align-items: center;
+        gap: 0.8rem;
+      }
+
+      .hero-ctas a {
+        width: 100%;
+        max-width: 300px;
+        box-sizing: border-box;
+        text-align: center;
+      }
+
+      .hero-container-grid {
+        grid-template-columns: 1fr;
+        text-align: center;
+        gap: 2.5rem;
+      }
+
+      .hero-content {
+        align-items: center;
+      }
+
+      .hero-tagline {
+        margin: 0 auto 1.5rem;
+      }
+
+      .hero-desc {
+        margin: 0 auto 2rem;
+      }
+
+      .hero-ctas {
+        justify-content: center;
+      }
+
+      .hero-image-wrapper {
+        max-width: 380px;
+        margin: 0 auto;
+      }
+
+      .consignado-showcase-container {
+        grid-template-columns: 1fr;
+        gap: 3rem;
+      }
+
+      .banho-container {
+        grid-template-columns: 1fr;
+        gap: 3rem;
+      }
+    }
+
+    /* Estilos Adicionais do Mostruário de Consignado */
+    .consignado-showcase-section {
+      padding: 7rem 2rem;
+      max-width: 1200px;
+      margin: 0 auto;
+      position: relative;
+    }
+
+    .consignado-showcase-container {
+      display: grid;
+      grid-template-columns: 0.95fr 1.05fr;
+      gap: 5rem;
+      align-items: center;
+    }
+
+    .consignado-image-frame {
+      border-radius: 20px;
+      padding: 6px;
+      background: linear-gradient(135deg, rgba(212, 175, 55, 0.3) 0%, rgba(212, 175, 55, 0.02) 50%, rgba(212, 175, 55, 0.3) 100%);
+      box-shadow: var(--shadow-premium);
+      border: 1px solid rgba(212, 175, 55, 0.15);
+      transition: all 0.4s ease;
+    }
+
+    .consignado-image-frame:hover {
+      transform: scale(1.02);
+      border-color: rgba(212, 175, 55, 0.4);
+    }
+
+    .consignado-image-frame img {
+      width: 100%;
+      border-radius: 15px;
+      display: block;
+    }
+
+    .badge-premium-gold {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: rgba(212, 175, 55, 0.08);
+      border: 1px solid rgba(212, 175, 55, 0.25);
+      color: var(--gold-light);
+      padding: 0.35rem 0.9rem;
+      border-radius: 50px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 1.5rem;
+    }
+
+    .consignado-showcase-text h2 {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 3rem;
+      font-weight: 600;
+      color: #fff;
+      margin-bottom: 1.2rem;
+      line-height: 1.2;
+    }
+
+    .consignado-showcase-text p {
+      color: var(--text-secondary);
+      font-size: 0.98rem;
+      line-height: 1.7;
+      margin-bottom: 2rem;
+    }
+
+    .consignado-features {
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    .c-feature-item {
+      display: flex;
+      gap: 1.2rem;
+      align-items: flex-start;
+    }
+
+    .c-icon {
+      background: rgba(212, 175, 55, 0.15);
+      border: 1px solid rgba(212, 175, 55, 0.3);
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--gold-primary);
+      font-size: 1.2rem;
+      flex-shrink: 0;
+    }
+
+    .c-desc h4 {
+      color: #fff;
+      font-size: 0.95rem;
+      margin: 0 0 0.3rem 0;
+      font-weight: 600;
+    }
+
+    .c-desc p {
+      font-size: 0.82rem;
+      color: var(--text-secondary);
+      line-height: 1.5;
+      margin: 0;
+    }
+
+    /* Estilos da Seção Calculadora de Banho */
+    .banho-precificacao-section {
+      background: radial-gradient(circle at 10% 80%, rgba(16, 185, 129, 0.05) 0%, transparent 50%),
+        linear-gradient(180deg, rgba(15, 5, 29, 0.95) 0%, rgba(5, 8, 20, 0.95) 100%);
+      border-top: 1px solid rgba(212, 175, 55, 0.15);
+      border-bottom: 1px solid rgba(212, 175, 55, 0.15);
+      padding: 7rem 2rem;
+    }
+
+    .banho-container {
+      max-width: 1100px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      gap: 5rem;
+      align-items: center;
+    }
+
+    .banho-calculator-box {
+      background: rgba(5, 12, 28, 0.5);
+      border: 1px solid rgba(218, 172, 60, 0.25);
+      border-radius: 20px;
+      padding: 2.5rem;
+      backdrop-filter: blur(16px);
+      box-shadow: var(--shadow-premium), 0 0 15px rgba(16, 185, 129, 0.1);
+    }
+
+    .banho-calc-title {
+      margin-top: 0;
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.6rem;
+      color: #fff;
+      margin-bottom: 1.8rem;
+      text-align: center;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.6rem;
+    }
+
+    .banho-calc-title i {
+      color: var(--gold-primary);
+    }
+
+    .input-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.2rem;
+      margin-bottom: 1.8rem;
+    }
+
+    .form-group-gold {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+
+    .form-group-gold.full-width {
+      grid-column: span 2;
+    }
+
+    @media (max-width: 600px) {
+      .input-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .form-group-gold.full-width {
+        grid-column: span 1;
+      }
+    }
+
+    .form-group-gold label {
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      font-weight: 500;
+    }
+
+    .form-control-gold {
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid rgba(212, 175, 55, 0.15);
+      border-radius: 8px;
+      padding: 0.8rem 1rem;
+      color: #fff;
+      font-family: inherit;
+      font-size: 0.9rem;
+      outline: none;
+      transition: all 0.3s ease;
+    }
+
+    .form-control-gold:focus {
+      border-color: var(--gold-primary);
+      box-shadow: 0 0 10px rgba(212, 175, 55, 0.2);
+    }
+
+    .banho-results {
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      padding-top: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.8rem;
+    }
+
+    .banho-res-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.88rem;
+      color: var(--text-secondary);
+      padding: 0.4rem 0;
+    }
+
+    .banho-res-item strong {
+      font-size: 1.05rem;
+      color: #fff;
+    }
+
+    .banho-res-item.highlight {
+      background: rgba(212, 175, 55, 0.05);
+      border: 1px solid rgba(212, 175, 55, 0.25);
+      border-radius: 8px;
+      padding: 0.8rem 1rem;
+      margin-top: 0.5rem;
+    }
+
+    .banho-res-item.highlight span {
+      font-weight: 600;
+      color: var(--gold-light);
+    }
+
+    .banho-res-item.highlight strong {
+      font-size: 1.4rem;
+    }
+
+    .banho-info-box h2 {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 3rem;
+      font-weight: 600;
+      color: #fff;
+      margin-bottom: 1.2rem;
+      line-height: 1.2;
+    }
+
+    .banho-info-box p {
+      color: var(--text-secondary);
+      font-size: 0.95rem;
+      line-height: 1.7;
+      margin-bottom: 1.5rem;
+    }
+
+    .banho-features {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .b-feat {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.8rem;
+      font-size: 0.88rem;
+      color: var(--text-secondary);
+      line-height: 1.5;
+    }
+
+    .b-feat i {
+      color: var(--gold-primary);
+      font-size: 1.1rem;
+      margin-top: 0.2rem;
+    }
+
+    /* Toast interno no celular simulado */
+    .phone-toast {
+      position: absolute;
+      top: 50px;
+      left: 12px;
+      right: 12px;
+      background: rgba(212, 175, 55, 0.95);
+      color: #0a0a0a;
+      padding: 0.5rem 0.8rem;
+      border-radius: 8px;
+      font-size: 0.65rem;
+      font-weight: 700;
+      text-align: center;
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+      z-index: 100;
+      transform: translateY(-50px);
+      opacity: 0;
+      transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    .phone-toast.show {
+      transform: translateY(0);
+      opacity: 1;
+    }
+
+    /* Estilos da Barra de Divisão de Custos */
+    .banho-cost-bar-container {
+      margin-top: 1.5rem;
+      margin-bottom: 1.2rem;
+    }
+
+    .banho-cost-bar {
+      display: flex;
+      height: 12px;
+      border-radius: 6px;
+      overflow: hidden;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      margin-bottom: 0.6rem;
+    }
+
+    .cost-segment {
+      height: 100%;
+      transition: width 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+    }
+
+    .segment-bruto {
+      background: #555;
+    }
+
+    .segment-banho {
+      background: var(--gold-primary);
+    }
+
+    .segment-lucro {
+      background: #2e7d32;
+    }
+
+    .banho-cost-legend {
+      display: flex;
+      justify-content: space-around;
+      font-size: 0.72rem;
+      color: var(--text-secondary);
+    }
+
+    .legend-color {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      margin-right: 4px;
+    }
+
+    .legend-color.bruto {
+      background: #555;
+    }
+
+    .legend-color.banho {
+      background: var(--gold-primary);
+    }
+
+    .legend-color.lucro {
+      background: #2e7d32;
+    }
+
+    /* Moedas de Ouro Simuladas no Celular */
+    .phone-coin {
+      position: absolute;
+      bottom: 60px;
+      width: 14px;
+      height: 14px;
+      background: radial-gradient(circle, #ffe875 0%, #daac3c 80%, #aa771c 100%);
+      border: 1px solid #fff;
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 99;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+      animation: float-coin 1s ease-out forwards;
+    }
+
+    @keyframes float-coin {
+      0% {
+        transform: translateY(0) scale(0.5) rotate(0deg);
+        opacity: 1;
+      }
+
+      80% {
+        opacity: 0.8;
+      }
+
+      100% {
+        transform: translateY(-220px) translateX(var(--x-offset, 0px)) scale(1.2) rotate(360deg);
+        opacity: 0;
+      }
+    }
+
+    /* Melhores Hovers para Planos */
+    .plano-box {
+      transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1), box-shadow 0.4s ease, border-color 0.4s ease;
+    }
+
+    .plano-box:hover {
+      transform: translateY(-8px);
+      box-shadow: 0 15px 30px rgba(0, 0, 0, 0.6);
+    }
+
+    .plano-box.destaque:hover {
+      transform: scale(1.06) translateY(-8px);
+      box-shadow: 0 25px 50px rgba(212, 175, 55, 0.18), 0 0 30px rgba(212, 175, 55, 0.1);
+    }
+
+    /* Destacando coluna BelKlock na tabela comparativa */
+    .comparativo-table {
+      border: 1px solid rgba(212, 175, 55, 0.15);
+      background: rgba(10, 10, 10, 0.6);
+      backdrop-filter: blur(8px);
+    }
+
+    .comparativo-table td.solution {
+      background: rgba(212, 175, 55, 0.02);
+      transition: background 0.3s ease, color 0.3s ease;
+    }
+
+    .comparativo-table tr:hover td.solution {
+      background: rgba(212, 175, 55, 0.05);
+      color: var(--gold-light);
+    }
+
+    .comparativo-table th:last-child {
+      background: linear-gradient(90deg, rgba(212, 175, 55, 0.08) 0%, rgba(212, 175, 55, 0.18) 100%), rgba(0, 0, 0, 0.6);
+      border-bottom: 2px solid var(--gold-primary);
+      text-shadow: 0 0 10px rgba(212, 175, 55, 0.2);
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- Navbar de Luxo -->
+  <header class="landing-nav">
+    <div class="landing-nav-container">
+      <a href="#" class="brand" style="text-decoration: none;">
+        <i class="fa-solid fa-gem"></i>
+        <span class="brand-title">Conecta Joias</span>
+      </a>
+      <ul class="landing-menu">
+        <li><a href="#ciclo">O Ciclo</a></li>
+        <li><a href="#roi">Simulador</a></li>
+        <li><a href="#recursos">Recursos</a></li>
+        <li><a href="#planos">Planos</a></li>
+        <li><a href="#faq">Perguntas</a></li>
+        <li><a href="index.html" class="btn-portal"><i class="fa-solid fa-arrow-right-to-bracket"></i> Entrar no
+            Portal</a></li>
+      </ul>
+      <button class="menu-toggle" id="menu-toggle" aria-label="Abrir Menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Menu Mobile Drawer -->
+  <div class="mobile-drawer" id="mobile-drawer">
+    <button class="drawer-close" id="drawer-close">&times;</button>
+    <ul class="mobile-menu-links">
+      <li><a href="#ciclo" onclick="toggleDrawer()">O Ciclo</a></li>
+      <li><a href="#roi" onclick="toggleDrawer()">Simulador</a></li>
+      <li><a href="#recursos" onclick="toggleDrawer()">Recursos</a></li>
+      <li><a href="#planos" onclick="toggleDrawer()">Planos</a></li>
+      <li><a href="#faq" onclick="toggleDrawer()">Perguntas</a></li>
+      <li style="margin-top: 2rem;"><a href="index.html" class="btn-portal" onclick="toggleDrawer()"><i
+            class="fa-solid fa-arrow-right-to-bracket"></i> Entrar no Portal</a></li>
+    </ul>
+  </div>
+
+  <!-- Ambient Glow Background -->
+  <div class="ambient-glow"></div>
+  <div class="ambient-glow-sapphire"></div>
+  <div class="ambient-glow-amethyst"></div>
+
+  <!-- Hero Section -->
+  <section class="hero-section">
+    <div class="hero-container-grid">
+      <div class="hero-content">
+        <div class="hero-badge">
+          <i class="fa-solid fa-gem"></i> Tecnologia para Semijoias de Luxo
+        </div>
+        <h1 class="hero-tagline">O controle total da sua marca de semijoias, <span>do bruto ao DRE</span></h1>
+        <p class="hero-desc">Esqueça o caos de planilhas e o controle manual de sacolas consignadas. Com a plataforma
+          Conecta Joias, você automatiza a precificação do banho de ouro, o controle de revendedoras e os acertos financeiros
+          em minutos.</p>
+        <div class="hero-ctas">
+          <a href="index.html" class="btn-gold"><i class="fa-solid fa-user-plus"></i> Experimentar Gratuitamente</a>
+          <a href="#roi" class="btn-outline-gold">Simular Lucro</a>
+        </div>
+      </div>
+      <div class="hero-image-wrapper">
+        <div class="hero-image-frame">
+          <img src="assets/hero_jewelry.png" alt="Semijoias de Luxo Conecta Joias">
+        </div>
+        <!-- Elementos cintilantes virtuais de luxo -->
+        <div class="sparkle" style="top: 15%; left: 10%; animation-delay: 0s; width: 8px; height: 8px;"></div>
+        <div class="sparkle" style="top: 35%; left: 85%; animation-delay: 1.5s; width: 12px; height: 12px;"></div>
+        <div class="sparkle" style="top: 70%; left: 15%; animation-delay: 0.8s; width: 6px; height: 6px;"></div>
+        <div class="sparkle" style="top: 25%; left: 75%; animation-delay: 2.2s; width: 10px; height: 10px;"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Seção: O Ciclo de Valor (Linha do Tempo) -->
+  <section class="ciclo-section reveal" id="ciclo">
+    <div class="section-title-landing">
+      <h2>O Ciclo da Semijoia Integrado</h2>
+      <p>Entenda como a Conecta Joias conecta todas as etapas críticas do seu negócio de semijoias.</p>
+    </div>
+    <div class="ciclo-grid">
+      <div class="ciclo-step">
+        <span class="ciclo-number">01</span>
+        <h3>A Joia Bruta</h3>
+        <p>Cadastre suas peças com peso e dimensões, associando ao custo do fornecedor bruto.</p>
+      </div>
+      <div class="ciclo-step">
+        <span class="ciclo-number">02</span>
+        <h3>Banho de Ouro</h3>
+        <p>Insira a espessura do banho (milésimos). O sistema calcula o markup exato do produto.</p>
+      </div>
+      <div class="ciclo-step">
+        <span class="ciclo-number">03</span>
+        <h3>Consignado</h3>
+        <p>Distribua sacolas para revendedoras e emita termos de responsabilidade assinados no celular.</p>
+      </div>
+      <div class="ciclo-step">
+        <span class="ciclo-number">04</span>
+        <h3>Venda e Acesso</h3>
+        <p>Suas revendedoras vendem e lançam de forma rápida no portal móvel com PIN de segurança.</p>
+      </div>
+      <div class="ciclo-step">
+        <span class="ciclo-number">05</span>
+        <h3>Acerto e DRE</h3>
+        <p>Ao devolver as peças, o sistema gera o balanço e alimenta o DRE com sua margem real.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Seção: Mostruário de Consignado -->
+  <section class="consignado-showcase-section reveal">
+    <div class="consignado-showcase-container">
+      <div class="consignado-showcase-image">
+        <div class="consignado-image-frame">
+          <img src="assets/consignado_bag.png" alt="Mostruário Consignado Semijoias">
+        </div>
+      </div>
+      <div class="consignado-showcase-text">
+        <div class="badge-premium-gold"><i class="fa-solid fa-briefcase"></i> O Coração das Semijoias</div>
+        <h2>Mostruário Consignado Sob Controle Digital</h2>
+        <p>A maior causa de prejuízo em marcas de semijoias é a perda de peças no consignado com revendedoras. Com a
+          Com a Conecta Joias, cada mostruário é rastreado eletronicamente.</p>
+        <div class="consignado-features">
+          <div class="c-feature-item">
+            <div class="c-icon"><i class="fa-solid fa-file-signature"></i></div>
+            <div class="c-desc">
+              <h4>Termo de Responsabilidade Eletrônico</h4>
+              <p>Sua revendedora assina digitalmente o recebimento da sacola diretamente no celular dela ou no seu
+                tablet. Sem papel, 100% legal.</p>
+            </div>
+          </div>
+          <div class="c-feature-item">
+            <div class="c-icon"><i class="fa-solid fa-shuffle"></i></div>
+            <div class="c-desc">
+              <h4>Acerto de Peças Dinâmico</h4>
+              <p>Ao retornar, bipou a devolução, o sistema calcula o valor vendido, calcula a comissão exata e emite o
+                fechamento via WhatsApp.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Seção: Simulador de ROI Interativo -->
+  <section class="roi-section reveal" id="roi">
+    <div class="roi-container">
+      <div class="roi-info">
+        <h2>Simule o Retorno do Seu Negócio</h2>
+        <p>Utilize a calculadora interativa ao lado para ver como a automação de vendas, precificação precisa e controle
+          de consignações podem multiplicar o faturamento de sua marca, reduzindo perdas de estoque e otimizando o seu
+          tempo.</p>
+        <div style="margin-top: 2rem;">
+          <div style="display: flex; gap: 1rem; align-items: center; margin-bottom: 1rem;">
+            <div style="color: var(--gold-primary); font-size: 1.2rem; width: 30px;"><i
+                class="fa-solid fa-shield-halved"></i></div>
+            <span style="font-size: 0.88rem; color: #fff;">**Zero Perdas**: Acompanhamento digital das sacolas.</span>
+          </div>
+          <div style="display: flex; gap: 1rem; align-items: center;">
+            <div style="color: var(--gold-primary); font-size: 1.2rem; width: 30px;"><i
+                class="fa-solid fa-clock-rotate-left"></i></div>
+            <span style="font-size: 0.88rem; color: #fff;">**Economia de Tempo**: Faturamento automatizado com 1
+              clique.</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Calculadora ROI -->
+      <div class="roi-calculator">
+        <h3
+          style="margin-top: 0; font-family: 'Cormorant Garamond', serif; font-size: 1.5rem; color: #fff; margin-bottom: 1.5rem; text-align: center;">
+          Calculadora de Retorno SaaS</h3>
+
+        <!-- Slider 1: Revendedoras -->
+        <div class="slider-group">
+          <div class="slider-header">
+            <span>Minhas Revendedoras</span>
+            <span class="value-badge" id="val-disp-revendedoras">15</span>
+          </div>
+          <input type="range" min="1" max="100" value="15" class="slider-control" id="slider-revendedoras"
+            oninput="saasAppCalculate()">
+        </div>
+
+        <!-- Slider 2: Peças Consignadas -->
+        <div class="slider-group">
+          <div class="slider-header">
+            <span>Peças Consignadas por Revendedora</span>
+            <span class="value-badge" id="val-disp-pecas">50 pçs</span>
+          </div>
+          <input type="range" min="10" max="200" step="5" value="50" class="slider-control" id="slider-pecas"
+            oninput="saasAppCalculate()">
+        </div>
+
+        <!-- Slider 3: Preço Médio -->
+        <div class="slider-group">
+          <div class="slider-header">
+            <span>Preço Médio da Peça de Semijoia</span>
+            <span class="value-badge" id="val-disp-preco">R$ 80</span>
+          </div>
+          <input type="range" min="20" max="300" step="5" value="80" class="slider-control" id="slider-preco"
+            oninput="saasAppCalculate()">
+        </div>
+
+        <!-- Resultados do ROI -->
+        <div class="roi-results">
+          <div class="roi-res-card">
+            <h4>Faturamento Estimado</h4>
+            <div class="res-val" id="roi-res-fat">R$ 0,00</div>
+          </div>
+          <div class="roi-res-card">
+            <h4>Lucro Líquido Real</h4>
+            <div class="res-val green" id="roi-res-lucro">R$ 0,00</div>
+          </div>
+          <div class="roi-res-card"
+            style="grid-column: span 2; background: rgba(212,175,55,0.04); border-color: rgba(212,175,55,0.15);">
+            <h4 style="color: var(--gold-light); font-weight: bold;"><i class="fa-solid fa-hourglass-half"></i> Horas de
+              Planilha Economizadas</h4>
+            <div class="res-val" id="roi-res-horas" style="color: #fff;">0 horas / ciclo</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Seção: Calculadora Avançada de Banho e Precificação -->
+  <section class="banho-precificacao-section reveal" id="calculadora-banho">
+    <div class="banho-container">
+      <div class="banho-calculator-box">
+        <h3 class="banho-calc-title"><i class="fa-solid fa-flask"></i> Simulador de Custo de Banho & Precificação</h3>
+
+        <div class="input-grid">
+          <!-- Campo 1: Tipo de Banho -->
+          <div class="form-group-gold full-width">
+            <label>Tipo de Banho</label>
+            <select class="form-control-gold" id="banho-tipo" onchange="calcularPrecificacaoJoia()">
+              <option value="10">Ouro 18K (10 Milésimos - Altíssima Qualidade / Anéis)</option>
+              <option value="5" selected>Ouro 18K (5 Milésimos - Excelente Qualidade / Brincos/Colares)</option>
+              <option value="3">Ouro 18K (3 Milésimos - Qualidade Standard)</option>
+              <option value="1">Ouro 18K (1 Milésimo - Banho Flash)</option>
+              <option value="8">Ródio Branco (Premium)</option>
+              <option value="9">Prata 925 (Banho de Prata)</option>
+            </select>
+          </div>
+
+          <!-- Campo 2: Peso Bruto -->
+          <div class="form-group-gold">
+            <label>Peso Bruto da Peça (g)</label>
+            <input type="number" class="form-control-gold" id="banho-peso-bruto" value="12" step="0.1" min="0.1"
+              oninput="calcularPrecificacaoJoia()">
+          </div>
+
+          <!-- Campo 3: Custo do Bruto por Grama -->
+          <div class="form-group-gold">
+            <label>Custo do Bruto por Grama (R$)</label>
+            <input type="number" class="form-control-gold" id="banho-custo-bruto" value="15.00" step="0.5" min="1"
+              oninput="calcularPrecificacaoJoia()">
+          </div>
+
+          <!-- Campo 4: Valor do Grama do Ouro/Banho (Ref.) -->
+          <div class="form-group-gold">
+            <label>Custo do Banho (por Milésimo/g)</label>
+            <input type="number" class="form-control-gold" id="banho-custo-mils" value="3.50" step="0.1" min="0.5"
+              oninput="calcularPrecificacaoJoia()">
+          </div>
+
+          <!-- Campo 5: Markup Desejado -->
+          <div class="form-group-gold">
+            <label>Markup Multiplicador (ex: 3.5x)</label>
+            <input type="number" class="form-control-gold" id="banho-markup" value="3.0" step="0.1" min="1"
+              oninput="calcularPrecificacaoJoia()">
+          </div>
+        </div>
+
+        <div class="banho-results">
+          <div class="banho-res-item">
+            <span>Custo do Bruto:</span>
+            <strong id="res-custo-bruto">R$ 0,00</strong>
+          </div>
+          <div class="banho-res-item">
+            <span>Custo do Banho Galvânico:</span>
+            <strong id="res-custo-banho">R$ 0,00</strong>
+          </div>
+          <div class="banho-res-item">
+            <span>Custo Total da Peça Acabada:</span>
+            <strong id="res-custo-total" style="color: var(--gold-light);">R$ 0,00</strong>
+          </div>
+          <div class="banho-res-item highlight">
+            <span>Preço de Venda Sugerido:</span>
+            <strong id="res-preco-venda" style="color: #66bb6a;">R$ 0,00</strong>
+          </div>
+        </div>
+        <!-- Barra de Divisão Visual de Custos -->
+        <div class="banho-cost-bar-container">
+          <div class="banho-cost-bar" id="banho-cost-bar">
+            <div class="cost-segment segment-bruto" id="seg-bruto" style="width: 33%;"></div>
+            <div class="cost-segment segment-banho" id="seg-banho" style="width: 33%;"></div>
+            <div class="cost-segment segment-lucro" id="seg-lucro" style="width: 34%;"></div>
+          </div>
+          <div class="banho-cost-legend">
+            <span><i class="legend-color bruto"></i> Custo Bruto</span>
+            <span><i class="legend-color banho"></i> Custo Banho</span>
+            <span><i class="legend-color lucro"></i> Margem Sugerida</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="banho-info-box">
+        <h2>Domine a Complexidade do Banho de Milésimos</h2>
+        <p>Precificar semijoias sem calcular o peso do bruto e a espessura do banho é o caminho mais rápido para perder
+          dinheiro. A Conecta Joias faz o cálculo dinâmico da galvânica por lote.</p>
+        <p>No sistema, ao cadastrar uma peça, você informa o peso em gramas e a quantidade de milésimos aplicada. O
+          sistema recalcula o custo unitário em tempo real de acordo com a cotação diária do ouro e dos insumos de
+          banho, garantindo que sua margem nunca seja achatada.</p>
+        <div class="banho-features">
+          <div class="b-feat"><i class="fa-solid fa-chart-line"></i> **Markup Inteligente**: Lucro calculado sobre o
+            custo flutuante do metal.</div>
+          <div class="b-feat"><i class="fa-solid fa-layer-group"></i> **Histórico de Lotes**: Rastreie qual lote de
+            bruto foi enviado para qual banho e qual foi o rendimento real.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Seção: Smartphone Virtual (Aplicativo da Revendedora) -->
+  <section class="mobile-showcase-section reveal" id="recursos">
+    <!-- Smartphone Virtual em CSS -->
+    <div style="position: relative;">
+      <div class="phone-container">
+        <div class="phone-notch"></div>
+        <div class="phone-screen" style="position: relative;">
+          <!-- Toast interno simulado -->
+          <div id="phone-toast" class="phone-toast"></div>
+
+          <div class="phone-header">
+            <span style="display: flex; align-items: center; gap: 5px; font-weight: bold; color: var(--gold-primary); font-size: 0.9rem;">
+              <i class="fa-solid fa-gem"></i>
+              CONECTA
+            </span>
+            <span class="pin-badge">PIN: 2410</span>
+          </div>
+          <div class="phone-body">
+            <div class="phone-welcome">
+              Bem-vinda de volta,
+              <span>Amanda Ferreira</span>
+            </div>
+
+            <div class="phone-card">
+              <h5>Minhas Vendas (Ciclo)</h5>
+              <div class="val" id="phone-val-vendas">R$ 3.840,00</div>
+            </div>
+
+            <div class="phone-card">
+              <h5>Comissão Acumulada</h5>
+              <div class="val" id="phone-val-comissao" style="color: var(--gold-primary);">R$ 1.152,00</div>
+            </div>
+
+            <div class="phone-card"
+              style="background: rgba(255,255,255,0.01); display: flex; justify-content: space-between; align-items: center; padding: 0.6rem;">
+              <span style="font-size: 0.65rem; color: var(--text-secondary);">Peças em Mãos:</span>
+              <strong style="font-size: 0.75rem; color: #fff;" id="phone-val-pecas">35 pçs</strong>
+            </div>
+
+            <button class="phone-btn-action" onclick="simularVendaMobile()">
+              <i class="fa-solid fa-cash-register"></i> Fiz uma Venda!
+            </button>
+            <button class="phone-btn-action"
+              style="background: transparent; border: 1px solid rgba(255,255,255,0.15); color: #fff;"
+              onclick="simularDevolucaoMobile()">
+              <i class="fa-solid fa-hand-holding-dollar"></i> Devolver & Fechar
+            </button>
+          </div>
+          <div class="phone-footer">
+            Conecta Joias Revendedora App v1.0
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Informações da revendedora -->
+    <div class="showcase-info">
+      <h2
+        style="font-family: 'Cormorant Garamond', serif; font-size: 3rem; font-weight: 600; color:#fff; margin-top: 0; margin-bottom: 1.5rem;">
+        Empodere suas Revendedoras na Rua</h2>
+      <p style="color: var(--text-secondary); font-size: 0.95rem; line-height: 1.7; margin-bottom: 2rem;">
+        Entregue uma ferramenta de trabalho premium e prática. Sem planilhas no Excel no celular ou formulários em
+        papel. Com o **Portal da Revendedora**, suas parceiras lançam vendas em tempo real, cadastram clientes e
+        consultam sua comissão acumulada de forma instantânea.
+      </p>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+        <div
+          style="background: rgba(255, 255, 255, 0.01); border: 1px solid rgba(255,255,255,0.04); border-radius: 8px; padding: 1.2rem;">
+          <h4 style="color: #fff; font-size: 0.9rem; margin: 0 0 0.5rem 0;"><i class="fa-solid fa-circle-check"
+              style="color: var(--gold-primary); margin-right: 0.3rem;"></i> Login por PIN</h4>
+          <p style="color: var(--text-secondary); font-size: 0.78rem; line-height: 1.5; margin: 0;">Acesso rápido via
+            código PIN de 4 dígitos gerado automaticamente.</p>
+        </div>
+        <div
+          style="background: rgba(255, 255, 255, 0.01); border: 1px solid rgba(255,255,255,0.04); border-radius: 8px; padding: 1.2rem;">
+          <h4 style="color: #fff; font-size: 0.9rem; margin: 0 0 0.5rem 0;"><i class="fa-solid fa-circle-check"
+              style="color: var(--gold-primary); margin-right: 0.3rem;"></i> Comissão Transparente</h4>
+          <p style="color: var(--text-secondary); font-size: 0.78rem; line-height: 1.5; margin: 0;">A revendedora
+            acompanha o quanto ganhou com precisão matemática.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Seção: Comparativo de perdas "Antes vs Depois" -->
+  <section class="comparativo-section reveal">
+    <div class="section-title-landing">
+      <h2>A Revolução da Sua Marca</h2>
+      <p>Compare a gestão tradicional com o nível de controle Conecta Joias.</p>
+    </div>
+
+    <table class="comparativo-table">
+      <thead>
+        <tr>
+          <th>Gestão Tradicional (Manual / Planilhas)</th>
+          <th>Gestão Conecta Joias (Automática / Luxo)</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="pain">Você perde peças de estoque consignado sem saber quem levou ou onde estão.</td>
+          <td class="solution"><i class="fa-solid fa-check"></i> Controle individual de sacolas digitais com rastreio em
+            tempo real.</td>
+        </tr>
+        <tr>
+          <td class="pain">Precificação feita por "estimativa" ou markup estático, ignorando custos do banho.</td>
+          <td class="solution"><i class="fa-solid fa-check"></i> Calculadora de custos baseada no peso bruto e no custo
+            por milésimo do banho.</td>
+        </tr>
+        <tr>
+          <td class="pain">Cálculos complexos e demorados de acertos com revendedoras que duram horas no fim do mês.
+          </td>
+          <td class="solution"><i class="fa-solid fa-check"></i> Acertos gerados instantaneamente com um clique e envio
+            de PDF de fechamento.</td>
+        </tr>
+        <tr>
+          <td class="pain">Cobranças manuais desconfortáveis e sem histórico formal.</td>
+          <td class="solution"><i class="fa-solid fa-check"></i> Notificações automáticas via WhatsApp com link de
+            pagamento Pix integrado.</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- Seção de Planos -->
+  <section class="planos-section reveal" id="planos">
+    <div class="planos-container">
+      <div class="section-title-landing">
+        <h2>Planos Exclusivos para sua Escala</h2>
+        <p>Escolha a assinatura ideal e profissionalize o controle comercial da sua marca.</p>
+      </div>
+      <div class="planos-grid">
+        <!-- Plano Bronze -->
+        <div class="plano-box bronze">
+          <div class="plano-badge-bronze"><i class="fa-solid fa-award"></i> Plano Bronze</div>
+          <h3>Plano Bronze</h3>
+          <p>Indicado para revendedoras independentes e micro-distribuidores que estão iniciando sua rede de vendas.</p>
+          <div class="plano-price">R$ 99,90 <span>/ mês</span></div>
+          <ul class="plano-list">
+            <li><i class="fa-solid fa-circle-check" style="color: #cd7f32;"></i> Até 5 revendedoras ativas</li>
+            <li><i class="fa-solid fa-circle-check" style="color: #cd7f32;"></i> Estoque central de 300 peças</li>
+            <li><i class="fa-solid fa-circle-check" style="color: #cd7f32;"></i> Fila de WhatsApp manual</li>
+            <li><i class="fa-solid fa-circle-check" style="color: #cd7f32;"></i> Assinatura digital de termos na tela
+            </li>
+            <li><i class="fa-solid fa-circle-check" style="color: #cd7f32;"></i> Histórico simplificado de vendas</li>
+          </ul>
+          <a href="index.html" class="plano-btn btn-bronze">Contratar Bronze</a>
+        </div>
+
+        <!-- Plano Gold -->
+        <div class="plano-box destaque ouro">
+          <span class="plano-badge"><i class="fa-solid fa-star"></i> Recomendado</span>
+          <h3>Plano Gold</h3>
+          <p>A liga perfeita para marcas em expansão. Controle automatizado de comissões, DRE completo e notificações em
+            nuvem.</p>
+          <div class="plano-price">R$ 199,90 <span>/ mês</span></div>
+          <ul class="plano-list">
+            <li><i class="fa-solid fa-circle-check" style="color: var(--gold-primary);"></i> Até 25 revendedoras ativas
+            </li>
+            <li><i class="fa-solid fa-circle-check" style="color: var(--gold-primary);"></i> Estoque de 1.500 peças</li>
+            <li><i class="fa-solid fa-circle-check" style="color: var(--gold-primary);"></i> Markup dinâmico c/ cotação
+              do dia</li>
+            <li><i class="fa-solid fa-circle-check" style="color: var(--gold-primary);"></i> WhatsApp automático em
+              nuvem</li>
+            <li><i class="fa-solid fa-circle-check" style="color: var(--gold-primary);"></i> DRE Financeiro e
+              Lucratividade</li>
+            <li><i class="fa-solid fa-circle-check" style="color: var(--gold-primary);"></i> Comissão progressiva por
+              metas</li>
+          </ul>
+          <a href="index.html" class="plano-btn">Contratar Gold</a>
+        </div>
+
+        <!-- Plano Platinum -->
+        <div class="plano-box platinum">
+          <div class="plano-badge-platinum"><i class="fa-solid fa-crown"></i> Plano Platinum</div>
+          <h3>Plano Platinum</h3>
+          <p>Para grandes distribuidores e franquias de semijoias que buscam automação com Inteligência Artificial e
+            alta performance.</p>
+          <div class="plano-price">R$ 399,90 <span>/ mês</span></div>
+          <ul class="plano-list">
+            <li><i class="fa-solid fa-circle-check" style="color: #cbd5e1;"></i> Revendedoras ilimitadas</li>
+            <li><i class="fa-solid fa-circle-check" style="color: #cbd5e1;"></i> Estoque central ilimitado</li>
+            <li><i class="fa-solid fa-circle-check" style="color: #cbd5e1;"></i> Chatbot de acerto automático no Zap
+            </li>
+            <li><i class="fa-solid fa-circle-check" style="color: #cbd5e1;"></i> BI com Inteligência Preditiva</li>
+            <li><i class="fa-solid fa-circle-check" style="color: #cbd5e1;"></i> API Oficial de WhatsApp inclusa</li>
+            <li><i class="fa-solid fa-circle-check" style="color: #cbd5e1;"></i> Gerente de sucesso exclusivo</li>
+          </ul>
+          <a href="index.html" class="plano-btn btn-platinum">Contratar Platinum</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FAQ Section -->
+  <section class="faq-section reveal" id="faq">
+    <div class="section-title-landing">
+      <h2>Perguntas Frequentes</h2>
+      <p>Tire suas dúvidas sobre a implantação do sistema Conecta Joias.</p>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-question">Como funciona a integração com o WhatsApp? <i class="fa-solid fa-chevron-down"></i>
+      </div>
+      <div class="faq-answer">
+        O sistema envia notificações automáticas ou manuais para as suas revendedoras. No plano Gold e Platinum, as
+        mensagens são disparadas diretamente do nosso servidor central de envio, mantendo seu celular livre de
+        sobrecargas.
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-question">Posso migrar de plano depois? <i class="fa-solid fa-chevron-down"></i></div>
+      <div class="faq-answer">
+        Sim, você pode alterar o seu plano a qualquer momento diretamente pelo painel administrativo da marca, e os
+        limites de estoque e revendedoras serão atualizados instantaneamente.
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-question">Os meus dados estão seguros? <i class="fa-solid fa-chevron-down"></i></div>
+      <div class="faq-answer">
+        Sim. Adotamos o modelo Multi-Tenant no banco de dados SQLite/Azure, onde as informações de cada loja são
+        isoladas logicamente através de chaves únicas de segurança e autenticação JWT de 256 bits.
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-question">Como as revendedoras acessam o sistema? <i class="fa-solid fa-chevron-down"></i></div>
+      <div class="faq-answer">
+        Cada revendedora recebe um PIN de acesso rápido com 4 dígitos exclusivo e uma senha cadastrada. Ao acessar o
+        portal, ela visualiza apenas os produtos em seu poder e realiza a abertura de pedidos e vendas no local da
+        transação.
+      </div>
+    </div>
+  </section>
+
+  <!-- Contato Section -->
+  <section class="contato-section reveal" id="contato">
+    <div class="section-title-landing">
+      <h2>Fale com Nossos Consultores</h2>
+      <p>Peça um diagnóstico de custos de implantação para sua empresa de semijoias.</p>
+    </div>
+    <div class="contato-form-container">
+      <form
+        onsubmit="event.preventDefault(); alert('Solicitação enviada com sucesso! Em breve um consultor entrará em contato via WhatsApp.');">
+        <div class="form-group">
+          <label>Nome Completo</label>
+          <input type="text" class="form-control" placeholder="Seu nome completo" required>
+        </div>
+        <div class="form-group">
+          <label>WhatsApp Comercial</label>
+          <input type="text" class="form-control" placeholder="(00) 99999-9999" required>
+        </div>
+        <div class="form-group">
+          <label>Nome da Sua Marca</label>
+          <input type="text" class="form-control" placeholder="Nome da sua loja" required>
+        </div>
+        <button type="submit" class="btn-gold"
+          style="width: 100%; justify-content: center; height: 44px; font-size: 0.9rem; margin-top: 1rem;"><i
+            class="fa-solid fa-paper-plane"></i> Enviar Solicitação</button>
+      </form>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="landing-footer">
+    <i class="fa-solid fa-gem" style="color: var(--gold-primary); font-size: 1.8rem; margin-bottom: 1rem;"></i>
+    <p>Conecta Joias - Software de Gestão Premium &copy; 2026</p>
+    <p style="font-size: 0.7rem; opacity: 0.6;">Todos os direitos reservados. Feito com luxo comercial.</p>
+  </footer>
+
+  <script>
+    // Mobile Drawer Logic
+    const menuToggle = document.getElementById('menu-toggle');
+    const mobileDrawer = document.getElementById('mobile-drawer');
+    const drawerClose = document.getElementById('drawer-close');
+
+    function toggleDrawer() {
+      if (mobileDrawer) {
+        mobileDrawer.classList.toggle('open');
+      }
+    }
+
+    if (menuToggle) {
+      menuToggle.addEventListener('click', toggleDrawer);
+    }
+    if (drawerClose) {
+      drawerClose.addEventListener('click', toggleDrawer);
+    }
+
+    // FAQ Accordion
+    const faqQuestions = document.querySelectorAll('.faq-question');
+    faqQuestions.forEach(q => {
+      q.addEventListener('click', () => {
+        const item = q.parentElement;
+        const answer = item.querySelector('.faq-answer');
+
+        document.querySelectorAll('.faq-item').forEach(i => {
+          if (i !== item && i.classList.contains('open')) {
+            i.classList.remove('open');
+            i.querySelector('.faq-answer').style.maxHeight = '0';
+          }
+        });
+
+        item.classList.toggle('open');
+        if (item.classList.contains('open')) {
+          answer.style.maxHeight = answer.scrollHeight + 'px';
+        } else {
+          answer.style.maxHeight = '0';
+        }
+      });
+    });
+
+    // Lógica do Simulador de ROI em Tempo Real
+    function saasAppCalculate() {
+      const revendedoras = parseInt(document.getElementById("slider-revendedoras").value);
+      const pecas = parseInt(document.getElementById("slider-pecas").value);
+      const preco = parseFloat(document.getElementById("slider-preco").value);
+
+      // Atualiza Badges visuais do slider
+      document.getElementById("val-disp-revendedoras").innerText = revendedoras;
+      document.getElementById("val-disp-pecas").innerText = pecas + " pçs";
+      document.getElementById("val-disp-preco").innerText = "R$ " + preco;
+
+      // Cálculos Matemáticos de Conversão
+      const faturamentoEst = revendedoras * pecas * preco * 0.50;
+      const lucroRealEst = faturamentoEst * 0.35;
+      const horasEconomizadas = revendedoras * 2;
+
+      // Formatar Moeda
+      const formatar = (val) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(val);
+
+      // Atualiza a tela
+      document.getElementById("roi-res-fat").innerText = formatar(faturamentoEst);
+      document.getElementById("roi-res-lucro").innerText = formatar(lucroRealEst);
+      document.getElementById("roi-res-horas").innerText = horasEconomizadas + " horas / ciclo";
+    }
+
+    // Lógica do simulador interativo de vendas da revendedora no celular
+    let vendasAcumuladas = 3840.00;
+    let comissaoAcumulada = 1152.00;
+    let pecasMao = 35;
+    const pecasIniciais = 50;
+
+    function mostrarToastCelular(mensagem) {
+      const toast = document.getElementById("phone-toast");
+      if (toast) {
+        toast.innerText = mensagem;
+        toast.classList.add("show");
+        setTimeout(() => {
+          toast.classList.remove("show");
+        }, 2200);
+      }
+    }
+
+    // Micro-animação festiva de moedas douradas
+    function criarMoedasVenda() {
+      const screen = document.querySelector(".phone-screen");
+      if (!screen) return;
+
+      for (let i = 0; i < 8; i++) {
+        setTimeout(() => {
+          const coin = document.createElement("div");
+          coin.className = "phone-coin";
+
+          const xOffset = (Math.random() - 0.5) * 80;
+          coin.style.setProperty("--x-offset", `${xOffset}px`);
+          coin.style.left = `calc(50% - 7px + ${(Math.random() - 0.5) * 40}px)`;
+
+          screen.appendChild(coin);
+
+          coin.addEventListener("animationend", () => {
+            coin.remove();
+          });
+        }, i * 80);
+      }
+    }
+
+    function simularVendaMobile() {
+      if (pecasMao <= 0) {
+        mostrarToastCelular("Sem peças no mostruário!");
+        return;
+      }
+
+      criarMoedasVenda();
+
+      const precos = [80, 120, 150, 180, 220];
+      const venda = precos[Math.floor(Math.random() * precos.length)];
+      const comissao = venda * 0.30; // 30% comissão
+
+      vendasAcumuladas += venda;
+      comissaoAcumulada += comissao;
+      pecasMao -= 1;
+
+      const formatar = (val) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(val);
+
+      document.getElementById("phone-val-vendas").innerText = formatar(vendasAcumuladas);
+      document.getElementById("phone-val-comissao").innerText = formatar(comissaoAcumulada);
+      document.getElementById("phone-val-pecas").innerText = pecasMao + " pçs";
+
+      mostrarToastCelular(`Venda lançada: +${formatar(venda)}!`);
+    }
+
+    // Simulação de Devolução no Celular
+    function simularDevolucaoMobile() {
+      if (pecasMao === pecasIniciais) {
+        mostrarToastCelular("Nenhuma venda realizada!");
+        return;
+      }
+
+      const vendidas = pecasIniciais - pecasMao;
+      const formatar = (val) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(val);
+
+      mostrarToastCelular(`Acerto concluído! ${vendidas} peças vendidas. Comissão: ${formatar(comissaoAcumulada)}.`);
+
+      setTimeout(() => {
+        vendasAcumuladas = 3840.00;
+        comissaoAcumulada = 1152.00;
+        pecasMao = 35;
+        document.getElementById("phone-val-vendas").innerText = formatar(vendasAcumuladas);
+        document.getElementById("phone-val-comissao").innerText = formatar(comissaoAcumulada);
+        document.getElementById("phone-val-pecas").innerText = pecasMao + " pçs";
+        mostrarToastCelular("Mostruário resetado para valores padrão.");
+      }, 3500);
+    }
+
+    // Lógica da Calculadora de Custo de Banho e Precificação
+    function calcularPrecificacaoJoia() {
+      const selectBanho = document.getElementById("banho-tipo");
+      if (!selectBanho) return;
+      const tipo = selectBanho.value;
+      const pesoBruto = parseFloat(document.getElementById("banho-peso-bruto").value) || 0;
+      const custoBrutoGrama = parseFloat(document.getElementById("banho-custo-bruto").value) || 0;
+      const custoMilessimo = parseFloat(document.getElementById("banho-custo-mils").value) || 0;
+      const markup = parseFloat(document.getElementById("banho-markup").value) || 1;
+
+      // Cálculo de Custo do Bruto
+      const custoBrutoTotal = pesoBruto * custoBrutoGrama;
+
+      // Cálculo de Custo do Banho Galvânico
+      let milesimos = 0;
+      let fatorBanho = 1.0;
+
+      if (tipo === "10" || tipo === "5" || tipo === "3" || tipo === "1") {
+        milesimos = parseInt(tipo);
+        fatorBanho = milesimos * custoMilessimo * 0.15;
+      } else if (tipo === "8") {
+        fatorBanho = 9.5;
+      } else if (tipo === "9") {
+        fatorBanho = 1.2;
+      }
+
+      const custoBanhoTotal = pesoBruto * fatorBanho;
+      const custoTotalPeca = custoBrutoTotal + custoBanhoTotal;
+      const precoSugerido = custoTotalPeca * markup;
+      const lucroSugerido = precoSugerido - custoTotalPeca;
+
+      // Formatar Moeda
+      const formatar = (val) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(val);
+
+      // Atualizar interface de texto
+      document.getElementById("res-custo-bruto").innerText = formatar(custoBrutoTotal);
+      document.getElementById("res-custo-banho").innerText = formatar(custoBanhoTotal);
+      document.getElementById("res-custo-total").innerText = formatar(custoTotalPeca);
+      document.getElementById("res-preco-venda").innerText = formatar(precoSugerido);
+
+      // Atualizar a barra de custos dinâmica
+      const pctBruto = precoSugerido > 0 ? (custoBrutoTotal / precoSugerido) * 100 : 0;
+      const pctBanho = precoSugerido > 0 ? (custoBanhoTotal / precoSugerido) * 100 : 0;
+      const pctLucro = precoSugerido > 0 ? (lucroSugerido / precoSugerido) * 100 : 0;
+
+      const segBruto = document.getElementById("seg-bruto");
+      const segBanho = document.getElementById("seg-banho");
+      const segLucro = document.getElementById("seg-lucro");
+
+      if (segBruto && segBanho && segLucro) {
+        segBruto.style.width = pctBruto.toFixed(1) + "%";
+        segBanho.style.width = pctBanho.toFixed(1) + "%";
+        segLucro.style.width = pctLucro.toFixed(1) + "%";
+      }
+    }
+
+    // Inicializa as calculadoras com os valores padrões no carregamento
+    window.addEventListener("DOMContentLoaded", () => {
+      saasAppCalculate();
+      calcularPrecificacaoJoia();
+
+      // Lógica de Smart Hide/Shrink da Navbar ao rolar
+      let lastScrollY = window.scrollY;
+      const nav = document.querySelector('.landing-nav');
+
+      window.addEventListener('scroll', () => {
+        if (!nav) return;
+        const currentScrollY = window.scrollY;
+
+        // Encolhe a barra ao rolar
+        if (currentScrollY > 30) {
+          nav.classList.add('scrolled');
+        } else {
+          nav.classList.remove('scrolled');
+        }
+
+        // Esconde a barra ao rolar para baixo, mostra ao rolar para cima
+        if (currentScrollY > lastScrollY && currentScrollY > 150) {
+          nav.classList.add('nav-hidden');
+        } else {
+          nav.classList.remove('nav-hidden');
+        }
+
+        lastScrollY = currentScrollY;
+      });
+
+      // Animações de Scroll Reveal com Intersection Observer
+      const sectionsToReveal = document.querySelectorAll('.reveal');
+      const revealOnScroll = new IntersectionObserver((entries, observer) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('active');
+            observer.unobserve(entry.target);
+          }
+        });
+      }, {
+        threshold: 0.15,
+        rootMargin: "0px 0px -50px 0px"
+      });
+
+      sectionsToReveal.forEach(section => {
+        revealOnScroll.observe(section);
+      });
+    });
+  </script>
+</body>
+
+</html>

@@ -1,4 +1,4 @@
-// Dados de Marketing, Personas e Calendário Editorial para o aplicativo BelKlock Semijoias
+// Dados de Marketing, Personas e Calendário Editorial para o aplicativo Conecta Joias
 
 const MarketingData = {
   // 1. Definição do Público-Alvo & Personas
@@ -42,8 +42,8 @@ const MarketingData = {
       foco: "Autoridade e Cuidados",
       canal: "Stories & Feed",
       ideiaPost: "Como cuidar das suas semijoias para que o banho dure anos! Mostre na prática a limpeza correta.",
-      sugestaoLegenda: "Você sabia que pequenos cuidados diários mantêm suas semijoias brilhando como novas por anos? ✨💍\n\nEvite borrifar perfume diretamente nas peças, retire-as antes do banho e guarde-as separadas para não riscar. Qual dessas dicas você já pratica por aí?\n\n#BelKlock #CuidadosComSemijoias #DicasDeModa #AcessoriosFinos #EstiloDourado",
-      hashtags: ["#BelKlock", "#AcessoriosFinos", "#SemijoiasDeLuxo", "#SemijoiasDouradas", "#DicasDeModa", "#OrganizaJoias"]
+      sugestaoLegenda: "Você sabia que pequenos cuidados diários mantêm suas semijoias brilhando como novas por anos? ✨💍\n\nEvite borrifar perfume diretamente nas peças, retire-as antes do banho e guarde-as separadas para não riscar. Qual dessas dicas você já pratica por aí?\n\n#Conecta Joias #CuidadosComSemijoias #DicasDeModa #AcessoriosFinos #EstiloDourado",
+      hashtags: ["#Conecta Joias", "#AcessoriosFinos", "#SemijoiasDeLuxo", "#SemijoiasDouradas", "#DicasDeModa", "#OrganizaJoias"]
     },
     {
       dia: "Terça-feira",
@@ -58,14 +58,14 @@ const MarketingData = {
       foco: "Bastidores e Curiosidades",
       canal: "Stories",
       ideiaPost: "A caixinha da cliente! Grave empacotando um pedido com carinho, borrifando um perfume de assinatura e escrevendo uma cartinha à mão.",
-      sugestaoLegenda: "Amamos preparar cada detalhe para que sua experiência de unboxing seja inesquecível! 📦💖 Cada peça vai limpa, perfumada e embalada como o verdadeiro presente que você merece.\n\nPara quem você daria um presente BelKlock hoje?\n\n#Unboxing #ExperienciaDoCliente #SemijoiasComAmor #DetalhesQueEncantam",
+      sugestaoLegenda: "Amamos preparar cada detalhe para que sua experiência de unboxing seja inesquecível! 📦💖 Cada peça vai limpa, perfumada e embalada como o verdadeiro presente que você merece.\n\nPara quem você daria um presente Conecta Joias hoje?\n\n#Unboxing #ExperienciaDoCliente #SemijoiasComAmor #DetalhesQueEncantam",
       hashtags: ["#Unboxing", "#SemijoiasComAmor", "#ExperienciaLuxo", "#PresenteEspecial"]
     },
     {
       dia: "Quinta-feira",
       foco: "Consignado e Oportunidades",
       canal: "WhatsApp & Instagram",
-      ideiaPost: "Seja uma revendedora BelKlock! Mostre as vantagens de revender semijoias consignadas de alta qualidade e comissões excelentes.",
+      ideiaPost: "Seja uma revendedora Conecta Joias! Mostre as vantagens de revender semijoias consignadas de alta qualidade e comissões excelentes.",
       sugestaoLegenda: "Que tal conquistar sua independência financeira revendendo semijoias de altíssimo padrão, sem precisar investir nada inicialmente? 💼💎\n\nNós fornecemos o mostruário completo consignado, suporte de marketing e comissões imperdíveis. Quer saber como funciona? Envie 'QUERO REVENDER' no nosso direct ou clique no link da bio!\n\n#RendaExtra #EmpreendedorismoFeminino #RevendaSemijoias #ConsignadoDeLuxo #SucessoFeminino",
       hashtags: ["#RevendaSemijoias", "#Consignado", "#EmpreendedorismoFeminino", "#IndependenciaFinanceira", "#RendaExtra"]
     },
@@ -81,14 +81,14 @@ const MarketingData = {
 
   // 3. Modelos de Mensagens Rápidas do WhatsApp
   whatsappTemplates: {
-    boasVindas: "Olá! Seja muito bem-vinda à *BelKlock Semijoias*! 💎✨\n\nÉ um prazer ter você por aqui. Sou a Bel, sua consultora pessoal de estilo e semijoias. \n\nComo posso te ajudar hoje?\n1 - Ver o catálogo de peças disponíveis\n2 - Falar sobre revenda em consignado\n3 - Falar com uma atendente\n\nFique à vontade para me mandar sua mensagem!",
+    boasVindas: "Olá! Seja muito bem-vinda à *Conecta Joias*! 💎✨\n\nÉ um prazer ter você por aqui. Sou a Bel, sua consultora pessoal de estilo e semijoias. \n\nComo posso te ajudar hoje?\n1 - Ver o catálogo de peças disponíveis\n2 - Falar sobre revenda em consignado\n3 - Falar com uma atendente\n\nFique à vontade para me mandar sua mensagem!",
     
     envioCatalogo: "Olá, {cliente}! 🌸 Separei algumas novidades do nosso estoque que têm tudo a ver com o seu estilo clássico e elegante. \n\nConfira as peças selecionadas:\n\n{lista_produtos}\n\nQual delas fez seu coração bater mais forte? Se quiser ver mais detalhes ou fotos reais no corpo, é só me avisar por aqui! 💖💍",
     
-    posVenda: "Olá, {cliente}! Passando para saber: suas semijoias BelKlock já chegaram por aí? 😍\n\nGostaria muito de saber o que achou da embalagem, do perfume e, claro, das peças no corpo! Sua opinião é preciosa para mim. \n\nLembre-se de nos marcar no Instagram quando for usá-las! Um super beijo e arrase! ✨📦",
+    posVenda: "Olá, {cliente}! Passando para saber: suas semijoias Conecta Joias já chegaram por aí? 😍\n\nGostaria muito de saber o que achou da embalagem, do perfume e, claro, das peças no corpo! Sua opinião é preciosa para mim. \n\nLembre-se de nos marcar no Instagram quando for usá-las! Um super beijo e arrase! ✨📦",
     
     cobrancaConsignado: "Olá, {revendedora}! Espero que esteja tendo uma excelente semana de vendas! 🌸✨\n\nPassando para lembrar que o acerto do nosso kit consignado está agendado para o dia *{data_acerto}*. \n\nEstou preparando novidades incríveis para a sua próxima maleta! Se precisar que eu já adiante algum cálculo ou que envie fotos para suas clientes finais, conte comigo. Um grande abraço! 💼💍",
     
-    reciboAcerto: "📝 *RECIBO DE ACERTO DE CONSIGNADO - BELKLOCK SEMIJOIAS* 📝\n\n*Revendedora:* {revendedora}\n*Data do Acerto:* {data_acerto}\n\n---------------------------------\n📊 *Resumo da Prestação de Contas:*\n- Peças Consignadas: {qtd_consignada} unid.\n- Peças Devolvidas: {qtd_devolvida} unid.\n- Peças Vendidas: {qtd_vendida} unid.\n\n💰 *Valores:*\n- Faturamento Total Bruto: *R$ {valor_bruto}*\n- Sua Comissão ({comissao_porc}%): *R$ {valor_comissao}*\n- *Líquido a Pagar para BelKlock: R$ {valor_liquido}*\n---------------------------------\n\nAgradecemos imensamente pela nossa parceria de sucesso! Que as próximas vendas sejam ainda mais abençoadas! 💎🙌✨"
+    reciboAcerto: "📝 *RECIBO DE ACERTO DE CONSIGNADO - BELKLOCK SEMIJOIAS* 📝\n\n*Revendedora:* {revendedora}\n*Data do Acerto:* {data_acerto}\n\n---------------------------------\n📊 *Resumo da Prestação de Contas:*\n- Peças Consignadas: {qtd_consignada} unid.\n- Peças Devolvidas: {qtd_devolvida} unid.\n- Peças Vendidas: {qtd_vendida} unid.\n\n💰 *Valores:*\n- Faturamento Total Bruto: *R$ {valor_bruto}*\n- Sua Comissão ({comissao_porc}%): *R$ {valor_comissao}*\n- *Líquido a Pagar para Conecta Joias: R$ {valor_liquido}*\n---------------------------------\n\nAgradecemos imensamente pela nossa parceria de sucesso! Que as próximas vendas sejam ainda mais abençoadas! 💎🙌✨"
   }
 };

@@ -12,10 +12,11 @@ require('dotenv').config();
 
 const app = express();
 const prisma = new PrismaClient();
+const lojasSuspensas = new Set();
 const PORT = process.env.PORT || 5000;
 
 const JWT_SECRET = process.env.JWT_SECRET;
-if (!JWT_SECRET || JWT_SECRET === 'belklock_super_secret_key_2026') {
+if (!JWT_SECRET || JWT_SECRET === 'conectajoias_super_secret_key_2026') {
   console.error("ERRO CRÍTICO: A variável de ambiente JWT_SECRET não está definida ou é a chave padrão insegura!");
   process.exit(1);
 }
@@ -131,6 +132,11 @@ const identificarLoja = (req, res, next) => {
     lojaId = 'default-loja';
   }
 
+  // Bloqueio de Lojas Suspensas para Manager e Consultant
+  if (lojaId && lojasSuspensas.has(lojaId)) {
+    return res.status(403).json({ error: 'Acesso negado. A assinatura da sua loja está suspensa. Entre em contato com a administração central.' });
+  }
+
   req.lojaId = lojaId;
   next();
 };
@@ -220,6 +226,11 @@ app.post('/api/auth/login', loginLimiter, async (req, res) => {
     const senhaValida = await bcrypt.compare(senha, usuario.senhaHash);
     if (!senhaValida) {
       return res.status(400).json({ error: 'Identificador (E-mail ou PIN) ou senha incorretos.' });
+    }
+
+    // Verifica se a loja do usuário está suspensa (bloqueia se o tenant estiver suspenso)
+    if (usuario.lojaId && lojasSuspensas.has(usuario.lojaId)) {
+      return res.status(403).json({ error: 'Acesso negado. A assinatura da sua loja está suspensa. Entre em contato com a administração central.' });
     }
 
     // Gera Token JWT
@@ -388,7 +399,7 @@ app.post('/api/auth/register', autenticarJWT, autorizarRole(['Manager', 'SuperAd
 
     // Se o usuário criado for uma consultora (revendedora), cria mensagem de boas-vindas na fila do WhatsApp
     if (normalizedRole === 'Consultant') {
-      const msgTexto = `Olá ${nome}, seja muito bem-vinda à BelKlock Semijoias! ✨ Seu cadastro de Consultora foi realizado com sucesso. Aqui estão suas credenciais para entrar no portal: Login (PIN): ${pin} | Senha Temporária: ${senha} | Link do portal: ${frontendUrl}/manager.html`;
+      const msgTexto = `Olá ${nome}, seja muito bem-vinda à Conecta Joias! ✨ Seu cadastro de Consultora foi realizado com sucesso. Aqui estão suas credenciais para entrar no portal: Login (PIN): ${pin} | Senha Temporária: ${senha} | Link do portal: ${frontendUrl}/manager.html`;
       try {
         await prisma.mensagemWhatsapp.create({
           data: {
@@ -1097,7 +1108,7 @@ app.post('/api/acertos', autenticarJWT, autorizarRole(['Manager', 'SuperAdmin'])
     });
 
     // Enviar mensagem de WhatsApp ao realizar acerto de contas (criar na fila)
-    const msgTexto = `Olá ${revendedora.nome}! Seu acerto de contas da BelKlock Semijoias foi concluído com sucesso. Resumo do acerto: Faturamento Bruto: R$ ${faturamentoBruto.toFixed(2)} | Comissão Devida: R$ ${comissaoPaga.toFixed(2)} | Retido em Mãos: R$ ${totalRetidoRev.toFixed(2)} | Saldo Final: R$ ${Math.abs(saldoFinal).toFixed(2)} (${saldoFinal >= 0 ? 'A receber da BelKlock' : 'A repassar para a BelKlock'}). Obrigado pela parceria! ✨`;
+    const msgTexto = `Olá ${revendedora.nome}! Seu acerto de contas da Conecta Joias foi concluído com sucesso. Resumo do acerto: Faturamento Bruto: R$ ${faturamentoBruto.toFixed(2)} | Comissão Devida: R$ ${comissaoPaga.toFixed(2)} | Retido em Mãos: R$ ${totalRetidoRev.toFixed(2)} | Saldo Final: R$ ${Math.abs(saldoFinal).toFixed(2)} (${saldoFinal >= 0 ? 'A receber da Conecta Joias' : 'A repassar para a Conecta Joias'}). Obrigado pela parceria! ✨`;
 
     await prisma.mensagemWhatsapp.create({
       data: {
@@ -1109,7 +1120,7 @@ app.post('/api/acertos', autenticarJWT, autorizarRole(['Manager', 'SuperAdmin'])
       }
     });
 
-    registrarLog(req, "ACERTO_CONCLUIR", `Concluiu acerto de contas com a revendedora ${revendedora.nome}. Pagamento: ${formaPagamento || "Pix"}. Vendido: ${totalVendida}, Devolvido: ${totalDevolvida}, Perda: ${totalPerdida}, Defeito: ${totalDefeito}. Faturamento Bruto: R$ ${faturamentoBruto.toFixed(2)}, Líquido Belklock: R$ ${liquidoBelklock.toFixed(2)}.`);
+    registrarLog(req, "ACERTO_CONCLUIR", `Concluiu acerto de contas com a revendedora ${revendedora.nome}. Pagamento: ${formaPagamento || "Pix"}. Vendido: ${totalVendida}, Devolvido: ${totalDevolvida}, Perda: ${totalPerdida}, Defeito: ${totalDefeito}. Faturamento Bruto: R$ ${faturamentoBruto.toFixed(2)}, Líquido Empresa: R$ ${liquidoBelklock.toFixed(2)}.`);
 
     res.json({
       message: 'Acerto concluído com sucesso!',
@@ -1648,7 +1659,7 @@ app.post('/api/importar', autenticarJWT, autorizarRole(['Manager', 'SuperAdmin']
     const novasRevendedorasSenhas = [];
     if (revendedoras && revendedoras.length > 0) {
       for (const r of revendedoras) {
-        const emailTemporario = r.email || (r.nome.toLowerCase().replace(/\s+/g, '') + "_" + Math.floor(Math.random() * 1000) + "@belklock.com");
+        const emailTemporario = r.email || (r.nome.toLowerCase().replace(/\s+/g, '') + "_" + Math.floor(Math.random() * 1000) + "@conectajoias.com");
 
         let existente = await prisma.usuario.findFirst({
           where: {
@@ -1939,7 +1950,7 @@ app.get('/api/config', identificarLoja, async (req, res) => {
       config = await prisma.configuracao.create({
         data: {
           lojaId: req.lojaId,
-          nomeEmpresa: 'BelKlock Semijoias',
+          nomeEmpresa: 'Conecta Joias',
           logoUrl: '',
           corPrimaria: '#d4af37',
           corSecundaria: '#111111',
@@ -1971,7 +1982,7 @@ app.put('/api/config', autenticarJWT, autorizarRole(['Manager', 'SuperAdmin']), 
       config = await prisma.configuracao.create({
         data: {
           lojaId: req.lojaId,
-          nomeEmpresa: nomeEmpresa || 'BelKlock Semijoias',
+          nomeEmpresa: nomeEmpresa || 'Conecta Joias',
           logoUrl: logoUrl || '',
           corPrimaria: corPrimaria || '#d4af37',
           corSecundaria: corSecundaria || '#111111',
@@ -2191,7 +2202,7 @@ app.post('/api/public/onboarding', uploadDocs.fields([
     }
 
     // Criar mensagem de boas-vindas na fila do WhatsApp
-    const mensagemTexto = `Olá ${nome}, seja muito bem-vinda à BelKlock Semijoias! ✨ Seu cadastro de Consultora foi realizado com sucesso. Aqui estão suas credenciais para entrar no portal: Login (PIN): ${pin} | Senha Temporária: ${senhaProvisoria} | Link do portal: ${frontendUrl}/manager.html`;
+    const mensagemTexto = `Olá ${nome}, seja muito bem-vinda à Conecta Joias! ✨ Seu cadastro de Consultora foi realizado com sucesso. Aqui estão suas credenciais para entrar no portal: Login (PIN): ${pin} | Senha Temporária: ${senhaProvisoria} | Link do portal: ${frontendUrl}/manager.html`;
 
     await prisma.mensagemWhatsapp.create({
       data: {
@@ -2540,7 +2551,7 @@ app.post('/api/revendedoras/:id/reiniciar-comissoes', autenticarJWT, autorizarRo
     }
 
     const dataAtual = new Date().toLocaleDateString('pt-BR');
-    const msgTexto = `Olá ${rev.nome}! O ciclo de metas e comissões da BelKlock Semijoias foi reiniciado hoje (${dataAtual}). Suas vendas do período foram liquidadas e você já pode cadastrar novos clientes e vendas. Boa sorte e boas vendas no novo ciclo! 💼💎`;
+    const msgTexto = `Olá ${rev.nome}! O ciclo de metas e comissões da Conecta Joias foi reiniciado hoje (${dataAtual}). Suas vendas do período foram liquidadas e você já pode cadastrar novos clientes e vendas. Boa sorte e boas vendas no novo ciclo! 💼💎`;
 
     await prisma.mensagemWhatsapp.create({
       data: {
@@ -2564,6 +2575,190 @@ app.post('/api/revendedoras/:id/reiniciar-comissoes', autenticarJWT, autorizarRo
   } catch (error) {
     console.error('Erro ao reiniciar comissão:', error);
     res.status(500).json({ error: 'Erro ao processar o reinício da comissão.' });
+  }
+});
+
+// ==========================================
+// ROTAS DE ADMINISTRAÇÃO GLOBAL DO SAAS (SUPERADMIN)
+// ==========================================
+
+
+// Buscar estatísticas globais do SaaS
+app.get('/api/saas/stats', autenticarJWT, autorizarRole(['SuperAdmin']), async (req, res) => {
+  try {
+    const totalLojas = await prisma.loja.count();
+    const lojasAtivas = Math.max(0, totalLojas - lojasSuspensas.size);
+    const totalUsuarios = await prisma.usuario.count();
+    const totalConsultoras = await prisma.usuario.count({ where: { role: 'Consultant' } });
+    const totalLogs = await prisma.logAcao.count();
+
+    // Calcular faturamento global a partir de todas as vendas no banco de dados
+    const totalDiretasAgg = await prisma.vendaDireta.aggregate({ _sum: { preco: true } });
+    const totalRevendedorasAgg = await prisma.vendaRevendedora.aggregate({ _sum: { precoVenda: true } });
+    
+    const faturamentoGlobal = (totalDiretasAgg._sum.preco || 0) + (totalRevendedorasAgg._sum.precoVenda || 0);
+
+    res.json({
+      totalLojas,
+      lojasAtivas,
+      totalUsuarios,
+      totalConsultoras,
+      faturamentoGlobal,
+      totalLogs
+    });
+  } catch (error) {
+    console.error("Erro ao buscar estatísticas do SaaS:", error);
+    res.status(500).json({ error: 'Erro interno ao processar dados analíticos do SaaS.' });
+  }
+});
+
+// Listar todas as lojas do ecossistema SaaS
+app.get('/api/saas/lojas', autenticarJWT, autorizarRole(['SuperAdmin']), async (req, res) => {
+  try {
+    const lojas = await prisma.loja.findMany({
+      include: {
+        _count: {
+          select: {
+            usuarios: { where: { role: 'Consultant' } },
+            produtos: true
+          }
+        },
+        vendasDireta: true,
+        vendasRev: true
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    const resultado = lojas.map(loja => {
+      // Faturamento da loja
+      const totalDireta = loja.vendasDireta.reduce((acc, v) => acc + (v.preco || 0), 0);
+      const totalRev = loja.vendasRev.reduce((acc, v) => acc + ((v.precoVenda * (v.quantidade || 1)) || 0), 0);
+      const faturamento = totalDireta + totalRev;
+
+      return {
+        id: loja.id,
+        nome: loja.nome,
+        cnpj: loja.cnpj || "Não Informado",
+        createdAt: loja.createdAt,
+        status: lojasSuspensas.has(loja.id) ? 'SUSPENDED' : 'ACTIVE',
+        consultorasCount: loja._count.usuarios,
+        estoqueCount: loja._count.produtos,
+        faturamento,
+        temaVisual: 'ESCURO / LUXO'
+      };
+    });
+
+    res.json(resultado);
+  } catch (error) {
+    console.error("Erro ao buscar lista de lojas do SaaS:", error);
+    res.status(500).json({ error: 'Erro ao carregar lojas cadastradas.' });
+  }
+});
+
+// Listar logs de auditoria globais do SaaS
+app.get('/api/saas/logs', autenticarJWT, autorizarRole(['SuperAdmin']), async (req, res) => {
+  try {
+    const logs = await prisma.logAcao.findMany({
+      orderBy: { data: 'desc' },
+      take: 100 // Proteção: limita o consumo de dados da tabela de auditoria a 100 linhas por busca
+    });
+    res.json(logs);
+  } catch (error) {
+    console.error("Erro ao buscar logs de auditoria do SaaS:", error);
+    res.status(500).json({ error: 'Erro ao carregar logs de segurança.' });
+  }
+});
+
+// Alterar status de uma loja (Suspender / Reativar)
+app.put('/api/saas/lojas/:id/status', autenticarJWT, autorizarRole(['SuperAdmin']), async (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body;
+
+  if (status !== 'ACTIVE' && status !== 'SUSPENDED') {
+    return res.status(400).json({ error: 'Status inválido. Deve ser ACTIVE ou SUSPENDED.' });
+  }
+
+  try {
+    const lojaExiste = await prisma.loja.findUnique({ where: { id } });
+    if (!lojaExiste) {
+      return res.status(404).json({ error: 'Loja não encontrada na base de dados.' });
+    }
+
+    if (status === 'SUSPENDED') {
+      lojasSuspensas.add(id);
+    } else {
+      lojasSuspensas.delete(id);
+    }
+
+    // Grava log de segurança da ação crítica realizada pelo Super Admin
+    await prisma.logAcao.create({
+      data: {
+        usuarioId: req.user.id,
+        usuarioNome: req.user.nome,
+        acao: status === 'SUSPENDED' ? 'LOJA_SUSPENSA' : 'LOJA_REATIVADA',
+        detalhes: `Super Admin ${req.user.nome} alterou o status da loja ${lojaExiste.nome} (ID: ${id}) para ${status}.`
+      }
+    });
+
+    res.json({ message: `Status da loja ${lojaExiste.nome} alterado com sucesso!`, status });
+  } catch (error) {
+    console.error("Erro ao atualizar status da loja:", error);
+    res.status(500).json({ error: 'Erro interno ao tentar atualizar status do tenant.' });
+  }
+});
+
+// Forçar backup físico do banco SQLite
+app.post('/api/saas/backup', autenticarJWT, autorizarRole(['SuperAdmin']), async (req, res) => {
+  try {
+    const BACKUPS_DIR = path.join(UPLOADS_DIR, 'backups');
+    if (!fs.existsSync(BACKUPS_DIR)) {
+      fs.mkdirSync(BACKUPS_DIR, { recursive: true });
+    }
+
+    const dbPath = path.join(__dirname, 'dev.db');
+    const backupName = `backup-${Date.now()}.db`;
+    const backupPath = path.join(BACKUPS_DIR, backupName);
+
+    if (!fs.existsSync(dbPath)) {
+      return res.status(400).json({ error: 'Arquivo do banco de dados dev.db não encontrado.' });
+    }
+
+    // Copia fisicamente o banco
+    fs.copyFileSync(dbPath, backupPath);
+
+    // Grava log de auditoria
+    await prisma.logAcao.create({
+      data: {
+        usuarioId: req.user.id,
+        usuarioNome: req.user.nome,
+        acao: 'BACKUP_GERADO',
+        detalhes: `Super Admin ${req.user.nome} realizou backup físico do banco de dados (Arquivo: ${backupName}).`
+      }
+    });
+
+    res.json({ message: 'Backup gerado com sucesso!', filename: backupName, sizeBytes: fs.statSync(backupPath).size });
+  } catch (error) {
+    console.error("Erro ao gerar backup físico:", error);
+    res.status(500).json({ error: 'Falha interna ao realizar cópia física de segurança do banco.' });
+  }
+});
+
+// Auto-diagnóstico de integridade estrutural do banco de dados
+app.get('/api/saas/diagnostico', autenticarJWT, autorizarRole(['SuperAdmin']), async (req, res) => {
+  try {
+    // Executa comando raw PRAGMA no SQLite
+    const resultado = await prisma.$queryRawUnsafe('PRAGMA integrity_check');
+    const statusIntegridade = resultado && resultado[0] && Object.values(resultado[0])[0] === 'ok' ? 'INTEGRO' : 'FALHA';
+
+    res.json({
+      status: 'ONLINE',
+      dbStatus: statusIntegridade,
+      provedor: 'SQLite',
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error("Erro no diagnóstico do banco de dados:", error);
+    res.status(500).json({ error: 'Falha ao executar rotina de auto-diagnóstico.' });
   }
 });
 

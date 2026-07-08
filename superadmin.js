@@ -1,5 +1,5 @@
 /**
- * BelKlock Semijoias - Core Application Logic
+ * Conecta Joias - Core Application Logic
  * Gerenciamento de estado, reatividade de precificação, controle de estoque, 
  * gestão de revendedoras (consignado), WhatsApp API, feed do Instagram e localStorage.
  */
@@ -20,7 +20,7 @@ const app = {
     subAbaClientesAtiva: "todos",
     produtosComDefeito: [],
     limiarEstoqueCritico: 3,
-    nomeEmpresa: "BelKlock Semijoias",
+    nomeEmpresa: "Conecta Joias",
     logoUrl: "",
     corPrimaria: "#d4af37",
     corSecundaria: "#111111",
@@ -167,8 +167,8 @@ const app = {
   init: function() {
     this.carregarDadosDoLocalStorage(); // Inicializa dados locais se necessário
     
-    const token = localStorage.getItem("belklock_token");
-    const usuarioJson = localStorage.getItem("belklock_usuario");
+    const token = localStorage.getItem("conectajoias_token");
+    const usuarioJson = localStorage.getItem("conectajoias_usuario");
     
     if (!token || !usuarioJson) {
       this.fazerLogout();
@@ -179,12 +179,14 @@ const app = {
       const usuario = JSON.parse(usuarioJson);
       const roleUpper = (usuario.role || "").toUpperCase();
       
-      // Permitir Manager, SuperAdmin na página superadmin.html
-      if (roleUpper === 'MANAGER' || roleUpper === 'SUPERADMIN') {
+      // Permitir apenas Manager na página superadmin.html
+      if (roleUpper === 'MANAGER') {
         this.state.token = token;
         this.state.usuarioLogado = usuario;
         this.exibirInterfacePosLogin();
         this.carregarDadosIniciais();
+      } else if (roleUpper === 'SUPERADMIN') {
+        window.location.href = "saasadmin.html";
       } else if (roleUpper === 'CONSULTANT') {
         window.location.href = "manager.html";
       } else {
@@ -252,8 +254,8 @@ const app = {
       // Salva dados no estado e no LocalStorage
       this.state.token = data.token;
       this.state.usuarioLogado = data.usuario;
-      localStorage.setItem("belklock_token", data.token);
-      localStorage.setItem("belklock_usuario", JSON.stringify(data.usuario));
+      localStorage.setItem("conectajoias_token", data.token);
+      localStorage.setItem("conectajoias_usuario", JSON.stringify(data.usuario));
 
       this.exibirInterfacePosLogin();
       this.carregarDadosIniciais();
@@ -280,26 +282,26 @@ const app = {
             role: "SuperAdmin",
             comissao: 0.0
           };
-          localStorage.setItem("belklock_token", this.state.token);
-          localStorage.setItem("belklock_usuario", JSON.stringify(this.state.usuarioLogado));
+          localStorage.setItem("conectajoias_token", this.state.token);
+          localStorage.setItem("conectajoias_usuario", JSON.stringify(this.state.usuarioLogado));
           
           this.exibirInterfacePosLogin();
           this.carregarDadosIniciais();
           this.toast("Aviso: Servidor local offline. Iniciando em Modo de Demonstração (Perfil Administrador do Sistema).", "warning");
           return;
-        } else if ((email === "admin@belklock.com" || email === "0002") && senha === "belklock") {
+        } else if ((email === "admin@conectajoias.com" || email === "0002") && senha === "conectajoias") {
           console.warn("Servidor Azure API offline. Iniciando em Modo de Demonstração (Gestora local).");
           this.state.token = "mock_admin_token_" + Date.now();
           this.state.usuarioLogado = {
             id: "admin_local",
             nome: "Admin Local",
-            email: "admin@belklock.com",
+            email: "admin@conectajoias.com",
             pin: "0002",
             role: "Manager",
             comissao: 0.0
           };
-          localStorage.setItem("belklock_token", this.state.token);
-          localStorage.setItem("belklock_usuario", JSON.stringify(this.state.usuarioLogado));
+          localStorage.setItem("conectajoias_token", this.state.token);
+          localStorage.setItem("conectajoias_usuario", JSON.stringify(this.state.usuarioLogado));
           
           this.exibirInterfacePosLogin();
           this.carregarDadosIniciais();
@@ -319,8 +321,8 @@ const app = {
               role: "Consultant",
               comissao: revLocal.comissao
             };
-            localStorage.setItem("belklock_token", this.state.token);
-            localStorage.setItem("belklock_usuario", JSON.stringify(this.state.usuarioLogado));
+            localStorage.setItem("conectajoias_token", this.state.token);
+            localStorage.setItem("conectajoias_usuario", JSON.stringify(this.state.usuarioLogado));
             
             this.exibirInterfacePosLogin();
             this.carregarDadosIniciais();
@@ -345,8 +347,8 @@ const app = {
     }
     this.state.token = null;
     this.state.usuarioLogado = null;
-    localStorage.removeItem("belklock_token");
-    localStorage.removeItem("belklock_usuario");
+    localStorage.removeItem("conectajoias_token");
+    localStorage.removeItem("conectajoias_usuario");
     window.location.href = "index.html";
   },
 
@@ -357,7 +359,7 @@ const app = {
   exibirInterfacePosLogin: function() {
     // Atualiza o título da marca
     const mainH1 = document.getElementById("main-h1");
-    if (mainH1) mainH1.innerText = this.state.nomeEmpresa || "BelKlock Semijoias";
+    if (mainH1) mainH1.innerText = this.state.nomeEmpresa || "Conecta Joias";
 
     this.atualizarInfoUsuarioSidebar();
     this.aplicarRestricoesPerfil();
@@ -365,7 +367,7 @@ const app = {
 
   carregarConfiguracaoAPI: async function() {
     try {
-      const lojaId = localStorage.getItem("belklock_loja_id") || "default-loja";
+      const lojaId = localStorage.getItem("conectajoias_loja_id") || "default-loja";
       const response = await fetch(`${this.state.apiUrl}/config`, {
         headers: { "x-loja-id": lojaId }
       });
@@ -384,7 +386,7 @@ const app = {
     }
     // Fallback local do state / localStorage
     const configLocal = {
-      nomeEmpresa: this.state.nomeEmpresa || "BelKlock Semijoias",
+      nomeEmpresa: this.state.nomeEmpresa || "Conecta Joias",
       logoUrl: this.state.logoUrl || "",
       corPrimaria: this.state.corPrimaria || "#d4af37",
       corSecundaria: this.state.corSecundaria || "#111111",
@@ -406,12 +408,12 @@ const app = {
     this.state.bgCard = config.bgCard;
     
     // Salvar localmente no localStorage
-    localStorage.setItem("belklock_nome_empresa", config.nomeEmpresa);
-    localStorage.setItem("belklock_logo_url", config.logoUrl || "");
-    localStorage.setItem("belklock_cor_primaria", config.corPrimaria);
-    localStorage.setItem("belklock_cor_secundaria", config.corSecundaria);
-    localStorage.setItem("belklock_bg_primary", config.bgPrimary);
-    localStorage.setItem("belklock_bg_card", config.bgCard);
+    localStorage.setItem("conectajoias_nome_empresa", config.nomeEmpresa);
+    localStorage.setItem("conectajoias_logo_url", config.logoUrl || "");
+    localStorage.setItem("conectajoias_cor_primaria", config.corPrimaria);
+    localStorage.setItem("conectajoias_cor_secundaria", config.corSecundaria);
+    localStorage.setItem("conectajoias_bg_primary", config.bgPrimary);
+    localStorage.setItem("conectajoias_bg_card", config.bgCard);
 
     // Atualizar Title
     document.title = `${config.nomeEmpresa} - Gestão Premium`;
@@ -426,7 +428,7 @@ const app = {
         logoBrand.style.display = "block";
         if (brandTextSpan) brandTextSpan.style.display = "none";
       } else {
-        if (config.nomeEmpresa && config.nomeEmpresa !== "BelKlock Semijoias" && config.nomeEmpresa !== "") {
+        if (config.nomeEmpresa && config.nomeEmpresa !== "Conecta Joias" && config.nomeEmpresa !== "") {
           logoBrand.style.display = "none";
           if (brandTextSpan) {
             brandTextSpan.innerText = config.nomeEmpresa;
@@ -434,7 +436,7 @@ const app = {
           }
         } else {
           logoBrand.src = "assets/logo.svg";
-          logoBrand.alt = "BelKlock Semijoias";
+          logoBrand.alt = "Conecta Joias";
           logoBrand.style.display = "block";
           if (brandTextSpan) brandTextSpan.style.display = "none";
         }
@@ -586,7 +588,7 @@ const app = {
       if (el) el.innerText = `Olá, ${this.state.usuarioLogado.nome.split(' ')[0]}! 💎`;
     }
     
-    console.log("BelKlock Semijoias inicializado com sucesso!");
+    console.log("Conecta Joias inicializado com sucesso!");
   },
 
   // ==========================================
@@ -594,7 +596,7 @@ const app = {
   // ==========================================
 
   requisitarAPI: async function(endpoint, metodo = "GET", body = null) {
-    const lojaId = localStorage.getItem("belklock_loja_id") || "default-loja";
+    const lojaId = localStorage.getItem("conectajoias_loja_id") || "default-loja";
     const headers = {
       "Authorization": `Bearer ${this.state.token}`,
       "x-loja-id": lojaId
@@ -696,7 +698,7 @@ const app = {
   carregarVendasRevendedora: async function() {
     const offlineMode = this.state.token && this.state.token.startsWith("mock_");
     if (offlineMode) {
-      const localVendasKey = `belklock_vendas_${this.state.usuarioLogado.id}`;
+      const localVendasKey = `conectajoias_vendas_${this.state.usuarioLogado.id}`;
       this.state.vendasSessao = JSON.parse(localStorage.getItem(localVendasKey) || "[]");
       return;
     }
@@ -994,7 +996,7 @@ const app = {
         this.salvarDadosNoLocalStorage();
 
         // Adiciona à lista de vendas da sessão no LocalStorage
-        const localVendasKey = `belklock_vendas_${this.state.usuarioLogado.id}`;
+        const localVendasKey = `conectajoias_vendas_${this.state.usuarioLogado.id}`;
         const vendasLocais = JSON.parse(localStorage.getItem(localVendasKey) || "[]");
         vendasLocais.unshift(novaVenda);
         localStorage.setItem(localVendasKey, JSON.stringify(vendasLocais));
@@ -1040,24 +1042,24 @@ const app = {
   // 3. Persistência de Dados (Métodos de fallback / legados mantidos para portabilidade)
   carregarDadosDoLocalStorage: function() {
     try {
-      const produtosSalvos = localStorage.getItem("belklock_produtos");
-      const revendedorasSalvas = localStorage.getItem("belklock_revendedoras");
-      const feedSalvo = localStorage.getItem("belklock_feed");
-      const ficticioSalvo = localStorage.getItem("belklock_usando_ficticio");
-      const colunasSalvas = localStorage.getItem("belklock_colunas");
-      const limiarSalvo = localStorage.getItem("belklock_limiar_critico");
-      const nomeEmpresaSalvo = localStorage.getItem("belklock_nome_empresa");
-      const logoUrlSalvo = localStorage.getItem("belklock_logo_url");
-      const corPrimariaSalva = localStorage.getItem("belklock_cor_primaria");
-      const corSecundariaSalva = localStorage.getItem("belklock_cor_secundaria");
-      const bgPrimarySalvo = localStorage.getItem("belklock_bg_primary");
-      const bgCardSalvo = localStorage.getItem("belklock_bg_card");
-      const apiUrlSalva = localStorage.getItem("belklock_api_url");
+      const produtosSalvos = localStorage.getItem("conectajoias_produtos");
+      const revendedorasSalvas = localStorage.getItem("conectajoias_revendedoras");
+      const feedSalvo = localStorage.getItem("conectajoias_feed");
+      const ficticioSalvo = localStorage.getItem("conectajoias_usando_ficticio");
+      const colunasSalvas = localStorage.getItem("conectajoias_colunas");
+      const limiarSalvo = localStorage.getItem("conectajoias_limiar_critico");
+      const nomeEmpresaSalvo = localStorage.getItem("conectajoias_nome_empresa");
+      const logoUrlSalvo = localStorage.getItem("conectajoias_logo_url");
+      const corPrimariaSalva = localStorage.getItem("conectajoias_cor_primaria");
+      const corSecundariaSalva = localStorage.getItem("conectajoias_cor_secundaria");
+      const bgPrimarySalvo = localStorage.getItem("conectajoias_bg_primary");
+      const bgCardSalvo = localStorage.getItem("conectajoias_bg_card");
+      const apiUrlSalva = localStorage.getItem("conectajoias_api_url");
 
       this.state.usandoFicticio = ficticioSalvo ? JSON.parse(ficticioSalvo) : true;
       this.state.colunasEstoque = colunasSalvas ? JSON.parse(colunasSalvas) : ["Código", "Nome do Produto", "Categoria", "Estoque Central", "Custo Bruto", "Custo Banho", "Custo Oper.", "Markup", "Preço Venda"];
       this.state.limiarEstoqueCritico = limiarSalvo ? parseInt(limiarSalvo) : 3;
-      this.state.nomeEmpresa = nomeEmpresaSalvo ? nomeEmpresaSalvo : "BelKlock Semijoias";
+      this.state.nomeEmpresa = nomeEmpresaSalvo ? nomeEmpresaSalvo : "Conecta Joias";
       this.state.logoUrl = logoUrlSalvo || "";
       this.state.corPrimaria = corPrimariaSalva || "#d4af37";
       this.state.corSecundaria = corSecundariaSalva || "#111111";
@@ -1067,9 +1069,9 @@ const app = {
         this.state.apiUrl = apiUrlSalva;
       }
 
-      const impostoSalvo = localStorage.getItem("belklock_dre_imposto");
-      const despesaSalva = localStorage.getItem("belklock_dre_despesa_fixa");
-      const cmvSalvo = localStorage.getItem("belklock_dre_cmv_estimado");
+      const impostoSalvo = localStorage.getItem("conectajoias_dre_imposto");
+      const despesaSalva = localStorage.getItem("conectajoias_dre_despesa_fixa");
+      const cmvSalvo = localStorage.getItem("conectajoias_dre_cmv_estimado");
       this.state.dreImposto = impostoSalvo ? parseFloat(impostoSalvo) : 0.0;
       this.state.dreDespesaFixa = despesaSalva ? parseFloat(despesaSalva) : 0.0;
       this.state.dreCmvEstimado = cmvSalvo ? parseFloat(cmvSalvo) : 33.0;
@@ -1108,22 +1110,22 @@ const app = {
   },
 
   salvarDadosNoLocalStorage: function() {
-    localStorage.setItem("belklock_produtos", JSON.stringify(this.state.produtos));
-    localStorage.setItem("belklock_revendedoras", JSON.stringify(this.state.revendedoras));
-    localStorage.setItem("belklock_feed", JSON.stringify(this.state.feedImagens));
-    localStorage.setItem("belklock_usando_ficticio", JSON.stringify(this.state.usandoFicticio));
-    localStorage.setItem("belklock_colunas", JSON.stringify(this.state.colunasEstoque));
-    localStorage.setItem("belklock_limiar_critico", this.state.limiarEstoqueCritico || 3);
-    localStorage.setItem("belklock_nome_empresa", this.state.nomeEmpresa || "BelKlock Semijoias");
-    localStorage.setItem("belklock_logo_url", this.state.logoUrl || "");
-    localStorage.setItem("belklock_cor_primaria", this.state.corPrimaria || "#d4af37");
-    localStorage.setItem("belklock_cor_secundaria", this.state.corSecundaria || "#111111");
-    localStorage.setItem("belklock_bg_primary", this.state.bgPrimary || "#0a0a0a");
-    localStorage.setItem("belklock_bg_card", this.state.bgCard || "#121212");
-    localStorage.setItem("belklock_api_url", this.state.apiUrl || "http://localhost:5000/api");
-    localStorage.setItem("belklock_dre_imposto", this.state.dreImposto);
-    localStorage.setItem("belklock_dre_despesa_fixa", this.state.dreDespesaFixa);
-    localStorage.setItem("belklock_dre_cmv_estimado", this.state.dreCmvEstimado);
+    localStorage.setItem("conectajoias_produtos", JSON.stringify(this.state.produtos));
+    localStorage.setItem("conectajoias_revendedoras", JSON.stringify(this.state.revendedoras));
+    localStorage.setItem("conectajoias_feed", JSON.stringify(this.state.feedImagens));
+    localStorage.setItem("conectajoias_usando_ficticio", JSON.stringify(this.state.usandoFicticio));
+    localStorage.setItem("conectajoias_colunas", JSON.stringify(this.state.colunasEstoque));
+    localStorage.setItem("conectajoias_limiar_critico", this.state.limiarEstoqueCritico || 3);
+    localStorage.setItem("conectajoias_nome_empresa", this.state.nomeEmpresa || "Conecta Joias");
+    localStorage.setItem("conectajoias_logo_url", this.state.logoUrl || "");
+    localStorage.setItem("conectajoias_cor_primaria", this.state.corPrimaria || "#d4af37");
+    localStorage.setItem("conectajoias_cor_secundaria", this.state.corSecundaria || "#111111");
+    localStorage.setItem("conectajoias_bg_primary", this.state.bgPrimary || "#0a0a0a");
+    localStorage.setItem("conectajoias_bg_card", this.state.bgCard || "#121212");
+    localStorage.setItem("conectajoias_api_url", this.state.apiUrl || "http://localhost:5000/api");
+    localStorage.setItem("conectajoias_dre_imposto", this.state.dreImposto);
+    localStorage.setItem("conectajoias_dre_despesa_fixa", this.state.dreDespesaFixa);
+    localStorage.setItem("conectajoias_dre_cmv_estimado", this.state.dreCmvEstimado);
   },
 
   // 4. Cadastro de Mock de dados para demonstração sem placeholders vazios
@@ -1979,7 +1981,7 @@ const app = {
 
       <div style="display: flex; justify-content: space-between; margin-top: 5rem; font-size: 0.85rem; text-align: center; color: black;">
         <div style="width: 45%; border-top: 1px solid #000; padding-top: 0.5rem;">
-          BelKlock Semijoias
+          Conecta Joias
         </div>
         <div style="width: 45%; border-top: 1px solid #000; padding-top: 0.5rem;">
           Assinatura Revendedora: ${revendedoraNome}
@@ -3036,7 +3038,7 @@ const app = {
         }
       } else {
         let novaRev;
-        const emailTemporario = nome.toLowerCase().replace(/\s+/g, '') + "_" + Math.floor(Math.random() * 1000) + "@belklock.com";
+        const emailTemporario = nome.toLowerCase().replace(/\s+/g, '') + "_" + Math.floor(Math.random() * 1000) + "@conectajoias.com";
 
         // Cria na API Azure se autenticado
         if (this.state.token) {
@@ -3366,7 +3368,7 @@ const app = {
   buscarVendasPendentesAcerto: async function(revendedoraId) {
     const offlineMode = this.state.token && this.state.token.startsWith("mock_");
     if (offlineMode) {
-      const localVendasKey = `belklock_vendas_${revendedoraId}`;
+      const localVendasKey = `conectajoias_vendas_${revendedoraId}`;
       const vendas = JSON.parse(localStorage.getItem(localVendasKey) || "[]");
       const rev = this.state.revendedoras.find(r => r.id === revendedoraId);
       const ultimoAcerto = rev.historico && rev.historico.length > 0 ? rev.historico[rev.historico.length - 1] : null;
@@ -3394,8 +3396,8 @@ const app = {
     document.getElementById("acerto-comissao-percent").innerText = rev.comissao;
 
     // Busca preferências da revendedora
-    const prefPagamento = localStorage.getItem(`belklock_pref_pagamento_${rev.id}`) || "Pix";
-    const prefPix = localStorage.getItem(`belklock_pref_pix_${rev.id}`) || "";
+    const prefPagamento = localStorage.getItem(`conectajoias_pref_pagamento_${rev.id}`) || "Pix";
+    const prefPix = localStorage.getItem(`conectajoias_pref_pix_${rev.id}`) || "";
     
     // Atualiza o dropdown no modal de acerto com a preferência da revendedora
     const selectForma = document.getElementById("acerto-forma-pagamento");
@@ -4775,7 +4777,7 @@ const app = {
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupData, null, 2));
     const downloadAnchorNode = document.createElement('a');
     downloadAnchorNode.setAttribute("href", dataStr);
-    downloadAnchorNode.setAttribute("download", "belklock_backup_" + new Date().getTime() + ".json");
+    downloadAnchorNode.setAttribute("download", "conectajoias_backup_" + new Date().getTime() + ".json");
     document.body.appendChild(downloadAnchorNode);
     downloadAnchorNode.click();
     downloadAnchorNode.remove();
@@ -4949,7 +4951,7 @@ const app = {
 
       // Vendas das revendedoras (localStorage por revendedora)
       this.state.revendedoras.forEach(r => {
-        const localVendasKey = `belklock_vendas_${r.id}`;
+        const localVendasKey = `conectajoias_vendas_${r.id}`;
         const localVendas = JSON.parse(localStorage.getItem(localVendasKey) || "[]");
         localVendas.forEach(v => {
           vendasConsolidadas.push({
@@ -4971,7 +4973,7 @@ const app = {
       });
 
       // Vendas diretas da administradora (localStorage global)
-      const vendasAdminLocais = JSON.parse(localStorage.getItem("belklock_vendas_admin") || "[]");
+      const vendasAdminLocais = JSON.parse(localStorage.getItem("conectajoias_vendas_admin") || "[]");
       vendasAdminLocais.forEach(v => {
         vendasConsolidadas.push({
           id: v.id,
@@ -4985,7 +4987,7 @@ const app = {
           comissao: 0,
           lucroEstimado: v.lucroEstimado || 0,
           formaPagamento: v.formaPagamento || '',
-          vendedor: 'BelKlock (Direta)',
+          vendedor: 'Conecta Joias (Direta)',
           contato: v.whatsappCliente || '—',
           cliente: v.nomeCliente || 'Cliente Avulso',
           usuarioId: null
@@ -5020,7 +5022,7 @@ const app = {
           precoVenda: v.preco,
           total: v.preco,
           comissao: 0,
-          vendedor: 'BelKlock (Direta)',
+          vendedor: 'Conecta Joias (Direta)',
           contato: v.whatsappCliente || '—',
           cliente: v.nomeCliente || '—',
           usuarioId: null
@@ -5259,7 +5261,7 @@ const app = {
     const statusConexao = document.getElementById("cfg-conexao-status");
     const statusModo = document.getElementById("cfg-modo-status");
 
-    if (inputNome) inputNome.value = this.state.nomeEmpresa || "BelKlock Semijoias";
+    if (inputNome) inputNome.value = this.state.nomeEmpresa || "Conecta Joias";
     if (inputLogo) inputLogo.value = this.state.logoUrl || "";
     if (inputCorPrimaria) inputCorPrimaria.value = this.state.corPrimaria || "#d4af37";
     if (inputCorPrimariaHex) inputCorPrimariaHex.value = this.state.corPrimaria || "#d4af37";
@@ -5516,7 +5518,7 @@ const app = {
       const partes = c.dataNascimento.split("-");
       const aniversarioStr = `${partes[2]}/${partes[1]}`;
       const nomePrimeiro = c.nome.split(" ")[0];
-      const mensagem = encodeURIComponent(`Parabéns, ${nomePrimeiro}! 🎉 Que o seu dia seja repleto de amor, paz e muitas alegrias. Nós da BelKlock Semijoias te desejamos um aniversário inesquecível! Como presente de aniversário, temos um cupom especial de 10% de desconto para você usar em nossa coleção este mês. Beijos! ❤️`);
+      const mensagem = encodeURIComponent(`Parabéns, ${nomePrimeiro}! 🎉 Que o seu dia seja repleto de amor, paz e muitas alegrias. Nós da Conecta Joias te desejamos um aniversário inesquecível! Como presente de aniversário, temos um cupom especial de 10% de desconto para você usar em nossa coleção este mês. Beijos! ❤️`);
       
       const whatsappLink = `https://api.whatsapp.com/send?phone=55${(c.whatsapp || "").replace(/\D/g, '')}&text=${mensagem}`;
       
@@ -5717,7 +5719,7 @@ const app = {
         novas = await this.requisitarAPI("/notificacoes", "GET");
       } else {
         // Fallback local/mock
-        const localNotifs = localStorage.getItem("belklock_notificacoes_mock");
+        const localNotifs = localStorage.getItem("conectajoias_notificacoes_mock");
         novas = localNotifs ? JSON.parse(localNotifs) : [];
       }
 
@@ -5826,7 +5828,7 @@ const app = {
         await this.requisitarAPI("/notificacoes/ler", "PUT", {});
       } else {
         // Fallback local/mock
-        localStorage.setItem("belklock_notificacoes_mock", JSON.stringify([]));
+        localStorage.setItem("conectajoias_notificacoes_mock", JSON.stringify([]));
       }
 
       this.state.notificacoes = [];
@@ -5891,7 +5893,7 @@ const app = {
       });
 
       // Guardar as notas já emitidas no localStorage para persistência
-      let nfs = JSON.parse(localStorage.getItem("belklock_nfe_emitidas") || "[]");
+      let nfs = JSON.parse(localStorage.getItem("conectajoias_nfe_emitidas") || "[]");
 
       // Notas pendentes: acertos que não estão na lista de nfs
       let pendentes = acertosCompletos.filter(ac => !nfs.some(nf => nf.idOrigem === ac.id));
@@ -6003,7 +6005,7 @@ const app = {
       progress.style.width = "100%"; 
       status.innerText = "Autorização de Uso concedida!"; 
 
-      let nfs = JSON.parse(localStorage.getItem("belklock_nfe_emitidas") || "[]");
+      let nfs = JSON.parse(localStorage.getItem("conectajoias_nfe_emitidas") || "[]");
       const numNota = Math.floor(100000 + Math.random() * 900000);
       const chaveAcesso = "352606" + "12345678000199" + "55" + "001" + numNota.toString().padStart(9, "0") + "1" + Math.floor(100000000 + Math.random() * 900000000).toString();
 
@@ -6020,7 +6022,7 @@ const app = {
       };
 
       nfs.push(novaNota);
-      localStorage.setItem("belklock_nfe_emitidas", JSON.stringify(nfs));
+      localStorage.setItem("conectajoias_nfe_emitidas", JSON.stringify(nfs));
 
       backdrop.remove();
       this.toast(`Nota Fiscal Nº ${numNota} autorizada e emitida com sucesso!`, "success");
@@ -6029,7 +6031,7 @@ const app = {
   },
 
   visualizarDANFE: function(notaId) {
-    let nfs = JSON.parse(localStorage.getItem("belklock_nfe_emitidas") || "[]");
+    let nfs = JSON.parse(localStorage.getItem("conectajoias_nfe_emitidas") || "[]");
     const nf = nfs.find(n => n.id === notaId);
     if (!nf) return;
 
@@ -6069,7 +6071,7 @@ const app = {
       if (this.state.token && !this.state.token.startsWith("mock_")) {
         fila = await this.requisitarAPI("/whatsapp/fila");
       } else {
-        fila = JSON.parse(localStorage.getItem("belklock_whatsapp_mock") || "[]");
+        fila = JSON.parse(localStorage.getItem("conectajoias_whatsapp_mock") || "[]");
       }
 
       if (fila.length === 0) {
@@ -6118,11 +6120,11 @@ const app = {
       if (this.state.token && !this.state.token.startsWith("mock_")) {
         await this.requisitarAPI(`/whatsapp/enviar/${id}`, "POST");
       } else {
-        let mockFila = JSON.parse(localStorage.getItem("belklock_whatsapp_mock") || "[]");
+        let mockFila = JSON.parse(localStorage.getItem("conectajoias_whatsapp_mock") || "[]");
         const foundIdx = mockFila.findIndex(m => m.id === id);
         if (foundIdx !== -1) {
           mockFila[foundIdx].status = "ENVIADO";
-          localStorage.setItem("belklock_whatsapp_mock", JSON.stringify(mockFila));
+          localStorage.setItem("conectajoias_whatsapp_mock", JSON.stringify(mockFila));
         }
       }
       this.toast("Mensagem marcada como disparada!", "success");
@@ -6141,7 +6143,7 @@ const app = {
       if (this.state.token && !this.state.token.startsWith("mock_")) {
         lista = await this.requisitarAPI("/treinamentos");
       } else {
-        lista = JSON.parse(localStorage.getItem("belklock_treinamentos_mock") || "[]");
+        lista = JSON.parse(localStorage.getItem("conectajoias_treinamentos_mock") || "[]");
       }
 
       if (lista.length === 0) {
@@ -6180,9 +6182,9 @@ const app = {
       if (this.state.token && !this.state.token.startsWith("mock_")) {
         await this.requisitarAPI("/treinamentos", "POST", { titulo, descricao, tipo, url });
       } else {
-        let mockList = JSON.parse(localStorage.getItem("belklock_treinamentos_mock") || "[]");
+        let mockList = JSON.parse(localStorage.getItem("conectajoias_treinamentos_mock") || "[]");
         mockList.push({ id: `t-${Date.now()}`, titulo, descricao, tipo, url });
-        localStorage.setItem("belklock_treinamentos_mock", JSON.stringify(mockList));
+        localStorage.setItem("conectajoias_treinamentos_mock", JSON.stringify(mockList));
       }
 
       this.toast("Treinamento cadastrado com sucesso!", "success");
@@ -6202,9 +6204,9 @@ const app = {
       if (this.state.token && !this.state.token.startsWith("mock_")) {
         await this.requisitarAPI(`/treinamentos/${id}`, "DELETE");
       } else {
-        let mockList = JSON.parse(localStorage.getItem("belklock_treinamentos_mock") || "[]");
+        let mockList = JSON.parse(localStorage.getItem("conectajoias_treinamentos_mock") || "[]");
         mockList = mockList.filter(t => t.id !== id);
-        localStorage.setItem("belklock_treinamentos_mock", JSON.stringify(mockList));
+        localStorage.setItem("conectajoias_treinamentos_mock", JSON.stringify(mockList));
       }
       this.toast("Conteúdo removido!", "success");
       this.carregarTreinamentosAdmin();
@@ -6236,7 +6238,7 @@ const app = {
           `;
         } else {
           containerRespostas.innerHTML = `
-            <p style="margin-bottom: 0.5rem;"><strong>Quem Indicou:</strong> BelKlock Principal</p>
+            <p style="margin-bottom: 0.5rem;"><strong>Quem Indicou:</strong> Conecta Joias Principal</p>
             <p style="margin-bottom: 0.5rem;"><strong>Como Conheceu a Marca:</strong> Indicação Direta</p>
             <p style="margin-bottom: 0.5rem;"><strong>Experiência com Vendas:</strong> Experiente (Vende cosméticos)</p>
             <p style="margin-bottom: 0.5rem;"><strong>Comentários:</strong> Deseja focar em brincos e colares cravejados.</p>
@@ -6299,7 +6301,7 @@ const app = {
         termos = await this.requisitarAPI("/termos");
         termos = termos.filter(t => t.usuarioId === revId);
       } else {
-        termos = JSON.parse(localStorage.getItem("belklock_termos_mock") || "[]");
+        termos = JSON.parse(localStorage.getItem("conectajoias_termos_mock") || "[]");
         termos = termos.filter(t => t.usuarioId === revId);
       }
 
@@ -6365,7 +6367,7 @@ const app = {
           prazoDevolucao: prazo || null
         });
       } else {
-        let mockTermos = JSON.parse(localStorage.getItem("belklock_termos_mock") || "[]");
+        let mockTermos = JSON.parse(localStorage.getItem("conectajoias_termos_mock") || "[]");
         mockTermos.push({
           id: `termo-${Date.now()}`,
           usuarioId: revId,
@@ -6375,7 +6377,7 @@ const app = {
           createdAt: new Date().toISOString(),
           prazoDevolucao: prazo ? new Date(prazo).toISOString() : null
         });
-        localStorage.setItem("belklock_termos_mock", JSON.stringify(mockTermos));
+        localStorage.setItem("conectajoias_termos_mock", JSON.stringify(mockTermos));
       }
 
       this.toast("Termo de consignação gerado com sucesso!", "success");
@@ -6392,7 +6394,7 @@ const app = {
     if (this.state.token && !this.state.token.startsWith("mock_")) {
       termos = await this.requisitarAPI("/termos");
     } else {
-      termos = JSON.parse(localStorage.getItem("belklock_termos_mock") || "[]");
+      termos = JSON.parse(localStorage.getItem("conectajoias_termos_mock") || "[]");
     }
 
     const t = termos.find(item => item.id === termoId);
@@ -6430,16 +6432,16 @@ const app = {
         await this.requisitarAPI(`/revendedoras/${revId}/reiniciar-comissoes`, "POST");
       } else {
         const rev = this.state.revendedoras.find(r => r.id === revId);
-        let mockFila = JSON.parse(localStorage.getItem("belklock_whatsapp_mock") || "[]");
+        let mockFila = JSON.parse(localStorage.getItem("conectajoias_whatsapp_mock") || "[]");
         mockFila.push({
           id: `w-${Date.now()}`,
           numero: rev.whatsapp || "000000000",
-          mensagem: `Olá ${rev.nome}! O ciclo de metas e comissões da BelKlock Semijoias foi reiniciado hoje. Suas vendas do período foram liquidadas e você já pode cadastrar novos clientes e vendas. Boa sorte! 💼💎`,
+          mensagem: `Olá ${rev.nome}! O ciclo de metas e comissões da Conecta Joias foi reiniciado hoje. Suas vendas do período foram liquidadas e você já pode cadastrar novos clientes e vendas. Boa sorte! 💼💎`,
           tipo: "REINICIO_COMISSAO",
           status: "PENDENTE",
           createdAt: new Date().toISOString()
         });
-        localStorage.setItem("belklock_whatsapp_mock", JSON.stringify(mockFila));
+        localStorage.setItem("conectajoias_whatsapp_mock", JSON.stringify(mockFila));
       }
       this.toast("Ciclo de comissões reiniciado e WhatsApp agendado!", "success");
     } catch (e) {
@@ -6563,7 +6565,7 @@ const app = {
           headers: {
             "Content-Type": "application/json",
             "Authorization": `Bearer ${this.state.token}`,
-            "x-loja-id": localStorage.getItem("belklock_loja_id") || "default-loja"
+            "x-loja-id": localStorage.getItem("conectajoias_loja_id") || "default-loja"
           },
           body: JSON.stringify(body)
         });

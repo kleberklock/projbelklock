@@ -17,7 +17,7 @@ async function main() {
     loja = await prisma.loja.create({
       data: {
         id: "default-loja",
-        nome: "BelKlock Semijoias",
+        nome: "Conecta Joias",
         cnpj: "12.345.678/0001-90"
       }
     });
@@ -61,9 +61,9 @@ async function main() {
   }
 
   // 2.5 Criar ou Atualizar Administrador Principal (Manager)
-  const emailAdmin = "admin@belklock.com";
+  const emailAdmin = "admin@conectajoias.com";
   const pinAdmin = "0002";
-  const senhaPadrao = "belklock";
+  const senhaPadrao = "conectajoias";
   const senhaHash = await bcrypt.hash(senhaPadrao, 10);
 
   const adminExiste = await prisma.usuario.findUnique({
@@ -85,7 +85,7 @@ async function main() {
   } else {
     adminUser = await prisma.usuario.create({
       data: {
-        nome: "Bel Klock Admin",
+        nome: "Conecta Joias Admin",
         email: emailAdmin,
         pin: pinAdmin,
         senhaHash: senhaHash,
@@ -101,7 +101,7 @@ async function main() {
   // 3. Criar ou Atualizar Revendedora Gabriela Santos
   const emailGabriela = "gabriela@teste.com";
   const pinGabriela = "2120";
-  const senhaHashGabi = await bcrypt.hash("belklock", 10);
+  const senhaHashGabi = await bcrypt.hash("conectajoias", 10);
 
   const gabiExiste = await prisma.usuario.findUnique({
     where: { email: emailGabriela }
@@ -204,14 +204,14 @@ async function main() {
           lojaId: "default-loja",
           numero: "(11) 98765-4321",
           tipo: "BOAS_VINDAS",
-          mensagem: "Olá Gabriela Santos, seja muito bem-vinda à BelKlock Semijoias! Seu PIN de acesso ao painel é 2120.",
+          mensagem: "Olá Gabriela Santos, seja muito bem-vinda à Conecta Joias! Seu PIN de acesso ao painel é 2120.",
           status: "PENDENTE"
         },
         {
           lojaId: "default-loja",
           numero: "(11) 98765-4321",
           tipo: "ACERTO",
-          mensagem: "Seu acerto de contas BelKlock foi homologado. Faturamento bruto: R$ 1.200,00. Comissão: R$ 360,00. Acesse seu painel para ver o recibo.",
+          mensagem: "Seu acerto de contas Conecta Joias foi homologado. Faturamento bruto: R$ 1.200,00. Comissão: R$ 360,00. Acesse seu painel para ver o recibo.",
           status: "PENDENTE"
         }
       ]

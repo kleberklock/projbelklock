@@ -1,5 +1,5 @@
 @echo off
-title BelKlock - Limpeza do Banco de Dados
+title Conecta Joias - Limpeza do Banco de Dados
 echo ==========================================================
 echo           LIMPEZA COMPLETA DO BANCO DE DADOS
 echo ==========================================================
@@ -11,7 +11,7 @@ echo - Produtos
 echo - Historicos de Acertos
 echo - Revendedoras Cadastradas
 echo.
-echo Apenas a conta Administradora principal (admin@belklock.com / 0001) sera mantida.
+echo Apenas a conta Administradora (admin@conectajoias.com / PIN: 0002) e o SuperAdmin serao mantidos.
 echo.
 set /p confirm="Digite 'SIM' e pressione Enter para confirmar a exclusao: "
 

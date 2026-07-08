@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Conecta Joias SaaS - Painel de Controle Global</title>
+  
+  <!-- Script de Segurança Preventivo Inline -->
+  <script>
+    (function() {
+      const token = localStorage.getItem("conectajoias_token");
+      const usuarioJson = localStorage.getItem("conectajoias_usuario");
+      if (!token || !usuarioJson) {
+        window.location.href = "index.html";
+        return;
+      }
+      try {
+        const usuario = JSON.parse(usuarioJson);
+        if (usuario.role !== "SuperAdmin") {
+          // Se não for SuperAdmin, expulsa
+          window.location.href = "index.html";
+        }
+      } catch (e) {
+        localStorage.clear();
+        window.location.href = "index.html";
+      }
+    })();
+  </script>
+
+  <!-- PWA e Configurações Mobile -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#d4af37">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="apple-touch-icon" href="assets/logo.svg">
+
+  <!-- SEO Meta Tags -->
+  <meta name="description" content="Painel de controle global do administrador do sistema SaaS Conecta Joias.">
+  <meta name="author" content="Conecta Joias SaaS">
+  
+  <!-- CSS Principal -->
+  <link rel="stylesheet" href="style.css">
+  
+  <!-- FontAwesome para Ícones de Alta Qualidade -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- Biblioteca Chart.js para Gráficos de BI -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    /* Estilos e Ajustes Adicionais Exclusivos do SaaS Admin */
+    :root {
+      --saas-primary: #d4af37;
+      --saas-danger: #ef5350;
+      --saas-success: #66bb6a;
+      --saas-warning: #ffb74d;
+      --saas-info: #29b6f6;
+    }
+    
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.25rem 0.6rem;
+      border-radius: 50px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    
+    .status-badge.active {
+      background: rgba(102, 187, 106, 0.12);
+      color: var(--saas-success);
+      border: 1px solid rgba(102, 187, 106, 0.3);
+    }
+    
+    .status-badge.suspended {
+      background: rgba(239, 83, 80, 0.12);
+      color: var(--saas-danger);
+      border: 1px solid rgba(239, 83, 80, 0.3);
+    }
+    
+    .status-badge.pending {
+      background: rgba(255, 183, 77, 0.12);
+      color: var(--saas-warning);
+      border: 1px solid rgba(255, 183, 77, 0.3);
+    }
+
+    .log-badge {
+      display: inline-block;
+      padding: 0.15rem 0.45rem;
+      border-radius: 4px;
+      font-size: 0.7rem;
+      font-family: monospace;
+      font-weight: bold;
+    }
+    
+    .log-badge.info { background: rgba(41, 182, 246, 0.15); color: var(--saas-info); }
+    .log-badge.success { background: rgba(102, 187, 106, 0.15); color: var(--saas-success); }
+    .log-badge.warning { background: rgba(255, 183, 77, 0.15); color: var(--saas-warning); }
+    .log-badge.danger { background: rgba(239, 83, 80, 0.15); color: var(--saas-danger); }
+
+    .card-security-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.8rem 0;
+      border-bottom: 1px solid var(--border-color);
+    }
+    .card-security-item:last-child {
+      border-bottom: none;
+    }
+    .card-security-item .security-info h4 {
+      margin: 0;
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: #fff;
+    }
+    .card-security-item .security-info p {
+      margin: 0.2rem 0 0 0;
+      font-size: 0.78rem;
+      color: var(--text-secondary);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Container Principal do App SPA -->
+  <div class="app-container" id="app-main-container" style="display: flex;">
+    
+    <!-- ==========================================
+         SIDEBAR LATERAL (NAVEGAÇÃO SPA)
+         ========================================== -->
+    <aside class="sidebar">
+      <div class="brand">
+        <!-- Logo SVG Premium da marca Conecta Joias -->
+        <img src="assets/logo.svg" alt="Conecta Joias SaaS" id="logo-brand">
+        <span class="brand-text" style="color: var(--gold-primary); font-weight: 700; margin-left: 0.5rem; font-size: 0.85rem; letter-spacing: 1px;">SaaS PORTAL</span>
+      </div>
+      
+      <nav class="nav-container">
+        <ul class="nav-menu">
+          <li class="nav-item active" data-target="saas-dashboard">
+            <button id="btn-tab-saas-dashboard"><i class="fa-solid fa-chart-pie"></i>Painel Geral</button>
+          </li>
+          <li class="nav-item" data-target="saas-lojas">
+            <button id="btn-tab-saas-lojas"><i class="fa-solid fa-store"></i>Lojas Ativas</button>
+          </li>
+          <li class="nav-item" data-target="saas-logs">
+            <button id="btn-tab-saas-logs"><i class="fa-solid fa-shield-halved"></i>Logs & Auditoria</button>
+          </li>
+          <li class="nav-item" data-target="saas-configuracoes">
+            <button id="btn-tab-saas-configuracoes"><i class="fa-solid fa-gears"></i>Configurações</button>
+          </li>
+        </ul>
+      </nav>
+      
+      <div class="sidebar-footer">
+        <div id="sidebar-user-info" class="sidebar-user-info" style="display: flex; gap: 0.8rem; align-items: center; margin-bottom: 1rem; border-top: 1px solid var(--border-color); padding-top: 1rem;">
+          <div class="user-avatar" id="sidebar-user-avatar" style="background: var(--gold-gradient); color: #0a0a0a; font-weight: 700; width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">SA</div>
+          <div class="user-details">
+            <span class="user-name" id="sidebar-user-name" style="font-size: 0.85rem; font-weight: 600; color: #fff; display: block;">Super Admin</span>
+            <span class="user-role" id="sidebar-user-role" style="font-size: 0.72rem; color: var(--gold-primary); display: block;">Administrador Global</span>
+          </div>
+        </div>
+        <button id="btn-logout" class="btn-danger" style="width: 100%; justify-content: center; margin-bottom: 1rem; padding: 0.55rem;"><i class="fa-solid fa-right-from-bracket"></i> Sair do Painel</button>
+        <p id="sidebar-footer-version">Conecta Joias SaaS Portal v1.0</p>
+        <p id="sidebar-footer-copy">&copy; 2026 Conecta Joias SaaS</p>
+      </div>
+    </aside>
+
+    <!-- ==========================================
+         ÁREA DE CONTEÚDO PRINCIPAL (SPA)
+         ========================================== -->
+    <main class="main-content">
+      
+      <!-- ==========================================
+           ABA: PAINEL GERAL (DASHBOARD)
+           ========================================== -->
+      <section id="saas-dashboard" class="app-section active">
+        <div class="section-header">
+          <div class="section-title">
+            <h1>Visão Geral da Plataforma</h1>
+            <p>Monitore a saúde financeira, o engajamento e a segurança do ecossistema SaaS.</p>
+          </div>
+          <div class="header-actions">
+            <div id="connection-badge" style="background: rgba(102, 187, 106, 0.12); color: var(--saas-success); border: 1px solid rgba(102, 187, 106, 0.3); padding: 0.4rem 0.8rem; border-radius: 6px; font-size: 0.8rem; font-weight: 600; display: flex; align-items: center; gap: 0.5rem;">
+              <span style="width: 8px; height: 8px; border-radius: 50%; background: var(--saas-success); display: inline-block; animation: pulse 1.8s infinite;"></span>
+              Conexão Segura Ativa
+            </div>
+          </div>
+        </div>
+
+        <!-- Indicadores SaaS Globais -->
+        <div class="metrics-grid">
+          <div class="metric-card">
+            <div class="metric-icon" style="color: var(--gold-primary);"><i class="fa-solid fa-store"></i></div>
+            <div class="metric-info">
+              <h3>Lojas Registradas</h3>
+              <div class="metric-value" id="saas-val-total-lojas">0 lojas</div>
+              <div style="font-size: 0.72rem; color: var(--text-secondary); margin-top: 0.2rem;"><span id="saas-val-total-lojas-ativas" style="color: var(--saas-success); font-weight: bold;">0</span> ativas na plataforma</div>
+            </div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-icon" style="color: var(--saas-info);"><i class="fa-solid fa-users"></i></div>
+            <div class="metric-info">
+              <h3>Usuários Totais</h3>
+              <div class="metric-value" id="saas-val-total-usuarios">0 contas</div>
+              <div style="font-size: 0.72rem; color: var(--text-secondary); margin-top: 0.2rem;"><span id="saas-val-total-consultoras" style="color: var(--gold-primary); font-weight: bold;">0</span> consultoras de vendas</div>
+            </div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-icon" style="color: var(--saas-success);"><i class="fa-solid fa-coins"></i></div>
+            <div class="metric-info">
+              <h3>Faturamento Global</h3>
+              <div class="metric-value" id="saas-val-faturamento-global" style="color: var(--saas-success);">R$ 0,00</div>
+              <div style="font-size: 0.72rem; color: var(--text-secondary); margin-top: 0.2rem;">Soma transacionada de todas as lojas</div>
+            </div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-icon" style="color: var(--saas-warning);"><i class="fa-solid fa-shield-check"></i></div>
+            <div class="metric-info">
+              <h3>Logs de Auditoria</h3>
+              <div class="metric-value" id="saas-val-total-logs">0 logs</div>
+              <div style="font-size: 0.72rem; color: var(--text-secondary); margin-top: 0.2rem;">Último evento hoje às <span id="saas-val-ultimo-log-hora">--:--</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Painéis de Gráficos Analíticos SaaS (Chart.js) -->
+        <div class="dashboard-grid" style="margin-top: 2rem;">
+          <!-- Crescimento de Lojas -->
+          <div class="dashboard-panel">
+            <div class="panel-header">
+              <h2><i class="fa-solid fa-chart-line"></i> Aquisição de Lojas (Últimos 6 meses)</h2>
+            </div>
+            <div style="position: relative; width: 100%; height: 260px; margin-top: 1rem;">
+              <canvas id="saas-chart-crescimento-lojas"></canvas>
+            </div>
+          </div>
+
+          <!-- Volume Financeiro por Marca -->
+          <div class="dashboard-panel">
+            <div class="panel-header">
+              <h2><i class="fa-solid fa-chart-column"></i> Transacionado por Loja (Top Marcas)</h2>
+            </div>
+            <div style="position: relative; width: 100%; height: 260px; margin-top: 1rem;">
+              <canvas id="saas-chart-faturamento-lojas"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tabela: Lojas de Maior Destaque -->
+        <div class="dashboard-panel" style="margin-top: 2rem; width: 100%;">
+          <div class="panel-header">
+            <h2><i class="fa-solid fa-star"></i> Lojas de Destaque na Plataforma</h2>
+            <button class="btn-outline-gold" onclick="saasApp.mudarAba('saas-lojas')"><i class="fa-solid fa-list"></i> Ver Todas as Lojas</button>
+          </div>
+          <div class="table-responsive" style="margin-top: 1rem;">
+            <table class="premium-table" id="saas-table-destaque-lojas">
+              <thead>
+                <tr>
+                  <th>Marca/Loja</th>
+                  <th>ID do Sistema</th>
+                  <th>Consultoras</th>
+                  <th>Estoque Total</th>
+                  <th>Faturamento Acumulado</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td colspan="6" style="text-align: center; color: var(--text-secondary);">Carregando dados das lojas de destaque...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==========================================
+           ABA: LOJAS ATIVAS (DETALHES / STATUS)
+           ========================================== -->
+      <section id="saas-lojas" class="app-section">
+        <div class="section-header">
+          <div class="section-title">
+            <h2>Gerenciamento de Lojas (Tenants)</h2>
+            <p>Controle o acesso, altere o status das assinaturas e audite as métricas de cada marca parceira.</p>
+          </div>
+        </div>
+
+        <!-- Filtros e Busca -->
+        <div class="dashboard-panel" style="margin-bottom: 2rem;">
+          <div class="form-grid" style="grid-template-columns: 2fr 1fr 1fr; gap: 1.2rem; margin-bottom: 0; align-items: flex-end;">
+            <div class="form-group" style="margin-bottom: 0;">
+              <label>Buscar Marca/Loja</label>
+              <input type="text" id="lojas-busca-filtro" class="form-control" placeholder="Buscar por nome da marca ou ID...">
+            </div>
+            <div class="form-group" style="margin-bottom: 0;">
+              <label>Status de Assinatura</label>
+              <select id="lojas-status-filtro" class="form-control">
+                <option value="">Todos os Status</option>
+                <option value="ACTIVE">Ativas</option>
+                <option value="SUSPENDED">Suspensas</option>
+                <option value="PENDING">Pendentes</option>
+              </select>
+            </div>
+            <div class="form-group" style="margin-bottom: 0;">
+              <button class="btn-gold" id="btn-filtro-lojas" style="width: 100%; height: 44px; display: flex; align-items: center; justify-content: center; gap: 0.5rem;"><i class="fa-solid fa-filter"></i> Aplicar Filtros</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tabela Geral de Lojas -->
+        <div class="dashboard-panel">
+          <div class="table-responsive">
+            <table class="premium-table" id="saas-table-todas-lojas">
+              <thead>
+                <tr>
+                  <th>Loja / Marca</th>
+                  <th>ID / Tenant</th>
+                  <th>Cadastrada em</th>
+                  <th>Consultoras</th>
+                  <th>Faturamento Total</th>
+                  <th>Status</th>
+                  <th style="text-align: center;">Ações de Controle</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td colspan="7" style="text-align: center; color: var(--text-secondary);">Carregando lojas cadastradas...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==========================================
+           ABA: LOGS E AUDITORIA (SEGURANÇA GLOBAL)
+           ========================================== -->
+      <section id="saas-logs" class="app-section">
+        <div class="section-header">
+          <div class="section-title">
+            <h2>Logs de Auditoria e Segurança Geral</h2>
+            <p>Histórico em tempo real de todas as ações de usuários, tentativas de login e modificações no banco de dados.</p>
+          </div>
+          <div class="header-actions">
+            <button class="btn-danger-outline" id="btn-limpar-logs-visuais" style="display: flex; align-items: center; gap: 0.5rem;"><i class="fa-solid fa-trash-can"></i> Limpar Histórico</button>
+          </div>
+        </div>
+
+        <!-- Filtros de Logs -->
+        <div class="dashboard-panel" style="margin-bottom: 2rem;">
+          <div class="form-grid" style="grid-template-columns: 2fr 1fr 1fr; gap: 1.2rem; margin-bottom: 0; align-items: flex-end;">
+            <div class="form-group" style="margin-bottom: 0;">
+              <label>Filtrar por Usuário ou Ação</label>
+              <input type="text" id="logs-busca-filtro" class="form-control" placeholder="Buscar por usuário, ação (ex: LOGIN) ou detalhes...">
+            </div>
+            <div class="form-group" style="margin-bottom: 0;">
+              <label>Grau de Risco</label>
+              <select id="logs-risco-filtro" class="form-control">
+                <option value="">Qualquer Grau de Risco</option>
+                <option value="LOW">Baixo (Ações Normais)</option>
+                <option value="MEDIUM">Médio (Cadastros/Edições)</option>
+                <option value="HIGH">Alto (Exclusões/Erros)</option>
+              </select>
+            </div>
+            <div class="form-group" style="margin-bottom: 0;">
+              <button class="btn-gold" id="btn-filtro-logs" style="width: 100%; height: 44px; display: flex; align-items: center; justify-content: center; gap: 0.5rem;"><i class="fa-solid fa-filter"></i> Filtrar Eventos</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tabela de Logs de Auditoria -->
+        <div class="dashboard-panel">
+          <div class="table-responsive">
+            <table class="premium-table" id="saas-table-logs-auditoria">
+              <thead>
+                <tr>
+                  <th>Data e Hora</th>
+                  <th>Usuário</th>
+                  <th>Ação Realizada</th>
+                  <th>Detalhes do Evento</th>
+                  <th>Nível</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td colspan="5" style="text-align: center; color: var(--text-secondary);">Carregando logs de auditoria...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==========================================
+           ABA: CONFIGURAÇÕES DO SAAS (PAINEL DE LUXO)
+           ========================================== -->
+      <section id="saas-configuracoes" class="app-section">
+        <div class="section-header">
+          <div class="section-title">
+            <h2>Configurações do Sistema & Segurança</h2>
+            <p>Parâmetros globais da plataforma SaaS, monitoramento de servidores e controle de segurança criptográfica.</p>
+          </div>
+        </div>
+
+        <div class="dashboard-grid">
+          <!-- Monitoramento da API e Banco de Dados -->
+          <div class="dashboard-panel" style="display: flex; flex-direction: column;">
+            <div class="panel-header">
+              <h2><i class="fa-solid fa-server"></i> Status de Segurança do Servidor</h2>
+            </div>
+            <div style="margin-top: 1.2rem; flex: 1;">
+              <div class="card-security-item">
+                <div class="security-info">
+                  <h4>Status da API Central</h4>
+                  <p>URL: http://localhost:5000/api</p>
+                </div>
+                <span class="status-badge active"><i class="fa-solid fa-circle-check"></i> ONLINE</span>
+              </div>
+              <div class="card-security-item">
+                <div class="security-info">
+                  <h4>Banco de Dados Integrado</h4>
+                  <p>Provedor: SQLite (dev.db)</p>
+                </div>
+                <span class="status-badge active"><i class="fa-solid fa-circle-check"></i> PROTEGIDO</span>
+              </div>
+              <div class="card-security-item">
+                <div class="security-info">
+                  <h4>Criptografia JWT</h4>
+                  <p>Algoritmo de Assinatura: HMAC-SHA256 (256 bits)</p>
+                </div>
+                <span class="status-badge active" style="background: rgba(41, 182, 246, 0.12); color: var(--saas-info); border: 1px solid rgba(41, 182, 246, 0.3);"><i class="fa-solid fa-lock"></i> ATIVO</span>
+              </div>
+              <div class="card-security-item">
+                <div class="security-info">
+                  <h4>Azure Blob Storage</h4>
+                  <p>Armazenamento redundante de fotos e documentos</p>
+                </div>
+                <span class="status-badge pending"><i class="fa-solid fa-clock"></i> AGUARDANDO CONFIG</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Controle de Backup e Manutenção -->
+          <div class="dashboard-panel" style="display: flex; flex-direction: column;">
+            <div class="panel-header">
+              <h2><i class="fa-solid fa-database"></i> Backup & Integridade de Dados</h2>
+            </div>
+            <div style="margin-top: 1.2rem; display: flex; flex-direction: column; gap: 1.2rem; flex: 1; justify-content: center;">
+              <p style="color: var(--text-secondary); font-size: 0.85rem; line-height: 1.6; margin: 0;">
+                O sistema realiza backups automáticos da base de dados a cada 24 horas. Você pode forçar um backup instantâneo ou verificar a integridade estrutural das tabelas.
+              </p>
+              
+              <div style="display: flex; gap: 1rem;">
+                <button class="btn-gold" id="btn-backup-agora" style="flex: 1; justify-content: center; height: 44px;"><i class="fa-solid fa-cloud-arrow-up"></i> Forçar Backup</button>
+                <button class="btn-outline-gold" id="btn-testar-db" style="flex: 1; justify-content: center; height: 44px;"><i class="fa-solid fa-stethoscope"></i> Testar Conexão</button>
+              </div>
+              
+              <div style="border-top: 1px solid var(--border-color); padding-top: 1rem; font-size: 0.78rem; color: var(--text-muted); display: flex; justify-content: space-between;">
+                <span>Último backup: Hoje, às 03:00 AM</span>
+                <span>Tamanho do DB: ~221 KB</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Gerenciamento de Planos e Preços -->
+        <div class="dashboard-panel" style="margin-top: 2rem; width: 100%;">
+          <div class="panel-header">
+            <h2><i class="fa-solid fa-layer-group"></i> Planos Ativos e Limites do SaaS</h2>
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; margin-top: 1.5rem;">
+            <!-- Plano Bronze -->
+            <div style="background: rgba(255, 255, 255, 0.01); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 1.5rem; display: flex; flex-direction: column;">
+              <h4 style="color: #cd7f32; font-size: 1.1rem; font-weight: 600; margin-bottom: 0.5rem;"><i class="fa-solid fa-award"></i> Plano Bronze</h4>
+              <p style="color: var(--text-secondary); font-size: 0.78rem; margin: 0 0 1.2rem 0; flex: 1;">Indicado para novas revendedoras independentes de pequeno porte.</p>
+              <div style="font-size: 1.6rem; font-weight: 700; color: #fff; margin-bottom: 1rem;">R$ 99,90 <span style="font-size: 0.8rem; font-weight: normal; color: var(--text-muted);">/ mês</span></div>
+              <ul style="color: var(--text-secondary); font-size: 0.8rem; padding-left: 1.2rem; margin: 0 0 1.5rem 0; display: flex; flex-direction: column; gap: 0.5rem;">
+                <li>Até 5 consultoras ativas</li>
+                <li>Estoque central limitado a 300 peças</li>
+                <li>WhatsApp com envio de fila manual</li>
+              </ul>
+              <button class="btn-outline-gold" style="width: 100%; justify-content: center; height: 38px; font-size: 0.8rem;">Alterar Regras</button>
+            </div>
+
+            <!-- Plano Gold -->
+            <div style="background: rgba(212, 175, 55, 0.03); border: 1px solid rgba(212, 175, 55, 0.35); border-radius: var(--radius-md); padding: 1.5rem; display: flex; flex-direction: column; position: relative; box-shadow: 0 4px 15px rgba(212, 175, 55, 0.05);">
+              <span style="position: absolute; top: -10px; right: 15px; background: var(--gold-gradient); color: #0a0a0a; font-size: 0.65rem; font-weight: bold; padding: 0.2rem 0.6rem; border-radius: 20px; text-transform: uppercase;">MAIS POPULAR</span>
+              <h4 style="color: var(--gold-primary); font-size: 1.1rem; font-weight: 600; margin-bottom: 0.5rem;"><i class="fa-solid fa-award"></i> Plano Gold</h4>
+              <p style="color: var(--text-secondary); font-size: 0.78rem; margin: 0 0 1.2rem 0; flex: 1;">Indicado para marcas em expansão de semijoias com equipe ativa.</p>
+              <div style="font-size: 1.6rem; font-weight: 700; color: #fff; margin-bottom: 1rem;">R$ 199,90 <span style="font-size: 0.8rem; font-weight: normal; color: var(--text-muted);">/ mês</span></div>
+              <ul style="color: var(--text-secondary); font-size: 0.8rem; padding-left: 1.2rem; margin: 0 0 1.5rem 0; display: flex; flex-direction: column; gap: 0.5rem;">
+                <li>Até 25 consultoras ativas</li>
+                <li>Estoque central limitado a 1.500 peças</li>
+                <li>WhatsApp com envio automático integrado</li>
+                <li>Módulo financeiro DRE completo</li>
+              </ul>
+              <button class="btn-gold" style="width: 100%; justify-content: center; height: 38px; font-size: 0.8rem;">Alterar Regras</button>
+            </div>
+
+            <!-- Plano Platinum -->
+            <div style="background: rgba(255, 255, 255, 0.01); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 1.5rem; display: flex; flex-direction: column;">
+              <h4 style="color: #e5e4e2; font-size: 1.1rem; font-weight: 600; margin-bottom: 0.5rem;"><i class="fa-solid fa-award"></i> Plano Platinum</h4>
+              <p style="color: var(--text-secondary); font-size: 0.78rem; margin: 0 0 1.2rem 0; flex: 1;">Indicado para grandes franquias ou grandes distribuidores.</p>
+              <div style="font-size: 1.6rem; font-weight: 700; color: #fff; margin-bottom: 1rem;">R$ 399,90 <span style="font-size: 0.8rem; font-weight: normal; color: var(--text-muted);">/ mês</span></div>
+              <ul style="color: var(--text-secondary); font-size: 0.8rem; padding-left: 1.2rem; margin: 0 0 1.5rem 0; display: flex; flex-direction: column; gap: 0.5rem;">
+                <li>Consultoras ilimitadas</li>
+                <li>Estoque central ilimitado</li>
+                <li>API Whatsapp oficial integrada</li>
+                <li>Dashboard de B.I. dedicado</li>
+                <li>Suporte prioritário 24/7</li>
+              </ul>
+              <button class="btn-outline-gold" style="width: 100%; justify-content: center; height: 38px; font-size: 0.8rem;">Alterar Regras</button>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Container de Toast Premium -->
+  <div id="toast-container" class="toast-container" style="position: fixed; bottom: 2rem; right: 2rem; z-index: 9999; display: flex; flex-direction: column; gap: 0.8rem;"></div>
+
+  <!-- Modal de Detalhes da Loja (Simulado) -->
+  <div class="modal" id="saas-modal-detalhes-loja" style="display: none; align-items: center; justify-content: center; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.8); z-index: 999; backdrop-filter: blur(8px);">
+    <div class="modal-content" style="background: var(--bg-modal); border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 2.2rem; width: 90%; max-width: 600px; box-shadow: var(--shadow-premium); position: relative; animation: modalFadeIn 0.35s ease;">
+      <span class="close-modal" id="btn-close-modal-loja" style="position: absolute; top: 1.2rem; right: 1.5rem; font-size: 1.5rem; color: var(--text-secondary); cursor: pointer; transition: color 0.25s;">&times;</span>
+      
+      <div style="display: flex; align-items: center; gap: 1.2rem; margin-bottom: 1.8rem; border-bottom: 1px solid var(--border-color); padding-bottom: 1.2rem;">
+        <div class="user-avatar" id="modal-loja-avatar" style="background: var(--gold-gradient); color: #0a0a0a; font-weight: 700; width: 54px; height: 54px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.3rem;">B</div>
+        <div>
+          <h3 id="modal-loja-nome" style="font-family: 'Montserrat', sans-serif; font-size: 1.25rem; font-weight: 700; color: #fff; margin: 0;">Nome da Loja</h3>
+          <p id="modal-loja-id" style="color: var(--gold-primary); font-size: 0.8rem; font-family: monospace; margin: 0.2rem 0 0 0;">ID: default-loja</p>
+        </div>
+      </div>
+      
+      <div class="form-grid" style="grid-template-columns: 1fr 1fr; gap: 1.2rem;">
+        <div>
+          <span style="color: var(--text-secondary); font-size: 0.78rem; display: block; margin-bottom: 0.2rem;">Cadastrada em</span>
+          <strong id="modal-loja-data" style="color: #fff; font-size: 0.9rem;">--/--/----</strong>
+        </div>
+        <div>
+          <span style="color: var(--text-secondary); font-size: 0.78rem; display: block; margin-bottom: 0.2rem;">Status da Assinatura</span>
+          <span id="modal-loja-status" class="status-badge active"><i class="fa-solid fa-circle-check"></i> Ativa</span>
+        </div>
+        <div>
+          <span style="color: var(--text-secondary); font-size: 0.78rem; display: block; margin-bottom: 0.2rem;">Faturamento Acumulado</span>
+          <strong id="modal-loja-faturamento" style="color: var(--saas-success); font-size: 1.05rem;">R$ 0,00</strong>
+        </div>
+        <div>
+          <span style="color: var(--text-secondary); font-size: 0.78rem; display: block; margin-bottom: 0.2rem;">Total de Consultoras</span>
+          <strong id="modal-loja-consultoras" style="color: #fff; font-size: 0.9rem;">0 ativas</strong>
+        </div>
+        <div>
+          <span style="color: var(--text-secondary); font-size: 0.78rem; display: block; margin-bottom: 0.2rem;">Peças em Estoque</span>
+          <strong id="modal-loja-estoque" style="color: #fff; font-size: 0.9rem;">0 peças</strong>
+        </div>
+        <div>
+          <span style="color: var(--text-secondary); font-size: 0.78rem; display: block; margin-bottom: 0.2rem;">Tema Visual Definido</span>
+          <strong id="modal-loja-tema" style="color: #fff; font-size: 0.9rem;">ESCURO / LUXO</strong>
+        </div>
+      </div>
+
+      <div style="margin-top: 2rem; border-top: 1px solid var(--border-color); padding-top: 1.5rem; display: flex; justify-content: flex-end; gap: 1rem;">
+        <button class="btn-outline-gold" id="btn-modal-suspender-loja" style="border-color: var(--saas-danger); color: var(--saas-danger);"><i class="fa-solid fa-ban"></i> Suspender Loja</button>
+        <button class="btn-gold" id="btn-modal-fechar"><i class="fa-solid fa-check"></i> Fechar Detalhes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="saasadmin.js"></script>
+
+</body>
+</html>

@@ -112,13 +112,13 @@ const checkout = {
 
       // Preenche na tela
       document.getElementById("pay-valor").innerText = `R$ ${linkData.valor.toFixed(2)}`;
-      document.getElementById("pay-vendedora").innerText = linkData.usuario ? linkData.usuario.nome : "BelKlock";
+      document.getElementById("pay-vendedora").innerText = linkData.usuario ? linkData.usuario.nome : "Conecta Joias";
       document.getElementById("pay-cliente").innerText = linkData.cliente ? linkData.cliente.nome : "Cliente Consumidor";
 
       // QR Code PIX com valor dinâmico para simulação
       const qrImg = document.getElementById("pix-qr-img");
       if (qrImg) {
-        qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent('pix-belklock-val-' + linkData.valor + '-id-' + this.linkId)}`;
+        qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent('pix-conectajoias-val-' + linkData.valor + '-id-' + this.linkId)}`;
       }
 
       // Se já estiver PAGO, exibe tela de sucesso direto

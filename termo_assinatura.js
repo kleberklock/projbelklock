@@ -1,5 +1,5 @@
 /**
- * BelKlock Semijoias - Assinatura Eletrônica Script
+ * Conecta Joias - Assinatura Eletrônica Script
  */
 
 const API_BASE_URL = "http://localhost:5000/api";
@@ -94,7 +94,7 @@ const signApp = {
       const rect = this.canvas.getBoundingClientRect();
       this.canvas.width = rect.width;
       this.canvas.height = rect.height;
-      this.ctx.strokeStyle = "#d4af37"; // Dourado BelKlock
+      this.ctx.strokeStyle = "#d4af37"; // Dourado Conecta Joias
       this.ctx.lineWidth = 2.5;
       this.ctx.lineCap = "round";
     };

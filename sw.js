@@ -1,4 +1,4 @@
-const CACHE_NAME = "belklock-v1";
+const CACHE_NAME = "conectajoias-v1";
 const ASSETS = [
   "./",
   "./index.html",

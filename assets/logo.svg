@@ -67,7 +67,7 @@
        ========================================== -->
   <g transform="translate(135, 0)">
     <!-- Título Principal com fonte Playfair serifada em gradiente de ouro -->
-    <text x="0" y="62" font-family="'Playfair Display', 'Didot', 'Georgia', serif" font-size="38" font-weight="700" fill="url(#gold-gradient)" letter-spacing="4" filter="url(#gold-glow)">BELKLOCK</text>
+    <text x="0" y="62" font-family="'Playfair Display', 'Didot', 'Georgia', serif" font-size="28" font-weight="700" fill="url(#gold-gradient)" letter-spacing="2.5" filter="url(#gold-glow)">CONECTA JOIAS</text>
     <!-- Subtítulo Jakarta moderno em cinza elegante com espaçamento largo -->
     <text x="3" y="88" font-family="'Plus Jakarta Sans', 'Inter', 'Helvetica', sans-serif" font-size="13" font-weight="500" fill="#a0a0a0" letter-spacing="8">SEMIJOIAS DE LUXO</text>
   </g>

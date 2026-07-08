@@ -10,6 +10,56 @@ const onboarding = {
 
   init: function() {
     this.aplicarMascaras();
+    this.carregarConfiguracao();
+  },
+
+  carregarConfiguracao: async function() {
+    const params = new URLSearchParams(window.location.search);
+    const lojaId = params.get("loja") || "default-loja";
+    try {
+      const response = await fetch(`${API_BASE_URL}/config`, {
+        headers: { "x-loja-id": lojaId }
+      });
+      if (response.ok) {
+        const config = await response.json();
+        this.aplicarConfiguracaoLoja(config);
+      }
+    } catch (e) {
+      console.warn("Erro ao buscar configurações da loja para onboarding:", e);
+    }
+  },
+
+  aplicarConfiguracaoLoja: function(config) {
+    const titleEl = document.getElementById("onboarding-title");
+    const pageTitleEl = document.getElementById("onboarding-page-title");
+    const subtitleEl = document.getElementById("onboarding-subtitle");
+    const descTextEl = document.getElementById("onboarding-desc-text");
+    const whyTitleEl = document.getElementById("onboarding-why-title");
+    const labelComoConheceuEl = document.getElementById("label-como-conheceu");
+    const comentariosEl = document.getElementById("comentarios");
+    const welcomeTitleEl = document.getElementById("onboarding-welcome-title");
+    const logoImg = document.getElementById("onboarding-logo");
+
+    const nomeLoja = config.nomeEmpresa || "Conecta Joias";
+
+    if (titleEl) titleEl.innerText = nomeLoja;
+    if (pageTitleEl) pageTitleEl.innerText = `${nomeLoja} - Cadastro & Onboarding Premium`;
+    if (subtitleEl) subtitleEl.innerText = `Cadastre-se para se tornar uma Revendedora ${nomeLoja}`;
+    if (descTextEl) {
+      descTextEl.innerText = `A ${nomeLoja} oferece a você peças de altíssima qualidade, com banhos nobres de Ouro 18k e Ródio, design exclusivo e garantia estendida. Veja alguns de nossos produtos que fazem mais sucesso:`;
+    }
+    if (whyTitleEl) whyTitleEl.innerHTML = `<i class="fa-solid fa-gem"></i> Por que revender ${nomeLoja}?`;
+    if (labelComoConheceuEl) labelComoConheceuEl.innerText = `Como você conheceu a ${nomeLoja}? *`;
+    if (comentariosEl) comentariosEl.placeholder = `Fale um pouco sobre você ou o que você busca na ${nomeLoja}...`;
+    if (welcomeTitleEl) welcomeTitleEl.innerText = `Seja Bem-Vinda à Família ${nomeLoja}!`;
+
+    if (config.logoUrl && logoImg) {
+      logoImg.src = config.logoUrl;
+    }
+
+    if (config.corPrimaria) {
+      document.documentElement.style.setProperty('--gold-primary', config.corPrimaria);
+    }
   },
 
   aplicarMascaras: function() {

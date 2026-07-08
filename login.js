@@ -11,7 +11,7 @@ const loginApp = {
   obterLojaId: function() {
     const params = new URLSearchParams(window.location.search);
     let lojaId = params.get("loja") || params.get("lojaId");
-    if (!lojaId) lojaId = localStorage.getItem("belklock_loja_id");
+    if (!lojaId) lojaId = localStorage.getItem("conectajoias_loja_id");
     if (!lojaId) lojaId = "default-loja";
     return lojaId;
   },
@@ -19,8 +19,8 @@ const loginApp = {
   init: async function() {
     await this.carregarConfiguracoesLoja();
 
-    const token = localStorage.getItem("belklock_token");
-    const usuarioJson = localStorage.getItem("belklock_usuario");
+    const token = localStorage.getItem("conectajoias_token");
+    const usuarioJson = localStorage.getItem("conectajoias_usuario");
 
     if (token && usuarioJson) {
       try {
@@ -45,13 +45,13 @@ const loginApp = {
       if (response.ok) {
         const config = await response.json();
         this.aplicarConfiguracoes(config);
-        localStorage.setItem("belklock_nome_empresa", config.nomeEmpresa);
-        localStorage.setItem("belklock_logo_url", config.logoUrl || "");
-        localStorage.setItem("belklock_cor_primaria", config.corPrimaria);
-        localStorage.setItem("belklock_cor_secundaria", config.corSecundaria);
-        localStorage.setItem("belklock_bg_primary", config.bgPrimary);
-        localStorage.setItem("belklock_bg_card", config.bgCard);
-        localStorage.setItem("belklock_loja_id", config.lojaId);
+        localStorage.setItem("conectajoias_nome_empresa", config.nomeEmpresa);
+        localStorage.setItem("conectajoias_logo_url", config.logoUrl || "");
+        localStorage.setItem("conectajoias_cor_primaria", config.corPrimaria);
+        localStorage.setItem("conectajoias_cor_secundaria", config.corSecundaria);
+        localStorage.setItem("conectajoias_bg_primary", config.bgPrimary);
+        localStorage.setItem("conectajoias_bg_card", config.bgCard);
+        localStorage.setItem("conectajoias_loja_id", config.lojaId);
         return;
       }
     } catch (error) {
@@ -59,13 +59,13 @@ const loginApp = {
     }
 
     const configLocal = {
-      nomeEmpresa: localStorage.getItem("belklock_nome_empresa") || "BelKlock Semijoias",
-      logoUrl: localStorage.getItem("belklock_logo_url") || "",
-      corPrimaria: localStorage.getItem("belklock_cor_primaria") || "#d4af37",
-      corSecundaria: localStorage.getItem("belklock_cor_secundaria") || "#111111",
-      bgPrimary: localStorage.getItem("belklock_bg_primary") || "#0a0a0a",
-      bgCard: localStorage.getItem("belklock_bg_card") || "#121212",
-      lojaId: localStorage.getItem("belklock_loja_id") || "default-loja"
+      nomeEmpresa: localStorage.getItem("conectajoias_nome_empresa") || "Conecta Joias",
+      logoUrl: localStorage.getItem("conectajoias_logo_url") || "",
+      corPrimaria: localStorage.getItem("conectajoias_cor_primaria") || "#d4af37",
+      corSecundaria: localStorage.getItem("conectajoias_cor_secundaria") || "#111111",
+      bgPrimary: localStorage.getItem("conectajoias_bg_primary") || "#0a0a0a",
+      bgCard: localStorage.getItem("conectajoias_bg_card") || "#121212",
+      lojaId: localStorage.getItem("conectajoias_loja_id") || "default-loja"
     };
     this.aplicarConfiguracoes(configLocal);
   },
@@ -257,8 +257,8 @@ const loginApp = {
     if (btnNext) { btnNext.disabled = true; btnNext.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Salvando...'; }
 
     try {
-      const token  = localStorage.getItem("belklock_token");
-      const lojaId = localStorage.getItem("belklock_loja_id");
+      const token  = localStorage.getItem("conectajoias_token");
+      const lojaId = localStorage.getItem("conectajoias_loja_id");
 
       // — Coleta os dados do wizard —
       const nomeComercial = document.getElementById("wz-nome-comercial")?.value.trim() || "";
@@ -319,8 +319,26 @@ const loginApp = {
           },
           body: JSON.stringify(body)
         });
-        if (!resp.ok) console.warn("Erro ao salvar configurações:", await resp.text());
       }
+
+      // Salvar os dados visuais no localStorage para aplicação imediata nos painéis
+      localStorage.setItem("conectajoias_nome_empresa", nomeComercial);
+      localStorage.setItem("conectajoias_cor_primaria", corPrimaria);
+      localStorage.setItem("conectajoias_cor_secundaria", corSecundaria);
+      
+      const isLight = temaPref === 'CLARO';
+      const bgPrimary = isLight ? '#f5f5f5' : '#0a0a0a';
+      const bgCard = isLight ? '#ffffff' : '#121212';
+      localStorage.setItem("conectajoias_bg_primary", bgPrimary);
+      localStorage.setItem("conectajoias_bg_card", bgCard);
+
+      aplicarTemaLoja({
+        corPrimaria,
+        corSecundaria,
+        bgPrimary,
+        bgCard,
+        temaPref
+      });
 
       // — Exibir tela de credenciais —
       this.mostrarCredenciais();
@@ -394,9 +412,9 @@ const loginApp = {
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Erro ao tentar realizar login.");
 
-      localStorage.setItem("belklock_token", data.token);
-      localStorage.setItem("belklock_usuario", JSON.stringify(data.usuario));
-      localStorage.setItem("belklock_loja_id", data.usuario.lojaId);
+      localStorage.setItem("conectajoias_token", data.token);
+      localStorage.setItem("conectajoias_usuario", JSON.stringify(data.usuario));
+      localStorage.setItem("conectajoias_loja_id", data.usuario.lojaId);
 
       this.redirecionarPorPerfil(data.usuario.role);
     } catch (error) {
@@ -409,18 +427,18 @@ const loginApp = {
       if (conexaoFalhou) {
         if ((email === "superadmin@plataforma.com" || email === "0001") && senha === "admin0001") {
           const userMock = { id:"superadmin_local", nome:"Super Admin Local", email:"superadmin@plataforma.com", pin:"0001", role:"SuperAdmin", comissao:0 };
-          localStorage.setItem("belklock_token", "mock_superadmin_token_" + Date.now());
-          localStorage.setItem("belklock_usuario", JSON.stringify(userMock));
+          localStorage.setItem("conectajoias_token", "mock_superadmin_token_" + Date.now());
+          localStorage.setItem("conectajoias_usuario", JSON.stringify(userMock));
           this.redirecionarPorPerfil(userMock.role); return;
-        } else if ((email === "admin@belklock.com" || email === "0002") && senha === "belklock") {
-          const userMock = { id:"admin_local", nome:"Admin Local", email:"admin@belklock.com", pin:"0002", role:"Manager", comissao:0 };
-          localStorage.setItem("belklock_token", "mock_admin_token_" + Date.now());
-          localStorage.setItem("belklock_usuario", JSON.stringify(userMock));
+        } else if ((email === "admin@conectajoias.com" || email === "0002") && senha === "conectajoias") {
+          const userMock = { id:"admin_local", nome:"Admin Local", email:"admin@conectajoias.com", pin:"0002", role:"Manager", comissao:0 };
+          localStorage.setItem("conectajoias_token", "mock_admin_token_" + Date.now());
+          localStorage.setItem("conectajoias_usuario", JSON.stringify(userMock));
           this.redirecionarPorPerfil(userMock.role); return;
-        } else if (email === "2120" && senha === "belklock") {
+        } else if (email === "2120" && senha === "conectajoias") {
           const userMock = { id:"rev_local_junior", nome:"junior", email:"junior_254@loja.com", pin:"2120", role:"Consultant", comissao:30 };
-          localStorage.setItem("belklock_token", "mock_rev_token_" + Date.now());
-          localStorage.setItem("belklock_usuario", JSON.stringify(userMock));
+          localStorage.setItem("conectajoias_token", "mock_rev_token_" + Date.now());
+          localStorage.setItem("conectajoias_usuario", JSON.stringify(userMock));
           this.redirecionarPorPerfil(userMock.role); return;
         }
       }
@@ -436,7 +454,7 @@ const loginApp = {
   redirecionarPorPerfil: function(role) {
     if (role === 'SuperAdmin') {
       sessionStorage.setItem('saas_super_admin', 'true');
-      window.location.href = "superadmin.html";
+      window.location.href = "saasadmin.html";
     } else if (role === 'Manager') {
       window.location.href = "superadmin.html";
     } else {
@@ -477,9 +495,9 @@ const loginApp = {
       if (!response.ok) throw new Error(data.error || "Erro ao tentar realizar o cadastro.");
 
       // Salvar sessão
-      localStorage.setItem("belklock_token", data.token);
-      localStorage.setItem("belklock_usuario", JSON.stringify(data.usuario));
-      localStorage.setItem("belklock_loja_id", data.usuario.lojaId);
+      localStorage.setItem("conectajoias_token", data.token);
+      localStorage.setItem("conectajoias_usuario", JSON.stringify(data.usuario));
+      localStorage.setItem("conectajoias_loja_id", data.usuario.lojaId);
 
       // Guardar para usar depois do wizard
       this._cadastroData = data;
@@ -500,11 +518,12 @@ const loginApp = {
 
       if (conexaoFalhou) {
         console.warn("Servidor offline. Registrando em Modo de Demonstração.");
-        const userMock = { id:"gestora_local_mock_"+Date.now(), nome, email, pin:"0002", role:"Manager", lojaId:"default-loja", comissao:0 };
-        localStorage.setItem("belklock_token", "mock_admin_token_" + Date.now());
-        localStorage.setItem("belklock_usuario", JSON.stringify(userMock));
-        localStorage.setItem("belklock_nome_empresa", nomeLoja);
-        this._cadastroData = { token:"mock", pin:"0002", usuario: userMock };
+        const pinAleatorio = Math.floor(1000 + Math.random() * 9000).toString();
+        const userMock = { id:"gestora_local_mock_"+Date.now(), nome, email, pin: pinAleatorio, role:"Manager", lojaId:"default-loja", comissao:0 };
+        localStorage.setItem("conectajoias_token", "mock_admin_token_" + Date.now());
+        localStorage.setItem("conectajoias_usuario", JSON.stringify(userMock));
+        localStorage.setItem("conectajoias_nome_empresa", nomeLoja);
+        this._cadastroData = { token:"mock", pin: pinAleatorio, usuario: userMock };
 
         const nomeComercialEl = document.getElementById("wz-nome-comercial");
         if (nomeComercialEl) nomeComercialEl.value = nomeLoja;

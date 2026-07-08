@@ -1,5 +1,5 @@
 /**
- * Excel & CSV Handler - BelKlock Semijoias
+ * Excel & CSV Handler - Conecta Joias
  * Gerencia a importação e exportação de dados em formatos compatíveis com o Microsoft Excel.
  * O formato padrão brasileiro do Excel utiliza ponto e vírgula (;) como separador
  * e requer o BOM (Byte Order Mark) no início do arquivo UTF-8 para exibir acentos corretamente.
@@ -86,7 +86,7 @@ const ExcelHandler = {
     
     const dataAtual = new Date().toISOString().split('T')[0];
     link.href = URL.createObjectURL(blob);
-    link.setAttribute("download", `estoque_belklock_${dataAtual}.csv`);
+    link.setAttribute("download", `estoque_conectajoias_${dataAtual}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -112,7 +112,7 @@ const ExcelHandler = {
       "Preço de Venda Unitário (R$)",
       "Total Bruto (R$)",
       "Comissão Revendedora (R$)",
-      "Valor Líquido BelKlock (R$)"
+      "Valor Líquido Conecta Joias (R$)"
     ];
 
     let linhas = [];

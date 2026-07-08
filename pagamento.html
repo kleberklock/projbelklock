@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>BelKlock Semijoias - Checkout de Pagamento Premium</title>
+  <title>Conecta Joias - Checkout de Pagamento Premium</title>
   
   <!-- Estilos base do aplicativo -->
   <link rel="stylesheet" href="style.css">
@@ -317,9 +317,9 @@
     <!-- Bloco Principal do Checkout -->
     <div id="checkout-main-content">
       <div class="checkout-header">
-        <img src="assets/logo.svg" alt="BelKlock" onerror="this.src='https://raw.githubusercontent.com/intelbras/assets/master/logo.png'; this.style.filter='hue-rotate(45deg)';">
+        <img src="assets/logo.svg" alt="Conecta Joias" onerror="this.src='https://raw.githubusercontent.com/intelbras/assets/master/logo.png'; this.style.filter='hue-rotate(45deg)';">
         <h1>Checkout Seguro</h1>
-        <p>BelKlock Semijoias & Conveniadas</p>
+        <p>Conecta Joias & Conveniadas</p>
       </div>
 
       <div class="checkout-body">
@@ -327,7 +327,7 @@
         <div class="payment-summary">
           <div class="summary-row">
             <span>Recebedor:</span>
-            <span id="pay-recebedor" style="font-weight: 600;">BelKlock Semijoias</span>
+            <span id="pay-recebedor" style="font-weight: 600;">Conecta Joias</span>
           </div>
           <div class="summary-row">
             <span>Revendedora:</span>
@@ -364,11 +364,11 @@
           <div class="pix-box">
             <div class="qr-code-placeholder">
               <!-- Gerador estático de QR code premium fictício -->
-              <img id="pix-qr-img" src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=belklock-pagamento-simulado-pix-2026" alt="QR Code PIX">
+              <img id="pix-qr-img" src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=conectajoias-pagamento-simulado-pix-2026" alt="QR Code PIX">
             </div>
             <p style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.8rem;">Escaneie o QR Code acima com o app do seu banco ou copie o código abaixo:</p>
             <div class="pix-copia-cola" id="pix-code-text">
-              00020101021226850014br.gov.bcb.pix2563pix.belklock.com.br/qr/v2/5012b74a56a0496c9e1193a388ec1dd85204000053039865406150.005802BR5917BELKLOCKSEMIJOIAS6009SAOPAULO62070503***6304
+              00020101021226850014br.gov.bcb.pix2563pix.conectajoias.com.br/qr/v2/5012b74a56a0496c9e1193a388ec1dd85204000053039865406150.005802BR5917CONECTAJOIAS6009SAOPAULO62070503***6304
             </div>
             
             <button class="btn-outline-checkout" onclick="copiarPix()">

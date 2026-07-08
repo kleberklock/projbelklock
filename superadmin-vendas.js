@@ -1,5 +1,5 @@
 /**
- * BelKlock Semijoias - Módulo de Vendas Diretas da Administradora
+ * Conecta Joias - Módulo de Vendas Diretas da Administradora
  * 
  * Gerencia o fluxo completo de registro de vendas diretas pelo perfil Admin:
  * seleção de produto do estoque central, cliente, quantidade, forma de pagamento,
@@ -370,7 +370,7 @@ Object.assign(app, {
           clienteId: clienteId || null,
           nomeCliente: nomeCliente,
           whatsappCliente: whatsappCliente,
-          vendedor: "BelKlock (Direta)",
+          vendedor: "Conecta Joias (Direta)",
           contato: whatsappCliente || "—",
           cliente: nomeCliente,
           usuarioId: null,
@@ -387,7 +387,7 @@ Object.assign(app, {
         // Persiste no localStorage
         this.salvarDadosNoLocalStorage();
 
-        const localVendasKey = "belklock_vendas_admin";
+        const localVendasKey = "conectajoias_vendas_admin";
         const vendasAdminLocais = JSON.parse(localStorage.getItem(localVendasKey) || "[]");
         vendasAdminLocais.unshift(novaVenda);
         localStorage.setItem(localVendasKey, JSON.stringify(vendasAdminLocais));
@@ -430,7 +430,7 @@ Object.assign(app, {
           clienteId: clienteId || null,
           nomeCliente: nomeCliente,
           whatsappCliente: whatsappCliente,
-          vendedor: "BelKlock (Direta)",
+          vendedor: "Conecta Joias (Direta)",
           contato: whatsappCliente || "—",
           cliente: nomeCliente,
           usuarioId: null,
@@ -512,7 +512,7 @@ Object.assign(app, {
   // ==========================================
 
   carregarVendasAdminOffline: function() {
-    const localVendasKey = "belklock_vendas_admin";
+    const localVendasKey = "conectajoias_vendas_admin";
     const vendasAdminLocais = JSON.parse(localStorage.getItem(localVendasKey) || "[]");
     return vendasAdminLocais;
   }

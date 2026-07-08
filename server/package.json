@@ -1,7 +1,7 @@
 {
-  "name": "belklock-api",
+  "name": "conectajoias-api",
   "version": "1.0.0",
-  "description": "API do sistema BelKlock Semijoias integrada com banco de dados Azure SQL e Azure Blob Storage",
+  "description": "API do sistema Conecta Joias integrada com banco de dados Azure SQL e Azure Blob Storage",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",

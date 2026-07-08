@@ -68,7 +68,7 @@ model Produto {
   id                 String        @id @default(uuid())
   lojaId             String        @default("default-loja")
   loja               Loja          @relation(fields: [lojaId], references: [id], onDelete: Cascade)
-  codigo             String        @unique
+  codigo             String
   nome               String
   categoria          String
   quantidade         Int           @default(0) // estoque no centro de distribuição
@@ -80,6 +80,8 @@ model Produto {
   fotoUrl            String?
   consignados        Consignado[]
   createdAt          DateTime      @default(now())
+
+  @@unique([lojaId, codigo])
 }
 
 model Consignado {
@@ -205,7 +207,7 @@ model Configuracao {
   id            String   @id @default(uuid())
   lojaId        String   @default("default-loja")
   loja          Loja     @relation(fields: [lojaId], references: [id], onDelete: Cascade)
-  nomeEmpresa   String   @default("BelKlock Semijoias")
+  nomeEmpresa   String   @default("Conecta Joias")
   logoUrl       String   @default("")
   corPrimaria   String   @default("#d4af37")
   corSecundaria String   @default("#111111")

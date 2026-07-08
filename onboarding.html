@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>BelKlock Semijoias - Cadastro & Onboarding Premium</title>
+  <title id="onboarding-page-title">Conecta Joias - Cadastro & Onboarding Premium</title>
   
   <!-- Estilos base do aplicativo -->
   <link rel="stylesheet" href="style.css">
@@ -415,9 +415,9 @@
 
   <div class="onboarding-card">
     <div class="onboarding-header">
-      <img src="assets/logo.svg" alt="BelKlock" onerror="this.src='https://raw.githubusercontent.com/intelbras/assets/master/logo.png'; this.style.filter='hue-rotate(45deg)';">
-      <h1>BelKlock Semijoias</h1>
-      <p>Cadastre-se para se tornar uma Revendedora BelKlock</p>
+      <img src="assets/logo.svg" alt="Conecta Joias" id="onboarding-logo" onerror="this.src='https://raw.githubusercontent.com/intelbras/assets/master/logo.png'; this.style.filter='hue-rotate(45deg)';">
+      <h1 id="onboarding-title">Conecta Joias</h1>
+      <p id="onboarding-subtitle">Cadastre-se para se tornar uma Revendedora</p>
     </div>
 
     <!-- Barra de Progresso de Etapas -->
@@ -446,8 +446,8 @@
         <!-- ETAPA 1: Apresentação da Marca & Produtos -->
         <div class="onboarding-step-content active" id="step-content-1">
           <h2 style="font-family: var(--font-title); font-size: 1.4rem; color: var(--gold-primary); margin-bottom: 0.5rem;">Sua Nova Jornada de Sucesso</h2>
-          <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1.5rem;">
-            A BelKlock Semijoias oferece a você peças de altíssima qualidade, com banhos nobres de Ouro 18k e Ródio, design exclusivo e garantia estendida. Veja alguns de nossos produtos que fazem mais sucesso:
+          <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1.5rem;" id="onboarding-desc-text">
+            Nossa marca oferece a você peças de altíssima qualidade, com banhos nobres de Ouro 18k e Ródio, design exclusivo e garantia estendida. Veja alguns de nossos produtos que fazem mais sucesso:
           </p>
 
           <div class="product-showcase">
@@ -469,7 +469,7 @@
           </div>
 
           <div style="background: rgba(212, 175, 55, 0.05); padding: 1.2rem; border-radius: var(--radius-md); border-left: 3px solid var(--gold-primary); margin-top: 1.5rem;">
-            <h4 style="color: var(--gold-primary); font-size: 0.95rem; margin-bottom: 0.3rem;"><i class="fa-solid fa-gem"></i> Por que revender BelKlock?</h4>
+            <h4 style="color: var(--gold-primary); font-size: 0.95rem; margin-bottom: 0.3rem;" id="onboarding-why-title"><i class="fa-solid fa-gem"></i> Por que revender conosco?</h4>
             <p style="color: var(--text-secondary); font-size: 0.85rem; line-height: 1.4;">
               Trabalhamos com o modelo de consignação premium sem investimento inicial de capital nas maletas. Você recebe a comissão progressiva das peças vendidas e devolve as peças restantes no fechamento do acerto.
             </p>
@@ -523,7 +523,7 @@
           </div>
 
           <div class="form-group">
-            <label for="comoConheceu">Como você conheceu a BelKlock Semijoias? *</label>
+            <label for="comoConheceu" id="label-como-conheceu">Como você nos conheceu? *</label>
             <select id="comoConheceu" name="comoConheceu" required>
               <option value="">Selecione uma opção</option>
               <option value="Indicacao">Indicação de vendedora principal</option>
@@ -546,7 +546,7 @@
 
           <div class="form-group">
             <label for="comentarios">Comentários Adicionais / Objetivos</label>
-            <textarea id="comentarios" name="comentarios" rows="3" placeholder="Fale um pouco sobre você ou o que você busca na BelKlock..."></textarea>
+            <textarea id="comentarios" name="comentarios" rows="3" placeholder="Fale um pouco sobre você ou o que você busca em nossa parceria..."></textarea>
           </div>
         </div>
 
@@ -606,7 +606,7 @@
             <div class="success-icon">
               <i class="fa-solid fa-check"></i>
             </div>
-            <h2 style="font-family: var(--font-title); font-size: 1.8rem; color: var(--gold-primary); margin-bottom: 0.5rem;">Seja Bem-Vinda à Família BelKlock!</h2>
+            <h2 style="font-family: var(--font-title); font-size: 1.8rem; color: var(--gold-primary); margin-bottom: 0.5rem;" id="onboarding-welcome-title">Seja Bem-Vinda!</h2>
             <p style="color: var(--text-secondary); font-size: 0.95rem;">
               Seu cadastro foi enviado e aprovado! Uma mensagem de boas-vindas foi criada em nosso sistema de WhatsApp.
             </p>
