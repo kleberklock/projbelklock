@@ -1100,6 +1100,14 @@ const app = {
       }
       
       this.state.feedImagens = feedSalvo ? JSON.parse(feedSalvo) : [];
+
+      // Aplicar o tema carregado localmente imediatamente para evitar flashes de cores padrões
+      aplicarTemaLoja({
+        corPrimaria: this.state.corPrimaria,
+        corSecundaria: this.state.corSecundaria,
+        bgPrimary: this.state.bgPrimary,
+        bgCard: this.state.bgCard
+      });
     } catch (e) {
       console.error("Erro ao carregar dados do LocalStorage, inicializando vazios.", e);
       this.state.produtos = [];

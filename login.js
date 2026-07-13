@@ -323,6 +323,9 @@ const loginApp = {
 
       // Salvar os dados visuais no localStorage para aplicação imediata nos painéis
       localStorage.setItem("conectajoias_nome_empresa", nomeComercial);
+      if (this._cadastroData && this._cadastroData.usuario) {
+        localStorage.setItem("conectajoias_loja_id", this._cadastroData.usuario.lojaId);
+      }
       localStorage.setItem("conectajoias_cor_primaria", corPrimaria);
       localStorage.setItem("conectajoias_cor_secundaria", corSecundaria);
       
@@ -522,6 +525,7 @@ const loginApp = {
         const userMock = { id:"gestora_local_mock_"+Date.now(), nome, email, pin: pinAleatorio, role:"Manager", lojaId:"default-loja", comissao:0 };
         localStorage.setItem("conectajoias_token", "mock_admin_token_" + Date.now());
         localStorage.setItem("conectajoias_usuario", JSON.stringify(userMock));
+        localStorage.setItem("conectajoias_loja_id", "default-loja");
         localStorage.setItem("conectajoias_nome_empresa", nomeLoja);
         this._cadastroData = { token:"mock", pin: pinAleatorio, usuario: userMock };
 

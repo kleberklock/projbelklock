@@ -1288,6 +1288,14 @@ const app = {
       }
       
       this.state.feedImagens = feedSalvo ? JSON.parse(feedSalvo) : [];
+
+      // Aplicar o tema carregado localmente imediatamente para evitar flashes de cores padrões
+      aplicarTemaLoja({
+        corPrimaria: this.state.corPrimaria,
+        corSecundaria: this.state.corSecundaria,
+        bgPrimary: this.state.bgPrimary,
+        bgCard: this.state.bgCard
+      });
     } catch (e) {
       console.error("Erro ao carregar dados do LocalStorage, inicializando vazios.", e);
       this.state.produtos = [];
@@ -5116,6 +5124,54 @@ const app = {
 
 // Funções auxiliares para manipulação de cores HEX e aplicação de tema visual white-label
 
+
+function aplicarTemaLoja(tema) {
+  if (!tema) return;
+
+  const temaPrefUpper = (tema.temaPref || '').toUpperCase();
+  const isLight = (temaPrefUpper === 'CLARO' || temaPrefUpper === 'LIGHT') || 
+                  ((temaPrefUpper === 'SISTEMA' || temaPrefUpper === 'SYSTEM' || !temaPrefUpper) && 
+                   window.matchMedia && !window.matchMedia('(prefers-color-scheme: dark)').matches);
+
+  if (tema.corPrimaria) {
+    document.documentElement.style.setProperty('--gold-primary', tema.corPrimaria);
+    document.documentElement.style.setProperty('--gold-light', alterarBrilhoHex(tema.corPrimaria, 30));
+    document.documentElement.style.setProperty('--gold-dark', alterarBrilhoHex(tema.corPrimaria, -30));
+    document.documentElement.style.setProperty('--gold-gradient', `linear-gradient(135deg, ${alterarBrilhoHex(tema.corPrimaria, -30)} 0%, ${tema.corPrimaria} 40%, ${alterarBrilhoHex(tema.corPrimaria, 30)} 75%, ${alterarBrilhoHex(tema.corPrimaria, -30)} 100%)`);
+    document.documentElement.style.setProperty('--gold-translucent', hexToRgbA(tema.corPrimaria, 0.15));
+    document.documentElement.style.setProperty('--gold-translucent-hover', hexToRgbA(tema.corPrimaria, 0.25));
+    document.documentElement.style.setProperty('--border-gold', `1px solid ${hexToRgbA(tema.corPrimaria, 0.2)}`);
+    document.documentElement.style.setProperty('--border-gold-focus', `1px solid ${hexToRgbA(tema.corPrimaria, 0.7)}`);
+    
+    document.documentElement.style.setProperty('--shadow-premium', `0 10px 30px rgba(0, 0, 0, 0.7), 0 0 15px ${hexToRgbA(tema.corPrimaria, 0.05)}`);
+    document.documentElement.style.setProperty('--shadow-glow', `0 0 15px ${hexToRgbA(tema.corPrimaria, 0.25)}`);
+  }
+
+  const defaultBgPrimary = isLight ? '#f5f5f5' : '#0a0a0a';
+  const defaultBgCard = isLight ? '#ffffff' : '#121212';
+
+  const bgPrimary = tema.bgPrimary && tema.bgPrimary !== '#0a0a0a' ? tema.bgPrimary : defaultBgPrimary;
+  const bgCard = tema.bgCard && tema.bgCard !== '#121212' ? tema.bgCard : defaultBgCard;
+  const bgAbsolute = alterarBrilhoHex(bgPrimary, -10);
+
+  document.documentElement.style.setProperty('--bg-primary', bgPrimary);
+  document.documentElement.style.setProperty('--bg-absolute', bgAbsolute);
+  document.documentElement.style.setProperty('--bg-card', bgCard);
+  document.documentElement.style.setProperty('--bg-card-hover', alterarBrilhoHex(bgCard, isLight ? -8 : 8));
+  document.documentElement.style.setProperty('--bg-modal', alterarBrilhoHex(bgCard, isLight ? -5 : 5));
+
+  if (isLight) {
+    document.documentElement.style.setProperty('--text-primary', '#111111');
+    document.documentElement.style.setProperty('--text-secondary', '#495057');
+    document.documentElement.style.setProperty('--text-muted', '#868e96');
+    document.documentElement.style.setProperty('--text-dark', '#ffffff');
+  } else {
+    document.documentElement.style.setProperty('--text-primary', '#f5f5f5');
+    document.documentElement.style.setProperty('--text-secondary', '#a0a0a0');
+    document.documentElement.style.setProperty('--text-muted', '#666666');
+    document.documentElement.style.setProperty('--text-dark', '#0a0a0a');
+  }
+}
 
 function alterarBrilhoHex(hex, percent) {
   let num = parseInt(hex.replace("#",""), 16),
