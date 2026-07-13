@@ -1,5 +1,5 @@
 /**
- * BelKlock Semijoias - Cadastro & Onboarding Script
+ * Conecta Joias - Cadastro & Onboarding Script
  */
 
 const API_BASE_URL = "http://localhost:5000/api";

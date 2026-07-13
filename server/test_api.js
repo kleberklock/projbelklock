@@ -9,7 +9,7 @@ async function test() {
     const loginRes = await fetch(`${API_URL}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: 'admin@belklock.com', senha: 'belklock' })
+      body: JSON.stringify({ email: 'admin@conectajoias.com', senha: 'conectajoias' })
     });
     
     if (!loginRes.ok) {

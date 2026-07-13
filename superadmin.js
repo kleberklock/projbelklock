@@ -1935,7 +1935,7 @@ const app = {
     printContainer.style.padding = "20px";
     printContainer.innerHTML = `
       <div style="text-align: center; margin-bottom: 2rem; border-bottom: 2px solid #000; padding-bottom: 1rem;">
-        <h1 style="font-size: 1.8rem; margin: 0; font-family: sans-serif; color: #000; font-weight: bold;">BELKLOCK SEMIJOIAS</h1>
+        <h1 style="font-size: 1.8rem; margin: 0; font-family: sans-serif; color: #000; font-weight: bold;">CONECTA JOIAS</h1>
         <p style="margin: 0.3rem 0; font-size: 0.9rem;">Recibo de Acerto de Conta Consignada</p>
         <p style="margin: 0; font-size: 0.85rem; color: #666;">Data do Fechamento: ${dataAtual}</p>
       </div>
@@ -2577,11 +2577,11 @@ const app = {
       });
 
       const comissaoRev = valorConsignado * (Number(revSelecionada.comissao || 30) / 100);
-      const liquidoBelklock = valorConsignado - comissaoRev;
+      const liquidoConectaJoias = valorConsignado - comissaoRev;
 
       document.getElementById("detalhe-qtd-consignada").innerText = `${qtdConsignada} pçs`;
       document.getElementById("detalhe-valor-consignado").innerText = `R$ ${valorConsignado.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
-      document.getElementById("detalhe-liquido-projetado").innerText = `R$ ${liquidoBelklock.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+      document.getElementById("detalhe-liquido-projetado").innerText = `R$ ${liquidoConectaJoias.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
 
       // Preenche a tabela de peças na maleta
       const tableItensBody = document.querySelector("#table-itens-consignados tbody");
@@ -2625,7 +2625,7 @@ const app = {
             <td>${hist.totalConsignada} / ${hist.totalVendida} / ${hist.totalDevolvida}</td>
             <td style="color: var(--gold-primary);">R$ ${hist.faturamentoBruto.toFixed(2).replace(".", ",")}</td>
             <td>R$ ${hist.comissaoPaga.toFixed(2).replace(".", ",")}</td>
-            <td style="color: #81c784; font-weight: 600;">R$ ${hist.liquidoBelklock.toFixed(2).replace(".", ",")}</td>
+            <td style="color: #81c784; font-weight: 600;">R$ ${hist.liquidoConectaJoias.toFixed(2).replace(".", ",")}</td>
             <td><span class="badge badge-low" style="background: rgba(129, 199, 132, 0.1); color: #81c784;">Concluído</span></td>
           `;
           tableHistoricoBody.appendChild(tr);
@@ -4106,7 +4106,7 @@ const app = {
         faturamentoBruto,
         valorDescontoPerda: valorPerdas,
         comissaoPaga: valorComissao,
-        liquidoBelklock: valorLiquido,
+        liquidoConectaJoias: valorLiquido,
         formaPagamento: formaPagamento,
         totalRetidoRevendedora: vendasDinheiro,
         totalRecebidoAdmin: vendasLink,

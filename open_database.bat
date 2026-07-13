@@ -1,5 +1,5 @@
 @echo off
-title BelKlock - Visualizador de Banco de Dados (Prisma Studio)
+title Conecta Joias - Visualizador de Banco de Dados (Prisma Studio)
 echo ==========================================================
 echo           ABRINDO O PRISMA STUDIO (BANCO DE DADOS)
 echo ==========================================================

@@ -1081,7 +1081,7 @@ app.post('/api/acertos', autenticarJWT, autorizarRole(['Manager', 'SuperAdmin'])
     }
 
     const comissaoPaga = Math.max(0, comissaoBruta - valorDescontoPerda);
-    const liquidoBelklock = faturamentoBruto - comissaoPaga;
+    const liquidoConectaJoias = faturamentoBruto - comissaoPaga;
     const totalRetidoRev = parseFloat(req.body.totalRetidoRevendedora) || 0.0;
     const totalRecAdmin = parseFloat(req.body.totalRecebidoAdmin) || 0.0;
     const saldoFinal = comissaoPaga - totalRetidoRev;
@@ -1098,7 +1098,7 @@ app.post('/api/acertos', autenticarJWT, autorizarRole(['Manager', 'SuperAdmin'])
         faturamentoBruto,
         valorDescontoPerda,
         comissaoPaga,
-        liquidoBelklock,
+        liquidoConectaJoias,
         formaPagamento: formaPagamento || "Pix",
         totalRetidoRevendedora: totalRetidoRev,
         totalRecebidoAdmin: totalRecAdmin,
@@ -1120,7 +1120,7 @@ app.post('/api/acertos', autenticarJWT, autorizarRole(['Manager', 'SuperAdmin'])
       }
     });
 
-    registrarLog(req, "ACERTO_CONCLUIR", `Concluiu acerto de contas com a revendedora ${revendedora.nome}. Pagamento: ${formaPagamento || "Pix"}. Vendido: ${totalVendida}, Devolvido: ${totalDevolvida}, Perda: ${totalPerdida}, Defeito: ${totalDefeito}. Faturamento Bruto: R$ ${faturamentoBruto.toFixed(2)}, Líquido Empresa: R$ ${liquidoBelklock.toFixed(2)}.`);
+    registrarLog(req, "ACERTO_CONCLUIR", `Concluiu acerto de contas com a revendedora ${revendedora.nome}. Pagamento: ${formaPagamento || "Pix"}. Vendido: ${totalVendida}, Devolvido: ${totalDevolvida}, Perda: ${totalPerdida}, Defeito: ${totalDefeito}. Faturamento Bruto: R$ ${faturamentoBruto.toFixed(2)}, Líquido Empresa: R$ ${liquidoConectaJoias.toFixed(2)}.`);
 
     res.json({
       message: 'Acerto concluído com sucesso!',

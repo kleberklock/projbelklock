@@ -113,7 +113,7 @@ model HistoricoAcerto {
   faturamentoBruto   Float
   valorDescontoPerda Float    @default(0.0)
   comissaoPaga       Float
-  liquidoBelklock    Float
+  liquidoConectaJoias Float    @map("liquidoBelklock")
   formaPagamento     String?  @default("Pix")
 
   // Novos campos de controle financeiro do acerto

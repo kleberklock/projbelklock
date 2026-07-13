@@ -1,5 +1,5 @@
 /**
- * BelKlock Semijoias - Login Logic + Onboarding Wizard
+ * Conecta Joias - Login Logic + Onboarding Wizard
  */
 
 const loginApp = {

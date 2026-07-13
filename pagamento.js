@@ -1,5 +1,5 @@
 /**
- * BelKlock Semijoias - Checkout de Pagamento Script
+ * Conecta Joias - Checkout de Pagamento Script
  */
 
 const API_BASE_URL = "http://localhost:5000/api";

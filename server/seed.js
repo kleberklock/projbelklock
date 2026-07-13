@@ -154,7 +154,7 @@ async function main() {
         faturamentoBruto: 1200.00,
         valorDescontoPerda: 0.0,
         comissaoPaga: 360.00,
-        liquidoBelklock: 840.00,
+        liquidoConectaJoias: 840.00,
         formaPagamento: "Pix",
         totalRetidoRevendedora: 360.00,
         totalRecebidoAdmin: 840.00,

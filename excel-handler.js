@@ -118,7 +118,7 @@ const ExcelHandler = {
     let linhas = [];
     
     // Metadados do acerto
-    linhas.push(`ACERTO DE CONSIGNADO;BELKLOCK SEMIJOIAS;;;;;;;`);
+    linhas.push(`ACERTO DE CONSIGNADO;CONECTA JOIAS;;;;;;;`);
     linhas.push(`Revendedora:;${revendedora.nome};;;;;;;`);
     linhas.push(`WhatsApp:;${revendedora.whatsapp || ""};;;;;;;`);
     linhas.push(`Comissão acordada:;${revendedora.comissao || 30}%;;;;;;;`);
