@@ -97,6 +97,41 @@
     <main class="main-content">
       
       <!-- ==========================================
+           SINO DE NOTIFICAÇÕES FUNCIONAL E FLUTUANTE (SUPER ADMIN)
+           ========================================== -->
+      <div id="notif-wrapper" style="position: fixed; top: 1.2rem; right: 1.5rem; z-index: 1500;">
+        <button id="btn-notificacoes" title="Notificações" style="
+          position: relative;
+          background: rgba(12,12,12,0.92);
+          border: 1px solid rgba(212,175,55,0.3);
+          color: var(--gold-primary);
+          width: 48px; height: 48px;
+          border-radius: 50%;
+          cursor: pointer;
+          display: flex; align-items: center; justify-content: center;
+          font-size: 1.15rem;
+          transition: all 0.25s ease;
+          box-shadow: 0 4px 20px rgba(0,0,0,0.5), 0 0 0 1px rgba(212,175,55,0.1) inset;
+          backdrop-filter: blur(10px);
+        ">
+          <i class="fa-solid fa-bell" id="icone-sino"></i>
+          <span id="notification-count" class="notification-badge" style="
+            display: none;
+            position: absolute; top: -4px; right: -4px;
+            background: #d4af37; color: #0a0a0a;
+            font-size: 0.6rem; font-weight: 700;
+            min-width: 18px; height: 18px;
+            border-radius: 9px;
+            padding: 0 4px;
+            display: none;
+            align-items: center; justify-content: center;
+            border: 2px solid #0a0a0a;
+            font-family: var(--font-body);
+          ">0</span>
+        </button>
+      </div>
+
+      <!-- ==========================================
            ABA: DASHBOARD
            ========================================== -->
       <section id="dashboard" class="app-section active">
@@ -106,10 +141,6 @@
             <p>Seja bem-vinda ao seu centro de gestão e luxo comercial.</p>
           </div>
           <div class="header-actions" style="display: flex; gap: 1rem; align-items: center;">
-            <div id="notification-bell-container" class="notification-bell-container" style="position: relative; cursor: pointer; font-size: 1.35rem; color: var(--gold-light); padding: 0.5rem; display: flex; align-items: center; justify-content: center; background: rgba(212, 175, 55, 0.1); border-radius: 50%; width: 42px; height: 42px; transition: all 0.3s ease;">
-              <i class="fa-solid fa-bell"></i>
-              <span id="notification-count" class="notification-badge" style="display: none; position: absolute; top: -2px; right: -2px; background: var(--danger); color: #fff; font-size: 0.75rem; font-weight: 700; border-radius: 50%; width: 18px; height: 18px; display: none; align-items: center; justify-content: center;">0</span>
-            </div>
             <button class="btn-gold" id="btn-open-modal-venda-admin" style="background: linear-gradient(135deg, #2e7d32, #43a047); border-color: #43a047;"><i class="fa-solid fa-cash-register"></i> Fiz uma Venda!</button>
             <button class="btn-gold" id="btn-quick-sale"><i class="fa-brands fa-whatsapp"></i> Venda Rápida WhatsApp</button>
           </div>

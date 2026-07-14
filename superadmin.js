@@ -1284,7 +1284,7 @@ const app = {
     this.configurarModal("modal-acerto", "btn-open-modal-acerto", "btn-close-modal-acerto", "btn-cancelar-acerto");
     this.configurarModal("modal-venda-rapida", null, "btn-close-modal-venda-rapida", "btn-cancelar-venda-rapida");
     this.configurarModal("modal-todos-alertas", null, "btn-close-modal-todos-alertas", "btn-fechar-todos-alertas");
-    this.configurarModal("modal-notificacoes", "notification-bell-container", "btn-close-modal-notificacoes", "btn-fechar-notificacoes");
+    this.configurarModal("modal-notificacoes", "btn-notificacoes", "btn-close-modal-notificacoes", "btn-fechar-notificacoes");
 
     // Sincronização e eventos bidirecionais de Cores nas configurações
     const syncColor = (colorId, hexId) => {
@@ -5536,6 +5536,7 @@ const app = {
   },
 
   atualizarBadgeSino: function() {
+    const btn = document.getElementById("btn-notificacoes");
     const badge = document.getElementById("notification-count");
     if (!badge) return;
     
@@ -5543,8 +5544,10 @@ const app = {
     badge.innerText = count;
     if (count > 0) {
       badge.style.display = "flex";
+      if (btn) btn.classList.add("tem-notif");
     } else {
       badge.style.display = "none";
+      if (btn) btn.classList.remove("tem-notif");
     }
   },
 
