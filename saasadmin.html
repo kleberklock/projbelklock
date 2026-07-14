@@ -560,8 +560,12 @@
           <strong id="modal-loja-estoque" style="color: #fff; font-size: 0.9rem;">0 peças</strong>
         </div>
         <div>
-          <span style="color: var(--text-secondary); font-size: 0.78rem; display: block; margin-bottom: 0.2rem;">Tema Visual Definido</span>
-          <strong id="modal-loja-tema" style="color: #fff; font-size: 0.9rem;">ESCURO / LUXO</strong>
+          <span style="color: var(--text-secondary); font-size: 0.78rem; display: block; margin-bottom: 0.4rem;">Plano de Assinatura</span>
+          <select id="modal-loja-plano" class="form-control" style="background: var(--bg-primary); color: #fff; border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 0.4rem; font-size: 0.85rem; outline: none; width: 100%; cursor: pointer;" onchange="saasApp.atualizarPlanoLojaAPI()">
+            <option value="BRONZE">BRONZE</option>
+            <option value="GOLD">GOLD</option>
+            <option value="PLATINUM">PLATINUM</option>
+          </select>
         </div>
       </div>
 

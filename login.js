@@ -3,9 +3,11 @@
  */
 
 const loginApp = {
-  apiUrl: "http://localhost:5000/api",
+  apiUrl: window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1" 
+    ? "http://localhost:5000/api" 
+    : `${window.location.origin}/api`,
   wizardStep: 1,
-  wizardTotalSteps: 7,
+  wizardTotalSteps: 6,
   _cadastroData: null, // guarda token/usuario pós-signup para usar após o wizard
 
   obterLojaId: function() {
@@ -34,6 +36,17 @@ const loginApp = {
 
     this.registrarEventos();
     this.registrarEventosWizard();
+
+    // Se vier do botão 'Cadastrar Minha Marca' da landing page
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("cadastro") === "true") {
+      const loginCard = document.getElementById("login-card");
+      const signupCard = document.getElementById("signup-card");
+      if (loginCard && signupCard) {
+        loginCard.style.display = "none";
+        signupCard.style.display = "block";
+      }
+    }
   },
 
   carregarConfiguracoesLoja: async function() {
@@ -268,9 +281,6 @@ const loginApp = {
       const temaPref      = document.querySelector('input[name="wz-tema"]:checked')?.value || "ESCURO";
       const segmento      = document.querySelector('input[name="wz-segmento"]:checked')?.value || "SEMIJOIAS";
       const estiloLoja    = document.querySelector('input[name="wz-estilo"]:checked')?.value || "LUXO";
-      const instagram     = document.getElementById("wz-instagram")?.value.trim() || "";
-      const tiktok        = document.getElementById("wz-tiktok")?.value.trim() || "";
-      const site          = document.getElementById("wz-site")?.value.trim() || "";
 
       // — Upload da logo se houver —
       let logoUrl = "";
@@ -303,9 +313,9 @@ const loginApp = {
         temaPref,
         segmento,
         estiloLoja,
-        instagram,
-        tiktok,
-        site,
+        instagram: "",
+        tiktok: "",
+        site: "",
         onboardingCompleto: true
       };
 

@@ -3,7 +3,9 @@
  */
 
 const saasApp = {
-  apiUrl: "http://localhost:5000/api",
+  apiUrl: window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1" 
+    ? "http://localhost:5000/api" 
+    : `${window.location.origin}/api`,
   token: null,
   usuarioLogado: null,
   usandoDemo: false, // Flag se o backend estiver offline
@@ -408,7 +410,10 @@ const saasApp = {
         : `<button class="btn-gold" onclick="saasApp.alterarStatusLoja('${loja.id}', 'ACTIVE')" style="padding: 0.35rem 0.6rem; font-size: 0.75rem; background: var(--saas-success); border-color: var(--saas-success); color:#fff;"><i class="fa-solid fa-circle-check"></i> Reativar</button>`;
 
       tr.innerHTML = `
-        <td><strong style="color:#fff;">${loja.nome}</strong></td>
+        <td>
+          <strong style="color:#fff;">${loja.nome}</strong>
+          <span style="font-size: 0.65rem; background: rgba(212, 175, 55, 0.12); color: var(--gold-primary); margin-left: 0.5rem; padding: 2px 6px; border-radius: 4px; border: 1px solid rgba(212, 175, 55, 0.25); font-weight: 600; letter-spacing: 0.5px;">${loja.plano || 'BRONZE'}</span>
+        </td>
         <td style="font-family: monospace; font-size: 0.8rem;">${loja.id}</td>
         <td>${dataFormatada}</td>
         <td>${loja.consultorasCount} consultoras</td>
@@ -486,7 +491,11 @@ const saasApp = {
     document.getElementById("modal-loja-faturamento").innerText = this.formatarMoeda(loja.faturamento);
     document.getElementById("modal-loja-consultoras").innerText = `${loja.consultorasCount} consultoras`;
     document.getElementById("modal-loja-estoque").innerText = `${loja.estoqueCount} peças`;
-    document.getElementById("modal-loja-tema").innerText = loja.temaVisual || "ESCURO / LUXO";
+    const planoSelect = document.getElementById("modal-loja-plano");
+    if (planoSelect) {
+      planoSelect.value = loja.plano || "BRONZE";
+      planoSelect.setAttribute("data-loja-id", loja.id);
+    }
     document.getElementById("modal-loja-avatar").innerText = loja.nome.charAt(0).toUpperCase();
 
     const statusBadge = document.getElementById("modal-loja-status");
@@ -583,6 +592,48 @@ const saasApp = {
     } catch (error) {
       console.error(error);
       this.mostrarToast("Erro ao tentar atualizar status da loja: " + error.message, "error");
+    }
+  },
+
+  atualizarPlanoLojaAPI: async function() {
+    const select = document.getElementById("modal-loja-plano");
+    const id = select.getAttribute("data-loja-id");
+    const novoPlano = select.value;
+
+    if (!id || !novoPlano) return;
+
+    this.mostrarToast(`Atualizando plano para ${novoPlano}...`, "info");
+
+    try {
+      if (this.usandoDemo) {
+        const loja = this.state.lojas.find(l => l.id === id);
+        if (loja) {
+          loja.plano = novoPlano;
+          this.mostrarToast(`Plano da loja ${loja.nome} atualizado para ${novoPlano} (Modo Demo).`, "success");
+        }
+      } else {
+        const response = await fetch(`${this.apiUrl}/saas/lojas/${id}/plano`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${this.token}`
+          },
+          body: JSON.stringify({ plano: novoPlano })
+        });
+
+        if (!response.ok) {
+          const dataErr = await response.json();
+          throw new Error(dataErr.error || "Erro ao atualizar plano da loja");
+        }
+
+        this.mostrarToast(`Plano atualizado com sucesso no banco de dados!`, "success");
+        await this.carregarDados();
+      }
+
+      this.renderizarLojas();
+    } catch (error) {
+      console.error(error);
+      this.mostrarToast("Erro ao tentar atualizar o plano: " + error.message, "error");
     }
   },
 

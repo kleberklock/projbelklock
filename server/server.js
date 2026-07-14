@@ -9,6 +9,55 @@ const rateLimit = require('express-rate-limit');
 const fs = require('fs');
 const path = require('path');
 require('dotenv').config({ path: require('path').resolve(__dirname, '.env') });
+const { criarCobranca, obterQrCodePix, obterCodigoBarrasBoleto } = require('./asaas-service');
+const crypto = require('crypto');
+
+// Função de segurança que garante um JWT_SECRET robusto gravado no .env
+function garantirChaveJwtSegura() {
+  const envPath = path.resolve(__dirname, '.env');
+  let envContent = '';
+  
+  try {
+    if (fs.existsSync(envPath)) {
+      envContent = fs.readFileSync(envPath, 'utf8');
+    } else {
+      envContent = `PORT=5000\nJWT_SECRET=\n`;
+    }
+  } catch (err) {
+    console.error('Erro ao ler arquivo .env:', err.message);
+    return;
+  }
+
+  const jwtInseguros = [
+    'sua_chave_secreta_super_segura_de_producao',
+    'conectajoias_super_secret_key_2026',
+    'defina_uma_chave_secreta_super_segura_aqui',
+    'insira_uma_chave_secreta_aqui'
+  ];
+
+  let currentSecret = process.env.JWT_SECRET || '';
+
+  if (!currentSecret || jwtInseguros.includes(currentSecret.trim())) {
+    console.log('🛡️ Gerando chave JWT_SECRET criptográfica robusta...');
+    const novaChave = crypto.randomBytes(32).toString('hex');
+    process.env.JWT_SECRET = novaChave;
+
+    if (envContent.includes('JWT_SECRET=')) {
+      envContent = envContent.replace(/JWT_SECRET=.*/, `JWT_SECRET=${novaChave}`);
+    } else {
+      envContent += `\nJWT_SECRET=${novaChave}\n`;
+    }
+    
+    try {
+      fs.writeFileSync(envPath, envContent, 'utf8');
+      console.log('✅ Nova chave JWT_SECRET gravada com sucesso no arquivo .env.');
+    } catch (err) {
+      console.error('Erro ao gravar nova chave no .env:', err.message);
+    }
+  }
+}
+
+garantirChaveJwtSegura();
 
 const app = express();
 const prisma = new PrismaClient();
@@ -16,21 +65,38 @@ const lojasSuspensas = new Set();
 const PORT = process.env.PORT || 5000;
 
 const JWT_SECRET = process.env.JWT_SECRET;
-if (!JWT_SECRET || JWT_SECRET === 'conectajoias_super_secret_key_2026') {
-  console.error("ERRO CRÍTICO: A variável de ambiente JWT_SECRET não está definida ou é a chave padrão insegura!");
+if (!JWT_SECRET) {
+  console.error("ERRO CRÍTICO: JWT_SECRET inválido.");
   process.exit(1);
 }
 
-// Configuração de CORS restrita ao frontend (inclui as portas de desenvolvimento local 5500 e 8080)
+// Configuração de CORS restrita ao frontend (inclui as portas de desenvolvimento local 5500 e 8080 e subdomínios)
 const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5500';
+const CORS_ORIGINS = [
+  frontendUrl,
+  'http://localhost:5500',
+  'http://127.0.0.1:5500',
+  'http://localhost:8080',
+  'http://127.0.0.1:8080'
+];
+
 app.use(cors({
-  origin: [
-    frontendUrl,
-    'http://localhost:5500',
-    'http://127.0.0.1:5500',
-    'http://localhost:8080',
-    'http://127.0.0.1:8080'
-  ],
+  origin: function (origin, callback) {
+    if (!origin) return callback(null, true);
+    
+    const isAllowed = CORS_ORIGINS.some(allowed => {
+      if (allowed === origin) return true;
+      const allowedDomain = allowed.replace(/^https?:\/\//, '');
+      const originDomain = origin.replace(/^https?:\/\//, '');
+      return originDomain === allowedDomain || originDomain.endsWith('.' + allowedDomain);
+    });
+
+    if (isAllowed) {
+      callback(null, true);
+    } else {
+      callback(new Error('Bloqueado pelo CORS do Conecta Joias'));
+    }
+  },
   credentials: true
 }));
 
@@ -173,6 +239,24 @@ const loginLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+// Limiter para criação de novas marcas/tenants (máximo 5 cadastros por hora por IP)
+const signupLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 5,
+  message: { error: 'Limite de criação de marcas excedido. Tente novamente em uma hora.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Limiter para processamento de pagamentos/checkout (máximo 10 tentativas a cada 30 minutos por IP)
+const paymentLimiter = rateLimit({
+  windowMs: 30 * 60 * 1000,
+  max: 10,
+  message: { error: 'Muitas tentativas de pagamento por este endereço. Tente novamente em 30 minutos.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 // Função para gerar uma senha aleatória de 8 caracteres
 function gerarSenhaAleatoria(tamanho = 8) {
   const caracteres = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%&*';
@@ -261,7 +345,7 @@ app.post('/api/auth/login', loginLimiter, async (req, res) => {
 });
 
 // Auto-cadastro público de Gestora (Manager)
-app.post('/api/auth/signup', async (req, res) => {
+app.post('/api/auth/signup', signupLimiter, async (req, res) => {
   const { nome, email, senha, nomeLoja } = req.body;
   if (!nome || !email || !senha || !nomeLoja) {
     return res.status(400).json({ error: 'Campos obrigatórios ausentes: nome, email, senha e nomeLoja.' });
@@ -356,6 +440,23 @@ app.post('/api/auth/register', autenticarJWT, autorizarRole(['Manager', 'SuperAd
     const emailExiste = await prisma.usuario.findUnique({ where: { email } });
     if (emailExiste) {
       return res.status(400).json({ error: 'Este e-mail já está cadastrado.' });
+    }
+
+    // Validação de limite de plano de assinatura para consultoras (SaaS)
+    if (normalizedRole === 'Consultant') {
+      const loja = await prisma.loja.findUnique({ where: { id: req.lojaId } });
+      const plano = loja ? (loja.plano || 'BRONZE').toUpperCase() : 'BRONZE';
+
+      const totalConsultoras = await prisma.usuario.count({
+        where: { role: 'Consultant', lojaId: req.lojaId }
+      });
+
+      if (plano === 'BRONZE' && totalConsultoras >= 5) {
+        return res.status(403).json({ error: 'Limite do plano Bronze atingido (máximo 5 consultoras). Faça o upgrade da sua assinatura para cadastrar mais.' });
+      }
+      if (plano === 'GOLD' && totalConsultoras >= 25) {
+        return res.status(403).json({ error: 'Limite do plano Gold atingido (máximo 25 consultoras). Faça o upgrade da sua assinatura para cadastrar mais.' });
+      }
     }
 
     const senhaHash = await bcrypt.hash(senha, 10);
@@ -507,6 +608,25 @@ app.post('/api/produtos', autenticarJWT, autorizarRole(['Manager', 'SuperAdmin']
   const cod = codigo || 'REF-' + Math.floor(1000 + Math.random() * 9000);
 
   try {
+    // Validação de limite de peças no estoque baseado no plano da loja (SaaS)
+    const loja = await prisma.loja.findUnique({ where: { id: req.lojaId } });
+    const plano = loja ? (loja.plano || 'BRONZE').toUpperCase() : 'BRONZE';
+
+    if (plano !== 'PLATINUM') {
+      const totalProdutos = await prisma.produto.aggregate({
+        where: { lojaId: req.lojaId },
+        _sum: {
+          quantidade: true
+        }
+      });
+      const totalEstoqueAtual = totalProdutos._sum.quantidade || 0;
+      const limite = plano === 'BRONZE' ? 300 : 1500;
+      const novoTotal = totalEstoqueAtual + (parseInt(quantidade) || 0);
+
+      if (novoTotal > limite) {
+        return res.status(403).json({ error: `Limite de peças do plano ${plano} atingido (${totalEstoqueAtual}/${limite} peças em estoque central). Não é possível cadastrar mais ${quantidade} peças sem fazer o upgrade do seu plano.` });
+      }
+    }
     const novoProduto = await prisma.produto.create({
       data: {
         codigo: cod,
@@ -2106,7 +2226,7 @@ app.get('/api/admin/lojas/:id', autenticarJWT, autorizarRole(['SuperAdmin']), as
 // ==========================================
 
 // 1. Onboarding público de revendedora (Sem autenticação)
-app.post('/api/public/onboarding', uploadDocs.fields([
+app.post('/api/public/onboarding', signupLimiter, uploadDocs.fields([
   { name: 'rgFile', maxCount: 1 },
   { name: 'cpfFile', maxCount: 1 },
   { name: 'enderecoFile', maxCount: 1 }
@@ -2302,15 +2422,145 @@ app.get('/api/public/pagamento/:id', async (req, res) => {
       where: { id },
       include: {
         usuario: { select: { nome: true } },
-        cliente: { select: { nome: true } }
+        cliente: { select: { nome: true, whatsapp: true } }
       }
     });
     if (!link) {
       return res.status(404).json({ error: 'Link de pagamento não encontrado.' });
     }
-    res.json(link);
+
+    const responseData = { ...link };
+
+    // Se já tiver uma transação ASAAS e for PIX ou BOLETO e ainda estiver pendente,
+    // busca os dados mais atualizados de QR Code/Linha digitável
+    if (link.asaasPaymentId && link.status === 'PENDENTE') {
+      try {
+        if (link.formaEnvio === 'PIX') {
+          const pixInfo = await obterQrCodePix(link.asaasPaymentId);
+          responseData.pixQrCode = pixInfo.encodedImage;
+          responseData.pixCopiaCola = pixInfo.payload;
+        } else if (link.formaEnvio === 'BOLETO') {
+          const boletoInfo = await obterCodigoBarrasBoleto(link.asaasPaymentId);
+          responseData.boletoLinhaDigitavel = boletoInfo.identificationField;
+          responseData.boletoCodigoBarras = boletoInfo.barCode;
+        }
+      } catch (err) {
+        console.error('Erro ao recuperar dados dinâmicos do ASAAS:', err.message);
+      }
+    }
+
+    res.json(responseData);
   } catch (error) {
+    console.error('Erro ao buscar link de pagamento:', error);
     res.status(500).json({ error: 'Erro ao buscar link de pagamento.' });
+  }
+});
+
+// Processar pagamento real via ASAAS (Público)
+app.post('/api/public/pagamento/:id/processar', paymentLimiter, async (req, res) => {
+  const { id } = req.params;
+  const {
+    formaEnvio,
+    clienteNome,
+    clienteCpfCnpj,
+    clienteEmail,
+    clienteWhatsapp,
+    cartaoDados,
+    enderecoDados
+  } = req.body;
+
+  if (!formaEnvio) {
+    return res.status(400).json({ error: 'Forma de envio/pagamento é obrigatória.' });
+  }
+
+  try {
+    const link = await prisma.linkPagamento.findUnique({
+      where: { id },
+      include: {
+        cliente: true
+      }
+    });
+
+    if (!link) {
+      return res.status(404).json({ error: 'Link de pagamento não encontrado.' });
+    }
+
+    if (link.status === 'PAGO') {
+      return res.status(400).json({ error: 'Este link de pagamento já foi pago.' });
+    }
+
+    // Chama o serviço ASAAS para criar a cobrança
+    const cobranca = await criarCobranca({
+      clienteNome: clienteNome || (link.cliente ? link.cliente.nome : 'Cliente Conecta Joias'),
+      clienteCpfCnpj,
+      clienteEmail,
+      clienteWhatsapp: clienteWhatsapp || (link.cliente ? link.cliente.whatsapp : ''),
+      valor: link.valor,
+      formaEnvio,
+      vendaId: link.vendaId,
+      linkId: link.id,
+      cartaoDados,
+      enderecoDados
+    });
+
+    // Se for pagamento por Cartão e a transação já foi confirmada
+    let statusNovo = 'PENDENTE';
+    if (cobranca.status === 'RECEIVED' || cobranca.status === 'CONFIRMED') {
+      statusNovo = 'PAGO';
+    }
+
+    // Atualiza nosso link local com a referência do ASAAS
+    const linkAtualizado = await prisma.linkPagamento.update({
+      where: { id },
+      data: {
+        formaEnvio,
+        status: statusNovo,
+        asaasPaymentId: cobranca.id,
+        asaasInvoiceUrl: cobranca.bankSlipUrl || cobranca.invoiceUrl || null
+      }
+    });
+
+    // Se for Cartão e deu certo, faz a baixa automática agora
+    if (statusNovo === 'PAGO' && link.vendaId) {
+      await prisma.vendaRevendedora.updateMany({
+        where: { id: link.vendaId },
+        data: {
+          pago: true,
+          canalPagamento: 'LINK_PAGO_ADMIN'
+        }
+      });
+
+      // Gravar log
+      await prisma.logAcao.create({
+        data: {
+          usuarioId: link.usuarioId,
+          acao: 'VENDA_BAIXA_AUTOMATICA',
+          detalhes: `Baixa automática executada via webhook/cartão para a venda ${link.vendaId} após cobrança ASAAS: ${cobranca.id}.`
+        }
+      });
+    }
+
+    // Prepara resposta com dados específicos de PIX ou Boleto
+    const resposta = {
+      status: statusNovo,
+      asaasPaymentId: cobranca.id,
+      invoiceUrl: cobranca.bankSlipUrl || cobranca.invoiceUrl || null
+    };
+
+    if (formaEnvio === 'PIX') {
+      const pixInfo = await obterQrCodePix(cobranca.id);
+      resposta.pixQrCode = pixInfo.encodedImage;
+      resposta.pixCopiaCola = pixInfo.payload;
+    } else if (formaEnvio === 'BOLETO') {
+      const boletoInfo = await obterCodigoBarrasBoleto(cobranca.id);
+      resposta.boletoLinhaDigitavel = boletoInfo.identificationField;
+      resposta.boletoCodigoBarras = boletoInfo.barCode;
+    }
+
+    res.json(resposta);
+  } catch (error) {
+    console.error('Erro ao processar pagamento no backend:', error.message);
+    res.status(500).json({ error: error.message || 'Erro ao processar pagamento.' });
   }
 });
 
@@ -2374,6 +2624,103 @@ app.post('/api/public/pagamento/:id/confirmar', async (req, res) => {
     console.error('Erro ao confirmar pagamento:', error);
     res.status(500).json({ error: 'Erro ao processar a confirmação de pagamento.' });
   }
+});
+
+// Webhook público para receber eventos de pagamento do ASAAS
+app.post('/api/webhooks/asaas', async (req, res) => {
+  const { event, payment } = req.body;
+
+  if (!event || !payment) {
+    return res.status(400).json({ error: 'Payload do webhook inválido.' });
+  }
+
+  console.log(`[Webhook ASAAS] Evento recebido: ${event} para o pagamento ${payment.id}`);
+
+  // Eventos de sucesso de pagamento
+  if (event === 'PAYMENT_RECEIVED' || event === 'PAYMENT_CONFIRMED') {
+    try {
+      // 1. Localizar o link correspondente
+      const linkId = payment.externalReference;
+      
+      let link = null;
+      if (linkId) {
+        link = await prisma.linkPagamento.findUnique({ where: { id: linkId } });
+      }
+
+      // Fallback: busca por asaasPaymentId
+      if (!link) {
+        link = await prisma.linkPagamento.findFirst({
+          where: { asaasPaymentId: payment.id }
+        });
+      }
+
+      if (!link) {
+        console.warn(`[Webhook ASAAS] Link de pagamento correspondente não foi encontrado para o pagamento ${payment.id}`);
+        return res.status(200).json({ message: 'Evento recebido, mas nenhum link local correspondente foi encontrado.' });
+      }
+
+      if (link.status === 'PAGO') {
+        return res.status(200).json({ message: 'Este pagamento já havia sido baixado anteriormente.' });
+      }
+
+      // 2. Atualizar o status do link para PAGO
+      await prisma.linkPagamento.update({
+        where: { id: link.id },
+        data: { status: 'PAGO' }
+      });
+
+      // 3. Dar baixa automática na venda
+      if (link.vendaId) {
+        await prisma.vendaRevendedora.updateMany({
+          where: { id: link.vendaId },
+          data: {
+            pago: true,
+            canalPagamento: 'LINK_PAGO_ADMIN'
+          }
+        });
+
+        // Registrar log de auditoria
+        await prisma.logAcao.create({
+          data: {
+            usuarioId: link.usuarioId,
+            acao: 'VENDA_BAIXA_AUTOMATICA_WEBHOOK',
+            detalhes: `Baixa automática via Webhook ASAAS (${event}) executada para a venda ${link.vendaId} após recebimento de R$ ${payment.value.toFixed(2)}.`
+          }
+        });
+
+        // Criar notificação para o gestor
+        const usuario = await prisma.usuario.findUnique({
+          where: { id: link.usuarioId },
+          select: { lojaId: true }
+        });
+
+        const lojaId = usuario?.lojaId || 'default-loja';
+
+        await prisma.notificacao.create({
+          data: {
+            lojaId,
+            tipo: 'venda_revendedora',
+            mensagem: `Venda ${link.vendaId} paga automaticamente via link (${payment.billingType}).`,
+            detalhes: JSON.stringify({
+              linkId: link.id,
+              vendaId: link.vendaId,
+              valor: payment.value,
+              netValue: payment.netValue,
+              asaasPaymentId: payment.id
+            })
+          }
+        });
+      }
+
+      return res.json({ success: true, message: 'Baixa processada com sucesso!' });
+    } catch (error) {
+      console.error('[Webhook ASAAS] Erro ao processar baixa de pagamento:', error);
+      return res.status(500).json({ error: 'Erro interno ao processar baixa de pagamento no webhook.' });
+    }
+  }
+
+  // Resposta padrão para outros tipos de eventos
+  res.json({ received: true });
 });
 
 // 4. Criar Termo de Responsabilidade/Consignação (Admin)
@@ -2639,6 +2986,7 @@ app.get('/api/saas/lojas', autenticarJWT, autorizarRole(['SuperAdmin']), async (
         id: loja.id,
         nome: loja.nome,
         cnpj: loja.cnpj || "Não Informado",
+        plano: loja.plano || "BRONZE",
         createdAt: loja.createdAt,
         status: lojasSuspensas.has(loja.id) ? 'SUSPENDED' : 'ACTIVE',
         consultorasCount: loja._count.usuarios,
@@ -2707,6 +3055,44 @@ app.put('/api/saas/lojas/:id/status', autenticarJWT, autorizarRole(['SuperAdmin'
   }
 });
 
+// Alterar plano de uma loja (Bronze / Gold / Platinum)
+app.put('/api/saas/lojas/:id/plano', autenticarJWT, autorizarRole(['SuperAdmin']), async (req, res) => {
+  const { id } = req.params;
+  const { plano } = req.body;
+
+  const planosPermitidos = ['BRONZE', 'GOLD', 'PLATINUM'];
+  if (!plano || !planosPermitidos.includes(plano.toUpperCase())) {
+    return res.status(400).json({ error: 'Plano inválido. Deve ser BRONZE, GOLD ou PLATINUM.' });
+  }
+
+  try {
+    const lojaExiste = await prisma.loja.findUnique({ where: { id } });
+    if (!lojaExiste) {
+      return res.status(404).json({ error: 'Loja não encontrada na base de dados.' });
+    }
+
+    const lojaAtualizada = await prisma.loja.update({
+      where: { id },
+      data: { plano: plano.toUpperCase() }
+    });
+
+    // Grava log de segurança
+    await prisma.logAcao.create({
+      data: {
+        usuarioId: req.user.id,
+        usuarioNome: req.user.nome,
+        acao: 'LOJA_PLANO_ALTERADO',
+        detalhes: `Super Admin ${req.user.nome} alterou o plano da loja ${lojaExiste.nome} (ID: ${id}) para ${plano.toUpperCase()}.`
+      }
+    });
+
+    res.json({ message: `Plano da loja ${lojaExiste.nome} atualizado com sucesso para ${plano.toUpperCase()}!`, loja: lojaAtualizada });
+  } catch (error) {
+    console.error("Erro ao atualizar plano da loja:", error);
+    res.status(500).json({ error: 'Erro interno ao tentar atualizar plano do tenant.' });
+  }
+});
+
 // Forçar backup físico do banco SQLite
 app.post('/api/saas/backup', autenticarJWT, autorizarRole(['SuperAdmin']), async (req, res) => {
   try {
@@ -2746,14 +3132,24 @@ app.post('/api/saas/backup', autenticarJWT, autorizarRole(['SuperAdmin']), async
 // Auto-diagnóstico de integridade estrutural do banco de dados
 app.get('/api/saas/diagnostico', autenticarJWT, autorizarRole(['SuperAdmin']), async (req, res) => {
   try {
-    // Executa comando raw PRAGMA no SQLite
-    const resultado = await prisma.$queryRawUnsafe('PRAGMA integrity_check');
-    const statusIntegridade = resultado && resultado[0] && Object.values(resultado[0])[0] === 'ok' ? 'INTEGRO' : 'FALHA';
+    let statusIntegridade = 'INTEGRO';
+    let provedor = 'PostgreSQL';
+
+    const dbUrl = process.env.DATABASE_URL || '';
+    if (dbUrl.includes('file:') || dbUrl.includes('.db')) {
+      provedor = 'SQLite';
+      const resultado = await prisma.$queryRawUnsafe('PRAGMA integrity_check');
+      statusIntegridade = resultado && resultado[0] && Object.values(resultado[0])[0] === 'ok' ? 'INTEGRO' : 'FALHA';
+    } else {
+      // Para PostgreSQL / Outros provedores
+      await prisma.$queryRawUnsafe('SELECT 1');
+      statusIntegridade = 'INTEGRO';
+    }
 
     res.json({
       status: 'ONLINE',
       dbStatus: statusIntegridade,
-      provedor: 'SQLite',
+      provedor: provedor,
       timestamp: new Date().toISOString()
     });
   } catch (error) {
@@ -2836,11 +3232,94 @@ async function inicializarLojaPadrao() {
   }
 }
 
+// Processador automático em segundo plano para envio da fila de mensagens do WhatsApp
+async function processarFilaWhatsApp() {
+  const url = process.env.WHATSAPP_API_URL || '';
+  const token = process.env.WHATSAPP_API_KEY || '';
+  const eSimulado = !url || !token;
+
+  try {
+    const fila = await prisma.mensagemWhatsapp.findMany({
+      where: { status: 'PENDENTE' },
+      orderBy: { createdAt: 'asc' },
+      take: 5
+    });
+
+    if (fila.length === 0) return;
+
+    for (const msg of fila) {
+      console.log(`[WhatsApp Worker] Processando mensagem ID: ${msg.id} para o número: ${msg.numero}...`);
+      
+      const numeroLimpo = msg.numero.replace(/\D/g, '');
+      const ddiPhone = (numeroLimpo.startsWith('55') || numeroLimpo.length < 10) 
+        ? numeroLimpo 
+        : '55' + numeroLimpo;
+
+      if (eSimulado) {
+        console.log(`--------------------------------------------------`);
+        console.log(`📢 [WHATSAPP SIMULADO]`);
+        console.log(`Para: ${ddiPhone}`);
+        console.log(`Tipo: ${msg.tipo}`);
+        console.log(`Mensagem: "${msg.mensagem}"`);
+        console.log(`--------------------------------------------------`);
+
+        await prisma.mensagemWhatsapp.update({
+          where: { id: msg.id },
+          data: { status: 'ENVIADO' }
+        });
+      } else {
+        try {
+          const payload = {
+            phone: ddiPhone,
+            message: msg.mensagem
+          };
+
+          const headers = {
+            'Content-Type': 'application/json'
+          };
+          if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+            headers['access_token'] = token;
+            headers['x-api-key'] = token;
+          }
+
+          const response = await fetch(url, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify(payload)
+          });
+
+          if (!response.ok) {
+            const errBody = await response.text();
+            throw new Error(`Erro na resposta da API: ${response.status} - ${errBody}`);
+          }
+
+          await prisma.mensagemWhatsapp.update({
+            where: { id: msg.id },
+            data: { status: 'ENVIADO' }
+          });
+          console.log(`✅ [WhatsApp Worker] Mensagem enviada com sucesso para ${ddiPhone}.`);
+        } catch (apiErr) {
+          console.error(`❌ [WhatsApp Worker] Falha ao enviar mensagem real para ${ddiPhone}:`, apiErr.message);
+          await prisma.mensagemWhatsapp.update({
+            where: { id: msg.id },
+            data: { status: 'ERRO' }
+          });
+        }
+      }
+    }
+  } catch (error) {
+    console.error('[WhatsApp Worker] Erro geral ao processar fila do WhatsApp:', error.message);
+  }
+}
+
 // ==========================================
 // INICIALIZAÇÃO
 // ==========================================
 app.listen(PORT, () => {
   console.log(`Servidor rodando com sucesso na porta ${PORT}`);
   inicializarLojaPadrao();
+  // Iniciar worker de processamento do WhatsApp a cada 10 segundos
+  setInterval(processarFilaWhatsApp, 10000);
 });
 

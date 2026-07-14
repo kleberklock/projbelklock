@@ -7,7 +7,9 @@
 const app = {
   // 1. Estado da Aplicação
   state: {
-    apiUrl: "http://localhost:5000/api",
+    apiUrl: window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1" 
+      ? "http://localhost:5000/api" 
+      : `${window.location.origin}/api`,
     token: null,
     usuarioLogado: null,
     produtos: [],
@@ -524,7 +526,6 @@ const app = {
       this.renderizarEstoque();
       this.renderizarRevendedoras();
       this.renderizarDashboard();
-      this.renderizarMarketing();
       this.renderizarClientes();
     } else {
       // Revendedora: carrega maleta e navega direto para Minha Maleta
@@ -547,6 +548,9 @@ const app = {
       this.carregarPreferenciaPagamento();
       this.checarTermosPendentes();
     }
+    
+    // Inicializa o sistema de notificações
+    this.inicializarSinoNotificacoes();
     
     console.log("Conecta Joias inicializado com sucesso!");
   },
@@ -1628,7 +1632,6 @@ const app = {
       }
     }
     if (tabId === "revendedoras") this.renderizarRevendedoras();
-    if (tabId === "marketing") this.renderizarMarketing();
     if (tabId === "clientes") {
       if (this.state.subAbaClientesAtiva === "aniversariantes") {
         this.renderizarAniversariantes();
@@ -2573,6 +2576,175 @@ const app = {
   },
 
   // 8. ABA: GESTÃO DE REVENDEDORAS LÓGICA
+  toggleCicloConfig: function() {
+    const body = document.getElementById("ciclo-config-body");
+    const chevron = document.getElementById("ciclo-config-chevron");
+    if (!body) return;
+
+    if (body.style.display === "none") {
+      body.style.display = "block";
+      if (chevron) chevron.style.transform = "rotate(180deg)";
+    } else {
+      body.style.display = "none";
+      if (chevron) chevron.style.transform = "rotate(0deg)";
+    }
+  },
+
+  atualizarPreviewCiclo: function() {
+    const ativo = document.getElementById("rev-ciclo-ativo").checked;
+    const campos = document.getElementById("ciclo-campos");
+    const badge = document.getElementById("ciclo-config-badge");
+    const previewTexto = document.getElementById("ciclo-preview-texto");
+
+    if (!campos) return;
+
+    if (ativo) {
+      campos.style.display = "block";
+      if (badge) badge.style.display = "inline-block";
+
+      const inicioConsig = parseInt(document.getElementById("rev-ciclo-inicio-consig").value) || 1;
+      const fimConsig = parseInt(document.getElementById("rev-ciclo-fim-consig").value) || 30;
+      const inicioAcerto = parseInt(document.getElementById("rev-ciclo-inicio-acerto").value) || 25;
+      const fimAcerto = parseInt(document.getElementById("rev-ciclo-fim-acerto").value) || 30;
+
+      previewTexto.innerHTML = `📦 <strong>Consignação:</strong> Do dia <strong>${inicioConsig}</strong> ao dia <strong>${fimConsig}</strong>.<br>📋 <strong>Janela de Acerto:</strong> Do dia <strong>${inicioAcerto}</strong> ao dia <strong>${fimAcerto}</strong> (renovação no dia 1 do próximo mês).`;
+
+      // Renderiza timeline do modal
+      this.renderizarTimelineVisual("ciclo-timeline", {
+        ativo: true,
+        diaInicioConsignacao: inicioConsig,
+        diaFimConsignacao: fimConsig,
+        diaInicioAcerto: inicioAcerto,
+        diaFimAcerto: fimAcerto
+      });
+    } else {
+      campos.style.display = "none";
+      if (badge) badge.style.display = "none";
+    }
+  },
+
+  calcularEstadoCiclo: function(rev) {
+    if (!rev.ciclo || !rev.ciclo.ativo) {
+      return { status: "SEM_CICLO", classe: "sem-ciclo", texto: "Ciclo Desativado", detalhe: "Sem ciclo configurado", cor: "#868e96" };
+    }
+
+    const ciclo = rev.ciclo;
+    const hoje = new Date();
+    const diaHoje = hoje.getDate();
+    const mesAtual = hoje.getMonth() + 1;
+    const anoAtual = hoje.getFullYear();
+
+    // Verifica se a revendedora já realizou o acerto neste mês/ano
+    let acertoRealizadoEsteMes = false;
+    if (rev.historico && rev.historico.length > 0) {
+      const ultimoAcerto = new Date(rev.historico[rev.historico.length - 1].data);
+      if (ultimoAcerto.getMonth() + 1 === mesAtual && ultimoAcerto.getFullYear() === anoAtual) {
+        acertoRealizadoEsteMes = true;
+      }
+    }
+
+    // Se já fez acerto, o status é EM_ANDAMENTO (esperando nova consignação / próximo ciclo)
+    if (acertoRealizadoEsteMes) {
+      return { 
+        status: "EM_ANDAMENTO", 
+        classe: "em-andamento", 
+        texto: "Acerto concluído", 
+        detalhe: "Próxima entrega prevista a partir do dia " + (ciclo.diaInicioConsignacao || 1),
+        cor: "#4caf50" 
+      };
+    }
+
+    // Se a maleta dela está vazia, o ciclo não tem muito o que cobrar
+    let qtdConsignada = 0;
+    if (rev.consignado) {
+      rev.consignado.forEach(item => {
+        qtdConsignada += Number(item.quantidadeConsignada || 0);
+      });
+    }
+    if (qtdConsignada === 0) {
+      return { 
+        status: "SEM_CONSIGNADO", 
+        classe: "sem-ciclo", 
+        texto: "Maleta vazia", 
+        detalhe: "Sem peças em consignação",
+        cor: "#868e96" 
+      };
+    }
+
+    // Verifica prazos da janela
+    if (diaHoje >= ciclo.diaInicioAcerto && diaHoje <= ciclo.diaFimAcerto) {
+      const diasRestantes = ciclo.diaFimAcerto - diaHoje + 1;
+      return {
+        status: "JANELA_ACERTO",
+        classe: "janela-acerto",
+        texto: "Janela aberta",
+        detalhe: diasRestantes === 1 ? "Prazo encerra HOJE!" : `Janela de acerto fecha em ${diasRestantes} dias`,
+        cor: "#d4af37"
+      };
+    } else if (diaHoje > ciclo.diaFimAcerto) {
+      const diasAtraso = diaHoje - ciclo.diaFimAcerto;
+      return {
+        status: "PRAZO_VENCIDO",
+        classe: "prazo-vencido",
+        texto: "Acerto Atrasado",
+        detalhe: diasAtraso === 1 ? "Atrasado há 1 dia!" : `Atrasado há ${diasAtraso} dias!`,
+        cor: "#f44336"
+      };
+    } else {
+      // Dia de hoje é menor que a abertura do acerto
+      const diasFaltando = ciclo.diaInicioAcerto - diaHoje;
+      if (diasFaltando <= 3) {
+        return {
+          status: "PROXIMO",
+          classe: "proximo",
+          texto: "Acerto próximo",
+          detalhe: diasFaltando === 1 ? "Janela de acerto abre amanhã!" : `Janela abre em ${diasFaltando} dias`,
+          cor: "#ff9800"
+        };
+      } else {
+        return {
+          status: "EM_ANDAMENTO",
+          classe: "em-andamento",
+          texto: "Em andamento",
+          detalhe: `Janela de acerto abre no dia ${ciclo.diaInicioAcerto}`,
+          cor: "#4caf50"
+        };
+      }
+    }
+  },
+
+  renderizarTimelineVisual: function(containerId, ciclo, diaHoje = new Date().getDate()) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    container.innerHTML = "";
+
+    if (!ciclo || !ciclo.ativo) {
+      container.innerHTML = `<div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; font-size:0.7rem; color:var(--text-muted);">Sem ciclo ativo</div>`;
+      return;
+    }
+
+    for (let dia = 1; dia <= 31; dia++) {
+      const diaDiv = document.createElement("div");
+      diaDiv.className = "timeline-dia";
+      diaDiv.title = `Dia ${dia}`;
+
+      if (dia >= ciclo.diaInicioAcerto && dia <= ciclo.diaFimAcerto) {
+        diaDiv.classList.add("acerto");
+        diaDiv.title += " (Janela de Acerto)";
+      } else if (dia >= ciclo.diaInicioConsignacao && dia <= ciclo.diaFimConsignacao) {
+        diaDiv.classList.add("consignacao");
+        diaDiv.title += " (Consignação em andamento)";
+      }
+
+      if (dia === diaHoje) {
+        diaDiv.classList.add("hoje");
+        diaDiv.title += " [HOJE]";
+      }
+
+      container.appendChild(diaDiv);
+    }
+  },
+
   renderizarRevendedoras: function() {
     const listaContainer = document.getElementById("lista-revendedoras-container");
     listaContainer.innerHTML = "";
@@ -2595,6 +2767,19 @@ const app = {
         });
       }
 
+      // Calcula status do ciclo para exibir um indicador colorido
+      const cicloInfo = this.calcularEstadoCiclo(rev);
+      let bolinhaCiclo = "";
+      if (rev.ciclo && rev.ciclo.ativo && qtdConsignada > 0) {
+        let cor = "#868e96";
+        if (cicloInfo.status === "EM_ANDAMENTO") cor = "#4caf50";
+        else if (cicloInfo.status === "PROXIMO") cor = "#ff9800";
+        else if (cicloInfo.status === "JANELA_ACERTO") cor = "#d4af37";
+        else if (cicloInfo.status === "PRAZO_VENCIDO") cor = "#f44336";
+
+        bolinhaCiclo = `<span style="display:inline-block; width:8px; height:8px; background:${cor}; border-radius:50%; margin-right:5px; vertical-align:middle;" title="${cicloInfo.texto}: ${cicloInfo.detalhe}"></span>`;
+      }
+
       const itemDiv = document.createElement("div");
       itemDiv.className = `list-item ${this.state.revendedoraSelecionadaId === rev.id ? 'selected' : ''}`;
       itemDiv.addEventListener("click", () => {
@@ -2604,7 +2789,7 @@ const app = {
 
       itemDiv.innerHTML = `
         <div class="list-item-info">
-          <h4>${rev.nome}</h4>
+          <h4>${bolinhaCiclo}${rev.nome}</h4>
           <p><i class="fa-brands fa-whatsapp"></i> ${rev.whatsapp}</p>
         </div>
         <div class="list-item-value">
@@ -2626,6 +2811,27 @@ const app = {
       document.getElementById("detalhe-whatsapp-revendedora").innerText = revSelecionada.whatsapp;
       document.getElementById("detalhe-comissao-revendedora").innerText = `${revSelecionada.comissao}%`;
       document.getElementById("detalhe-pin-revendedora").innerText = revSelecionada.pin || "N/A";
+
+      // Atualiza card de ciclo
+      const cicloCard = document.getElementById("detalhe-ciclo-card");
+      if (cicloCard) {
+        if (revSelecionada.ciclo && revSelecionada.ciclo.ativo) {
+          cicloCard.style.display = "flex";
+          const cicloInfo = this.calcularEstadoCiclo(revSelecionada);
+          
+          const badgeContainer = document.getElementById("detalhe-ciclo-badge-container");
+          if (badgeContainer) {
+            badgeContainer.innerHTML = `<span class="badge-ciclo ${cicloInfo.classe}"><i class="fa-solid fa-circle" style="font-size:0.5rem; margin-right:4px;"></i>${cicloInfo.texto}</span>`;
+          }
+
+          document.getElementById("detalhe-ciclo-status-texto").innerText = cicloInfo.detalhe;
+          document.getElementById("detalhe-ciclo-datas-texto").innerHTML = `📦 Consignação: dia ${revSelecionada.ciclo.diaInicioConsignacao} a ${revSelecionada.ciclo.diaFimConsignacao} &nbsp;|&nbsp; 📋 Janela de Acerto: dia ${revSelecionada.ciclo.diaInicioAcerto} a ${revSelecionada.ciclo.diaFimAcerto}`;
+          
+          this.renderizarTimelineVisual("detalhe-ciclo-timeline", revSelecionada.ciclo);
+        } else {
+          cicloCard.style.display = "none";
+        }
+      }
 
       // Atualiza indicadores internos
       let qtdConsignada = 0;
@@ -2743,6 +2949,20 @@ const app = {
     document.getElementById("rev-senha").value = "";
     document.getElementById("group-rev-senha").style.display = "block";
 
+    // Reseta campos do ciclo
+    document.getElementById("rev-ciclo-ativo").checked = false;
+    document.getElementById("rev-ciclo-inicio-consig").value = "1";
+    document.getElementById("rev-ciclo-fim-consig").value = "30";
+    document.getElementById("rev-ciclo-inicio-acerto").value = "25";
+    document.getElementById("rev-ciclo-fim-acerto").value = "30";
+    
+    // Esconde os campos de ciclo e fecha a seção colapsável
+    document.getElementById("ciclo-campos").style.display = "none";
+    document.getElementById("ciclo-config-body").style.display = "none";
+    document.getElementById("ciclo-config-badge").style.display = "none";
+    const chevron = document.getElementById("ciclo-config-chevron");
+    if (chevron) chevron.style.transform = "rotate(0deg)";
+
     const btnSalvar = document.getElementById("btn-salvar-revendedora");
     if (btnSalvar) {
       btnSalvar.removeAttribute("data-edit-id");
@@ -2759,6 +2979,19 @@ const app = {
       document.getElementById("rev-whatsapp").value = rev.whatsapp;
       document.getElementById("rev-comissao").value = rev.comissao;
       document.getElementById("group-rev-senha").style.display = "none";
+
+      // Carrega campos do ciclo
+      const ciclo = rev.ciclo || { ativo: false, diaInicioConsignacao: 1, diaFimConsignacao: 30, diaInicioAcerto: 25, diaFimAcerto: 30 };
+      document.getElementById("rev-ciclo-ativo").checked = !!ciclo.ativo;
+      document.getElementById("rev-ciclo-inicio-consig").value = ciclo.diaInicioConsignacao || 1;
+      document.getElementById("rev-ciclo-fim-consig").value = ciclo.diaFimConsignacao || 30;
+      document.getElementById("rev-ciclo-inicio-acerto").value = ciclo.diaInicioAcerto || 25;
+      document.getElementById("rev-ciclo-fim-acerto").value = ciclo.diaFimAcerto || 30;
+
+      // Atualiza visual
+      document.getElementById("ciclo-campos").style.display = ciclo.ativo ? "block" : "none";
+      document.getElementById("ciclo-config-badge").style.display = ciclo.ativo ? "inline-block" : "none";
+      this.atualizarPreviewCiclo();
 
       const btnSalvar = document.getElementById("btn-salvar-revendedora");
       if (btnSalvar) {
@@ -2789,11 +3022,26 @@ const app = {
       return;
     }
 
+    // Leitura dos campos de ciclo
+    const cicloAtivo = document.getElementById("rev-ciclo-ativo").checked;
+    const diaInicioConsignacao = parseInt(document.getElementById("rev-ciclo-inicio-consig").value) || 1;
+    const diaFimConsignacao = parseInt(document.getElementById("rev-ciclo-fim-consig").value) || 30;
+    const diaInicioAcerto = parseInt(document.getElementById("rev-ciclo-inicio-acerto").value) || 25;
+    const diaFimAcerto = parseInt(document.getElementById("rev-ciclo-fim-acerto").value) || 30;
+
+    const cicloObj = {
+      ativo: cicloAtivo,
+      diaInicioConsignacao,
+      diaFimConsignacao,
+      diaInicioAcerto,
+      diaFimAcerto
+    };
+
     try {
       if (editId) {
         // Envia atualização para a API Azure se autenticado
-        if (this.state.token) {
-          await this.requisitarAPI(`/revendedoras/${editId}`, "PUT", { nome, whatsapp, comissao });
+        if (this.state.token && !this.state.token.startsWith('mock_')) {
+          await this.requisitarAPI(`/revendedoras/${editId}`, "PUT", { nome, whatsapp, comissao, ciclo: cicloObj });
         }
         
         // Atualização no estado local
@@ -2802,20 +3050,22 @@ const app = {
           rev.nome = nome;
           rev.whatsapp = whatsapp;
           rev.comissao = comissao;
+          rev.ciclo = cicloObj;
         }
       } else {
         let novaRev;
         const emailTemporario = nome.toLowerCase().replace(/\s+/g, '') + "_" + Math.floor(Math.random() * 1000) + "@conectajoias.com";
 
         // Cria na API Azure se autenticado
-        if (this.state.token) {
+        if (this.state.token && !this.state.token.startsWith('mock_')) {
           const res = await this.requisitarAPI("/auth/register", "POST", {
             nome,
             email: emailTemporario,
             senha: senhaInput,
             role: "revendedora",
             whatsapp,
-            comissao
+            comissao,
+            ciclo: cicloObj
           });
           novaRev = {
             id: res.usuario.id,
@@ -2824,7 +3074,8 @@ const app = {
             comissao,
             pin: res.usuario.pin,
             consignado: [],
-            historico: []
+            historico: [],
+            ciclo: cicloObj
           };
         } else {
           // Fallback sem servidor
@@ -2835,7 +3086,8 @@ const app = {
             comissao: comissao,
             pin: Math.floor(1000 + Math.random() * 9000).toString(),
             consignado: [],
-            historico: []
+            historico: [],
+            ciclo: cicloObj
           };
         }
         this.state.revendedoras.push(novaRev);
@@ -3335,7 +3587,7 @@ const app = {
     if (!rev) return;
 
     const itensAcerto = this.obterItensDoAcertoAtual();
-    
+
     let totalPecasConsignadas = 0;
     let faturamentoBruto = 0;
     let valorPerdas = 0;
@@ -3346,18 +3598,106 @@ const app = {
       valorPerdas += Number(item.precoVenda) * (item.quantidadePerdida || 0);
     });
 
-    const comissaoBruta = faturamentoBruto * (Number(rev.comissao) / 100);
-    const comissaoFinal = Math.max(0, comissaoBruta - valorPerdas);
-    const liquidoReceber = faturamentoBruto - comissaoBruta + valorPerdas;
+    const pctComissao = Number(rev.comissao) / 100;
+    const comissaoBruta = faturamentoBruto * pctComissao;
+    const descontoPerdas = Math.min(valorPerdas, comissaoBruta);
 
-    document.getElementById("acerto-total-peças-levadas").innerText = `${totalPecasConsignadas} pçs`;
-    document.getElementById("acerto-total-faturamento-bruto").innerText = `R$ ${faturamentoBruto.toFixed(2).replace(".", ",")}`;
-    document.getElementById("acerto-comissao-valor").innerText = `R$ ${comissaoBruta.toFixed(2).replace(".", ",")}`;
-    
-    const elDesconto = document.getElementById("acerto-desconto-perdas");
-    if (elDesconto) elDesconto.innerText = `- R$ ${valorPerdas.toFixed(2).replace(".", ",")}`;
-    
-    document.getElementById("acerto-total-liquido-receber").innerText = `R$ ${liquidoReceber.toFixed(2).replace(".", ",")}`;
+    // =====================================================
+    // BREAKDOWN POR FORMA DE PAGAMENTO
+    //
+    // Nota: No acerto de consignação, não temos dados
+    // históricos de forma de pagamento por item.
+    // Usamos o saldo de vendas registradas (vendasSessao)
+    // da revendedora para calcular o split.
+    // Se não houver dados de vendasSessao, assumimos que
+    // os controles de pagamento ficam zerados.
+    // =====================================================
+    let totalDinheiro = 0;
+    let totalPix = 0;
+    let totalCartao = 0;
+    let totalOutros = 0;
+
+    const vendas = this.state.vendasSessao || [];
+    // Filtra vendas da revendedora selecionada (se aplicável)
+    const vendasRev = vendas.filter(v => {
+      if (this.state.revendedoraSelecionadaId === (this.state.usuarioLogado && this.state.usuarioLogado.id)) {
+        return true;
+      }
+      return !v.revendedoraId || v.revendedoraId === this.state.revendedoraSelecionadaId;
+    });
+
+    vendasRev.forEach(v => {
+      const valorVenda = Number(v.precoVenda || 0) * Number(v.quantidade || 1);
+      const forma = (v.formaPagamento || v.pagamento || '').toLowerCase();
+      if (forma.includes('dinheiro') || forma === 'cash') totalDinheiro += valorVenda;
+      else if (forma.includes('pix')) totalPix += valorVenda;
+      else if (forma.includes('cartão') || forma.includes('cartao') || forma.includes('crédito') || forma.includes('debito') || forma.includes('débito')) totalCartao += valorVenda;
+      else totalOutros += valorVenda;
+    });
+
+    // Se não tiver dados de vendas detalhados, exibe o total
+    // e instrução geral sem split
+    const temDadosDetalhados = vendasRev.length > 0;
+
+    // CÁLCULO CORRETO DO ACERTO:
+    // Dinheiro: revendedora fica com o dinheiro físico
+    //   → ela deve pagar à admin: totalDinheiro - comissão_proporcional_dinheiro
+    //   → ou seja, admin recebe: (totalDinheiro * (1 - pctComissao))
+    // Pix/Cartão: dinheiro vai direto para admin
+    //   → admin deve pagar à revendedora a comissão
+    //   → admin paga: (totalPix + totalCartao + totalOutros) * pctComissao
+
+    const totalNaoDinheiro = totalPix + totalCartao + totalOutros;
+    const comissaoDinheiro = totalDinheiro * pctComissao;
+    const comissaoNaoDinheiro = totalNaoDinheiro * pctComissao;
+
+    // Se tiver dados detalhados, calcula split. Caso contrário usa faturamento bruto
+    let dinheiroAReceberDaRev, comissaoApagarParaRev;
+    if (temDadosDetalhados) {
+      dinheiroAReceberDaRev = totalDinheiro - comissaoDinheiro - descontoPerdas;
+      comissaoApagarParaRev = comissaoNaoDinheiro;
+    } else {
+      // Sem dados detalhados: mostra como se fosse tudo dinheiro (pior caso para a admin)
+      dinheiroAReceberDaRev = faturamentoBruto - comissaoBruta - descontoPerdas;
+      comissaoApagarParaRev = 0;
+    }
+    dinheiroAReceberDaRev = Math.max(0, dinheiroAReceberDaRev);
+
+    // Atualiza resumo estático
+    const setEl = (id, txt) => { const el = document.getElementById(id); if (el) el.innerText = txt; };
+    const fmt = v => `R$ ${v.toFixed(2).replace('.', ',')}`;
+
+    setEl('acerto-total-peças-levadas', `${totalPecasConsignadas} pçs`);
+    setEl('acerto-total-faturamento-bruto', fmt(faturamentoBruto));
+    setEl('acerto-comissao-valor', fmt(comissaoBruta));
+    setEl('acerto-desconto-perdas', `- ${fmt(descontoPerdas)}`);
+
+    // Breakdown
+    setEl('acerto-total-dinheiro', fmt(temDadosDetalhados ? totalDinheiro : faturamentoBruto));
+    setEl('acerto-total-pix', fmt(totalPix));
+    setEl('acerto-total-cartao', fmt(totalCartao));
+
+    // Resultado principal
+    const elLiquido = document.getElementById('acerto-total-liquido-receber');
+    if (elLiquido) {
+      elLiquido.innerText = fmt(dinheiroAReceberDaRev);
+      elLiquido.className = dinheiroAReceberDaRev > 0 ? 'acerto-saldo-positivo' : '';
+    }
+
+    // Comissão a pagar para a revendedora
+    const elComissaoPagar = document.getElementById('acerto-comissao-pagar-rev');
+    if (elComissaoPagar) {
+      elComissaoPagar.innerText = fmt(comissaoApagarParaRev);
+      elComissaoPagar.style.color = comissaoApagarParaRev > 0 ? '#81c784' : 'var(--text-muted)';
+    }
+
+    // Label dinâmica do resultado principal
+    const lblDinheiro = document.getElementById('lbl-acerto-dinheiro-receber');
+    if (lblDinheiro) {
+      lblDinheiro.textContent = temDadosDetalhados
+        ? 'Dinheiro a receber da Revendedora'
+        : 'A receber da Revendedora (estimado)';
+    }
   },
 
   finalizarAcerto: async function(abrirWhatsApp = false) {
@@ -3410,21 +3750,56 @@ const app = {
       }
     });
 
-    const valorComissaoBruta = faturamentoBruto * (Number(rev.comissao) / 100);
+    const pctComissao = Number(rev.comissao) / 100;
+    const valorComissaoBruta = faturamentoBruto * pctComissao;
     const valorPerdas = itensAcerto.reduce((acc, item) => acc + Number(item.precoVenda) * (item.quantidadePerdida || 0), 0);
     const valorComissao = Math.max(0, valorComissaoBruta - valorPerdas);
-    const valorLiquido = faturamentoBruto - valorComissaoBruta + valorPerdas;
+    const valorLiquidoParaAdmin = Math.max(0, faturamentoBruto - valorComissao);
+
+    // Lógica Financeira de Formas de Pagamento (Dinheiro vs Cartão/Pix)
+    let totalDinheiro = 0;
+    let totalPix = 0;
+    let totalCartao = 0;
+    let totalOutros = 0;
+
+    const vendas = this.state.vendasSessao || [];
+    const vendasRev = vendas.filter(v => !v.revendedoraId || v.revendedoraId === rev.id);
+
+    vendasRev.forEach(v => {
+      const valorVenda = Number(v.precoVenda || 0) * Number(v.quantidade || 1);
+      const forma = (v.formaPagamento || v.pagamento || '').toLowerCase();
+      if (forma.includes('dinheiro') || forma === 'cash') totalDinheiro += valorVenda;
+      else if (forma.includes('pix')) totalPix += valorVenda;
+      else if (forma.includes('cartão') || forma.includes('cartao') || forma.includes('crédito') || forma.includes('debito') || forma.includes('débito')) totalCartao += valorVenda;
+      else totalOutros += valorVenda;
+    });
+
+    const temDadosDetalhados = vendasRev.length > 0;
+    const totalNaoDinheiro = totalPix + totalCartao + totalOutros;
+    const comissaoDinheiro = totalDinheiro * pctComissao;
+    const comissaoNaoDinheiro = totalNaoDinheiro * pctComissao;
+
+    let dinheiroAReceberDaRev = 0;
+    let comissaoApagarParaRev = 0;
+
+    if (temDadosDetalhados) {
+      dinheiroAReceberDaRev = Math.max(0, totalDinheiro - comissaoDinheiro - valorPerdas);
+      comissaoApagarParaRev = comissaoNaoDinheiro;
+    } else {
+      dinheiroAReceberDaRev = Math.max(0, faturamentoBruto - valorComissao - valorPerdas);
+      comissaoApagarParaRev = 0;
+    }
 
     try {
       // Sincroniza fechamento de acerto com a Azure
-      if (this.state.token) {
+      if (this.state.token && !this.state.token.startsWith('mock_')) {
         await this.requisitarAPI("/acertos", "POST", {
           usuarioId: rev.id,
           itensAcerto: postItens
         });
       }
 
-      // Adiciona histórico local
+      // Adiciona histórico local com splits
       if(!rev.historico) rev.historico = [];
       rev.historico.push({
         data: new Date().toISOString(),
@@ -3436,25 +3811,50 @@ const app = {
         faturamentoBruto,
         valorDescontoPerda: valorPerdas,
         comissaoPaga: valorComissao,
-        liquidoConectaJoias: valorLiquido
+        liquidoParaAdmin: valorLiquidoParaAdmin,
+        splitDinheiroRevPay: dinheiroAReceberDaRev,
+        splitAdminPayCommission: comissaoApagarParaRev,
+        detalhesPagamento: { totalDinheiro, totalPix, totalCartao, totalOutros }
       });
 
       // Se deve abrir WhatsApp, gera e redireciona
       if (abrirWhatsApp) {
-        let mensagemTemplate = MarketingData.whatsappTemplates.reciboAcerto;
-        mensagemTemplate = mensagemTemplate
-          .replace("{revendedora}", rev.nome)
-          .replace("{data_acerto}", new Date().toLocaleDateString('pt-BR'))
-          .replace("{qtd_consignada}", totalConsignada)
-          .replace("{qtd_devolvida}", totalDevolvida)
-          .replace("{qtd_vendida}", totalVendida)
-          .replace("{valor_bruto}", faturamentoBruto.toFixed(2).replace(".", ","))
-          .replace("{comissao_porc}", rev.comissao)
-          .replace("{valor_comissao}", valorComissao.toFixed(2).replace(".", ","))
-          .replace("{valor_liquido}", valorLiquido.toFixed(2).replace(".", ","));
+        const dataAcerto = new Date().toLocaleDateString('pt-BR');
+        const fmt = v => `R$ ${v.toFixed(2).replace('.', ',')}`;
+        
+        let mensagem = 
+`📊 *ACERTO DE CONTAS — ${rev.nome}*
+📅 Data: ${dataAcerto}
 
-        const whatsLink = `https://api.whatsapp.com/send?phone=55${rev.whatsapp.replace(/\D/g, '')}&text=${encodeURIComponent(mensagemTemplate)}`;
-        window.open(whatsLink, "_blank");
+━━━━━━━━━━━━━━━━━━
+📦 Peças levadas: *${totalConsignada}*
+✅ Peças vendidas: *${totalVendida}*
+↩️ Peças devolvidas: *${totalDevolvida}*
+❌ Perdas/Quebras: *${totalPerdida}*
+
+💰 Faturamento Bruto: *${fmt(faturamentoBruto)}*
+🎯 Comissão total (${rev.comissao}%): *${fmt(valorComissao)}*
+━━━━━━━━━━━━━━━━━━
+
+💵 *VENDAS EM DINHEIRO:* *${fmt(temDadosDetalhados ? totalDinheiro : faturamentoBruto)}*
+(Fica com a revendedora, descontando sua comissão e perdas)
+👉 *A pagar para a administradora:* *${fmt(dinheiroAReceberDaRev)}*
+
+💳 *VENDAS EM CARTÃO/PIX:* *${fmt(totalNaoDinheiro)}*
+(Entra direto na conta da administradora)
+👉 *Comissão a receber da administradora:* *${fmt(comissaoApagarParaRev)}*
+
+━━━━━━━━━━━━━━━━━━
+💰 *RESUMO DO FECHAMENTO:*
+${dinheiroAReceberDaRev >= comissaoApagarParaRev 
+  ? `🔴 Revendedora deve pagar à Admin: *${fmt(dinheiroAReceberDaRev - comissaoApagarParaRev)}* (Líquido)` 
+  : `🟢 Admin deve pagar à Revendedora: *${fmt(comissaoApagarParaRev - dinheiroAReceberDaRev)}* (Líquido)`
+}
+
+✔️ Acerto concluído com sucesso!`;
+
+        const whatsLink = `https://api.whatsapp.com/send?phone=55${(rev.whatsapp || '').replace(/\D/g, '')}&text=${encodeURIComponent(mensagem)}`;
+        window.open(whatsLink, '_blank');
       }
 
       // 2. Limpa a maleta de consignado da revendedora no estado (pois concluiu o acerto)
@@ -3468,7 +3868,7 @@ const app = {
 
       document.getElementById("modal-acerto").classList.remove("active");
       
-      this.toast(`Acerto com ${rev.nome} concluído com sucesso e gravado na Azure! Líquido a receber: R$ ${valorLiquido.toFixed(2).replace(".", ",")}`, "success");
+      this.toast(`Acerto com ${rev.nome} concluído com sucesso! Líquido Admin: R$ ${valorLiquidoParaAdmin.toFixed(2).replace(".", ",")}`, "success");
     } catch (error) {
       console.error(error);
       this.toast("Erro ao finalizar o acerto na Azure: " + error.message, "error");
@@ -3483,224 +3883,6 @@ const app = {
     ExcelHandler.exportarAcertoRevendedora(rev, itensAcerto);
   },
 
-  // 11. ABA: MARKETING & DIVULGAÇÃO
-  renderizarMarketing: function() {
-    // 1. Ativa a sub-aba selecionada
-    document.querySelectorAll(".sub-aba-mkt").forEach(sec => {
-      if (sec.getAttribute("id") === `sub-aba-${this.state.subAbaMktAtiva}`) {
-        sec.classList.add("active");
-        sec.style.display = "block";
-      } else {
-        sec.classList.remove("active");
-        sec.style.display = "none";
-      }
-    });
-
-    document.querySelectorAll(".mkt-tab-btn").forEach(btn => {
-      if (btn.getAttribute("id") === `tab-btn-${this.state.subAbaMktAtiva}`) {
-        btn.classList.add("active");
-      } else {
-        btn.classList.remove("active");
-      }
-    });
-
-    // 2. Lógica da Sub-Aba de Feed (Organizar grade 3x3 do Insta)
-    if (this.state.subAbaMktAtiva === "feed") {
-      const feedGrid = document.getElementById("instagram-feed-grid");
-      feedGrid.innerHTML = "";
-
-      const totalPosts = this.state.feedImagens.length;
-      document.getElementById("ig-posts-count").innerText = totalPosts;
-
-      this.state.feedImagens.forEach((imgSrc, index) => {
-        const postDiv = document.createElement("div");
-        postDiv.className = "ig-post";
-        
-        // Se a string contiver 'gradient', estiliza com background inline
-        if (imgSrc.startsWith("linear-gradient") || imgSrc.startsWith("radial-gradient")) {
-          postDiv.style.background = imgSrc;
-          postDiv.innerHTML = `
-            <div class="ig-post-placeholder">
-              <i class="fa-solid fa-ring"></i>
-              <span>Brilho Bel</span>
-            </div>
-          `;
-        } else {
-          postDiv.innerHTML = `<img src="${imgSrc}" alt="Foto Joia">`;
-        }
-
-        // Evento para remover imagem do feed
-        postDiv.addEventListener("click", async () => {
-          if (await this.confirmar("Remover esta publicação do planejador de feed?")) {
-            this.state.feedImagens.splice(index, 1);
-            this.salvarDadosNoLocalStorage();
-            this.renderizarMarketing();
-            this.toast("Publicação removida com sucesso!", "success");
-          }
-        });
-
-        feedGrid.appendChild(postDiv);
-      });
-    }
-
-    // 3. Lógica do Calendário Editorial
-    if (this.state.subAbaMktAtiva === "posts") {
-      const ideiasContainer = document.getElementById("mkt-ideias-container");
-      ideiasContainer.innerHTML = "";
-
-      MarketingData.calendarioDivulgacao.forEach((cal, index) => {
-        const card = document.createElement("div");
-        card.className = "idea-card";
-        card.innerHTML = `
-          <div class="idea-header">
-            <span class="idea-day">${cal.dia}</span>
-            <span class="idea-channel"><i class="fa-solid fa-bullhorn"></i> ${cal.canal}</span>
-          </div>
-          <h4 class="idea-title">${cal.ideiaPost}</h4>
-          <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 0.8rem;">
-            <strong>Foco da Postagem:</strong> ${cal.foco}
-          </p>
-          <div class="caption-box" id="caption-text-${index}">
-            ${cal.sugestaoLegenda}
-            <button class="btn-copy" onclick="app.copiarTextoLegenda(${index})" title="Copiar Legenda"><i class="fa-regular fa-copy"></i></button>
-          </div>
-        `;
-        ideiasContainer.appendChild(card);
-      });
-    }
-
-    // 4. Lógica de Personas & Público-Alvo
-    if (this.state.subAbaMktAtiva === "personas") {
-      const personasContainer = document.getElementById("mkt-personas-container");
-      personasContainer.innerHTML = "";
-
-      MarketingData.personas.forEach(pers => {
-        const card = document.createElement("div");
-        card.className = "persona-card";
-        card.innerHTML = `
-          <div class="persona-header">
-            <div class="persona-avatar">${pers.nome.charAt(0)}</div>
-            <div class="persona-title">
-              <h3>${pers.nome}</h3>
-              <p>${pers.idade} anos • ${pers.profissao}</p>
-            </div>
-          </div>
-          <div class="persona-detail">
-            <strong>Perfil do Cliente</strong>
-            <p>${pers.perfil}</p>
-          </div>
-          <div class="persona-detail">
-            <strong>Estilo de Joias Favorito</strong>
-            <p>${pers.estiloPref}</p>
-          </div>
-          <div class="persona-detail">
-            <strong>Dor de Compra</strong>
-            <p>${pers.dorPrincipal}</p>
-          </div>
-          <div class="persona-detail" style="border-top: 1px dashed rgba(212, 175, 55, 0.2); padding-top: 0.8rem; margin-top: 0.8rem;">
-            <strong style="color: var(--gold-light);"><i class="fa-solid fa-lightbulb"></i> Como abordar para Venda:</strong>
-            <p style="font-style: italic; color: var(--gold-light);">${pers.abordagem}</p>
-          </div>
-        `;
-        personasContainer.appendChild(card);
-      });
-    }
-  },
-
-  mudarSubAbaMarketing: function(subAbaId) {
-    this.state.subAbaMktAtiva = subAbaId;
-    this.renderizarMarketing();
-  },
-
-  copiarTextoLegenda: function(index) {
-    const container = document.getElementById(`caption-text-${index}`);
-    
-    // Pega o texto da legenda limpando o botão de cópia do texto final
-    let texto = container.innerText.trim();
-    
-    navigator.clipboard.writeText(texto).then(() => {
-      this.toast("Legenda copiada com sucesso! Pronta para postar no Instagram. ✨📲", "success");
-    });
-  },
-
-  processarUploadFeed: async function(event) {
-    const files = event.target.files;
-    if (files.length === 0) return;
-
-    const file = files[0];
-    
-    // Se o usuário estiver autenticado, tenta fazer upload para a Azure
-    if (this.state.token) {
-      try {
-        const formData = new FormData();
-        formData.append("imagem", file);
-
-        const data = await this.requisitarAPI("/uploads", "POST", formData);
-        
-        this.state.feedImagens.unshift(data.url);
-        if (this.state.feedImagens.length > 12) {
-          this.state.feedImagens.pop();
-        }
-
-        this.salvarDadosNoLocalStorage();
-        this.renderizarMarketing();
-        this.toast("Imagem salva no contêiner da Azure com sucesso! Link público gerado.", "success");
-        return;
-      } catch (error) {
-        console.warn("Falha no upload para Azure Blob Storage. Usando fallback Base64 local:", error.message);
-      }
-    }
-
-    // Fallback: Salva no LocalStorage em Base64 comprimido
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement("canvas");
-        const maxDim = 450;
-        let width = img.width;
-        let height = img.height;
-
-        if (width > height) {
-          if (width > maxDim) {
-            height *= maxDim / width;
-            width = maxDim;
-          }
-        } else {
-          if (height > maxDim) {
-            width *= maxDim / height;
-            height = maxDim;
-          }
-        }
-
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext("2d");
-        ctx.drawImage(img, 0, 0, width, height);
-
-        const compressedBase64 = canvas.toDataURL("image/jpeg", 0.75);
-
-        this.state.feedImagens.unshift(compressedBase64);
-        if (this.state.feedImagens.length > 12) {
-          this.state.feedImagens.pop();
-        }
-
-        this.salvarDadosNoLocalStorage();
-        this.renderizarMarketing();
-      };
-      img.src = e.target.result;
-    };
-    reader.readAsDataURL(file);
-  },
-
-  reiniciarFeedPadrao: async function() {
-    if (await this.confirmar("Deseja realmente resetar e voltar ao feed padrão inicial?")) {
-      this.state.feedImagens = [];
-      this.inicializarFeedPadrao();
-      this.renderizarMarketing();
-      this.toast("Feed reiniciado para o padrão com sucesso!", "success");
-    }
-  },
 
   // 12. LÓGICA DE INTEGRAÇÃO COM PLANILHAS EXCEL IMPORTAÇÃO
   processarImportacaoExcel: function(event) {
@@ -5042,82 +5224,480 @@ const app = {
     }
   },
 
-  carregarTreinamentosVendedora: async function() {
-    const container = document.getElementById("treinamento-cards-container");
-    if (!container) return;
-
-    try {
-      let lista = [];
-      if (this.state.token && !this.state.token.startsWith("mock_")) {
-        lista = await this.requisitarAPI("/treinamentos");
-      } else {
-        lista = JSON.parse(localStorage.getItem("conectajoias_treinamentos_mock") || "[]");
-      }
-
-      if (lista.length === 0) {
-        container.innerHTML = `
-          <div style="grid-column: 1 / -1; text-align: center; padding: 3rem; background: rgba(0,0,0,0.2); border-radius: var(--radius-md); color: var(--text-secondary);">
-            <i class="fa-solid fa-graduation-cap" style="font-size: 2.5rem; color: var(--gold-light); margin-bottom: 1rem; opacity: 0.3;"></i>
-            <p>Nenhum conteúdo de treinamento ou manual foi cadastrado pela administração ainda.</p>
-          </div>
-        `;
-        return;
-      }
-
-      container.innerHTML = lista.map(t => {
-        let previewHtml = "";
-        if (t.tipo === "VIDEO") {
-          let videoId = "";
-          if (t.url.includes("youtube.com/watch?v=")) {
-            videoId = t.url.split("v=")[1]?.split("&")[0];
-          } else if (t.url.includes("youtu.be/")) {
-            videoId = t.url.split("youtu.be/")[1]?.split("?")[0];
-          } else if (t.url.includes("embed/")) {
-            videoId = t.url.split("embed/")[1]?.split("?")[0];
-          }
-
-          if (videoId) {
-            previewHtml = `
-              <div style="position: relative; width: 100%; padding-bottom: 56.25%; height: 0; overflow: hidden; border-radius: var(--radius-sm); margin-bottom: 1rem;">
-                <iframe src="https://www.youtube.com/embed/${videoId}" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0;" allowfullscreen></iframe>
-              </div>
-            `;
-          } else {
-            previewHtml = `
-              <div style="background: #151515; height: 150px; display: flex; align-items: center; justify-content: center; border-radius: var(--radius-sm); margin-bottom: 1rem;">
-                <a href="${t.url}" target="_blank" style="color: var(--gold-primary); text-decoration: none; display: flex; flex-direction: column; align-items: center; gap: 8px;">
-                  <i class="fa-solid fa-circle-play" style="font-size: 2.5rem;"></i>
-                  <span>Abrir Vídeo Externo</span>
-                </a>
-              </div>
-            `;
-          }
-        } else {
-          previewHtml = `
-            <div style="background: rgba(212,175,55,0.05); height: 150px; display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: var(--radius-sm); margin-bottom: 1rem; border: 1px dashed rgba(212,175,55,0.2);">
-              <i class="fa-solid fa-file-pdf" style="font-size: 3rem; color: #ff8a80; margin-bottom: 0.8rem;"></i>
-              <a href="${t.url}" target="_blank" class="btn-outline-gold" style="padding: 0.35rem 0.8rem; font-size: 0.8rem; text-decoration: none;"><i class="fa-solid fa-download"></i> Baixar Manual PDF</a>
-            </div>
-          `;
-        }
-
-        return `
-          <div class="dashboard-panel" style="display: flex; flex-direction: column; justify-content: space-between; border: 1px solid rgba(255,255,255,0.05);">
-            <div>
-              ${previewHtml}
-              <h3 style="font-family: var(--font-title); font-size: 1.05rem; color: var(--gold-light); margin-bottom: 0.4rem;">${t.titulo}</h3>
-              <p style="font-size: 0.82rem; color: var(--text-secondary); line-height: 1.4; margin-bottom: 1rem;">${t.descricao || "Instruções e dicas essenciais Conecta Joias."}</p>
-            </div>
-            <div style="border-top: 1px solid rgba(255,255,255,0.05); padding-top: 0.8rem; font-size: 0.72rem; color: var(--text-muted); display: flex; justify-content: space-between; align-items: center;">
-              <span>TIPO: <strong>${t.tipo}</strong></span>
-              <a href="${t.url}" target="_blank" style="color: var(--gold-primary);"><i class="fa-solid fa-arrow-up-right-from-square"></i> Link Completo</a>
-            </div>
-          </div>
-        `;
-      }).join("");
-    } catch (e) {
-      console.error(e);
+  // Estrutura de dados dos Módulos de Treinamento
+  MODULOS_TREINAMENTO: [
+    {
+      titulo: "Primeiros Passos",
+      descricao: "Navegue pelo sistema e configure sua conta para começar a vender.",
+      icone: "fa-solid fa-rocket",
+      videos: [
+        { titulo: "1. Apresentação Geral do Conecta Joias", duracao: "5:20", url: "https://www.youtube.com/embed/dQw4w9WgXcQ", concluido: false },
+        { titulo: "2. Conhecendo o Dashboard e Resumos", duracao: "4:45", url: "https://www.youtube.com/embed/dQw4w9WgXcQ", concluido: false },
+        { titulo: "3. Configurando a Identidade da sua Loja", duracao: "6:10", url: "https://www.youtube.com/embed/dQw4w9WgXcQ", concluido: false }
+      ]
+    },
+    {
+      titulo: "Cadastro e Precificação",
+      descricao: "Como cadastrar semijoias, definir custo, markup e preço de venda.",
+      icone: "fa-solid fa-gem",
+      videos: [
+        { titulo: "1. Cadastrando uma Semi-joia no Estoque", duracao: "6:40", url: "https://www.youtube.com/embed/dQw4w9WgXcQ", concluido: false },
+        { titulo: "2. Compreendendo o Markup Automático", duracao: "5:15", url: "https://www.youtube.com/embed/dQw4w9WgXcQ", concluido: false },
+        { titulo: "3. Definindo o Preço de Venda Customizado", duracao: "4:30", url: "https://www.youtube.com/embed/dQw4w9WgXcQ", concluido: false }
+      ]
+    },
+    {
+      titulo: "Gestão de Consignação",
+      descricao: "Cadastre revendedoras, consigne peças e acompanhe a maleta delas.",
+      icone: "fa-solid fa-briefcase",
+      videos: [
+        { titulo: "1. Cadastrando Nova Revendedora", duracao: "5:00", url: "https://www.youtube.com/embed/dQw4w9WgXcQ", concluido: false },
+        { titulo: "2. Entregando a Maleta de Consignação", duracao: "8:12", url: "https://www.youtube.com/embed/dQw4w9WgXcQ", concluido: false },
+        { titulo: "3. Configuração dos Ciclos Mensais", duracao: "7:50", url: "https://www.youtube.com/embed/dQw4w9WgXcQ", concluido: false }
+      ]
+    },
+    {
+      titulo: "Realizar Acerto de Contas",
+      descricao: "Como fechar o mês com as revendedoras, registrar vendas e devoluções.",
+      icone: "fa-solid fa-calculator",
+      videos: [
+        { titulo: "1. Como Iniciar o Acerto de Contas", duracao: "11:20", url: "https://www.youtube.com/embed/dQw4w9WgXcQ", concluido: false },
+        { titulo: "2. Fluxo Financeiro: Dinheiro Físico vs Cartões/Pix", duracao: "9:45", url: "https://www.youtube.com/embed/dQw4w9WgXcQ", concluido: false },
+        { titulo: "3. Concluindo Acerto e Enviando no WhatsApp", duracao: "6:15", url: "https://www.youtube.com/embed/dQw4w9WgXcQ", concluido: false }
+      ]
+    },
+    {
+      titulo: "Links de Pagamento",
+      descricao: "Gere links de cobrança personalizados e envie para seus clientes.",
+      icone: "fa-solid fa-link",
+      videos: [
+        { titulo: "1. Gerando Links de Pagamento", duracao: "5:30", url: "https://www.youtube.com/embed/dQw4w9WgXcQ", concluido: false },
+        { titulo: "2. Vendendo para Clientes Avulsos com Vínculo de Produto", duracao: "6:15", url: "https://www.youtube.com/embed/dQw4w9WgXcQ", concluido: false }
+      ]
     }
+  ],
+
+  carregarTreinamentosVendedora: function() {
+    // Inicializa progresso se não existir
+    if (!localStorage.getItem("conectajoias_treinamento_progresso")) {
+      const progressoInicial = {};
+      this.MODULOS_TREINAMENTO.forEach((m, mIdx) => {
+        progressoInicial[mIdx] = m.videos.map(() => false);
+      });
+      localStorage.setItem("conectajoias_treinamento_progresso", JSON.stringify(progressoInicial));
+    }
+
+    this.renderizarModulosTreinamento();
+  },
+
+  renderizarModulosTreinamento: function() {
+    const grid = document.getElementById("treinamento-modulos-grid");
+    if (!grid) return;
+
+    const progresso = JSON.parse(localStorage.getItem("conectajoias_treinamento_progresso") || "{}");
+
+    grid.innerHTML = this.MODULOS_TREINAMENTO.map((m, idx) => {
+      const videosModulo = m.videos;
+      const totalVideos = videosModulo.length;
+      
+      // Calcula progresso concluído
+      const videosConcluidos = progresso[idx] || videosModulo.map(() => false);
+      const concluidosCount = videosConcluidos.filter(v => v === true).length;
+      const pctProgresso = totalVideos > 0 ? Math.round((concluidosCount / totalVideos) * 100) : 0;
+
+      return `
+        <div class="modulo-card" onclick="app.abrirModuloTreinamento(${idx})">
+          <div class="modulo-card-header">
+            <div class="modulo-icon-wrap"><i class="${m.icone}"></i></div>
+            <div class="modulo-info">
+              <h3>${m.titulo}</h3>
+              <p>${m.descricao}</p>
+            </div>
+          </div>
+          
+          <div style="margin: 0.8rem 0; width: 100%;">
+            <div style="display: flex; justify-content: space-between; font-size: 0.72rem; color: var(--text-secondary); margin-bottom: 4px;">
+              <span>Progresso de Conclusão</span>
+              <strong>${pctProgresso}%</strong>
+            </div>
+            <div style="width: 100%; height: 6px; background: rgba(255,255,255,0.06); border-radius: 3px; overflow: hidden;">
+              <div style="width: ${pctProgresso}%; height: 100%; background: var(--gold-gradient); transition: width 0.3s ease;"></div>
+            </div>
+          </div>
+
+          <div class="modulo-footer">
+            <span class="modulo-badge"><i class="fa-solid fa-play"></i> ${totalVideos} vídeos (${concluidosCount} concluintes)</span>
+            <button class="modulo-btn-acessar"><i class="fa-solid fa-arrow-right"></i> Acessar</button>
+          </div>
+        </div>
+      `;
+    }).join("") + `
+      <!-- Módulo Fixo de Como Emitir Nota Fiscal (Em Breve) -->
+      <div class="modulo-card" style="opacity: 0.6; cursor: default;">
+        <div class="modulo-card-header">
+          <div class="modulo-icon-wrap"><i class="fa-solid fa-file-invoice"></i></div>
+          <div class="modulo-info">
+            <h3>Emissão de Nota Fiscal</h3>
+            <p>Como parametrizar certificados e emitir notas fiscais pelo sistema.</p>
+          </div>
+        </div>
+        <div class="modulo-footer" style="margin-top: 1.5rem;">
+          <span class="modulo-badge em-breve"><i class="fa-solid fa-clock"></i> Em breve</span>
+          <button class="modulo-btn-acessar" disabled><i class="fa-solid fa-lock"></i> Indisponível</button>
+        </div>
+      </div>
+    `;
+    
+    // Oculta a visualização dos vídeos se estiver ativa
+    const modView = document.getElementById("treinamento-modulos-view");
+    const vidView = document.getElementById("treinamento-videos-view");
+    if (modView) modView.style.display = "block";
+    if (vidView) vidView.style.display = "none";
+  },
+
+  abrirModuloTreinamento: function(moduloIndex) {
+    const modView = document.getElementById("treinamento-modulos-view");
+    const vidView = document.getElementById("treinamento-videos-view");
+    const titulo = document.getElementById("treinamento-modulo-titulo");
+    const desc = document.getElementById("treinamento-modulo-descricao");
+    const videoList = document.getElementById("treinamento-video-list");
+
+    if (!vidView || !modView || !videoList) return;
+
+    const modulo = this.MODULOS_TREINAMENTO[moduloIndex];
+    if (!modulo) return;
+
+    if (titulo) titulo.innerText = modulo.titulo;
+    if (desc) desc.innerText = modulo.descricao;
+
+    const progresso = JSON.parse(localStorage.getItem("conectajoias_treinamento_progresso") || "{}");
+    const statusConclusao = progresso[moduloIndex] || modulo.videos.map(() => false);
+
+    videoList.innerHTML = modulo.videos.map((vid, vidIdx) => {
+      const isConcluido = statusConclusao[vidIdx] === true;
+      const statusBadge = isConcluido 
+        ? `<span style="background: rgba(76,175,80,0.15); color: #4caf50; border: 1px solid rgba(76,175,80,0.3); font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; display: inline-flex; align-items: center; gap: 4px;"><i class="fa-solid fa-circle-check"></i> Concluído</span>`
+        : `<span style="background: rgba(212,175,55,0.08); color: var(--gold-primary); border: 1px solid rgba(212,175,55,0.2); font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; display: inline-flex; align-items: center; gap: 4px;"><i class="fa-solid fa-play"></i> Pendente</span>`;
+
+      return `
+        <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); padding: 1.2rem; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: space-between; gap: 1.5rem; transition: background 0.3s;" onmouseover="this.style.background='rgba(255,255,255,0.04)'" onmouseout="this.style.background='rgba(255,255,255,0.02)'">
+          <div style="display: flex; align-items: center; gap: 1.2rem; flex: 1;">
+            <div style="width: 44px; height: 44px; background: rgba(212,175,55,0.06); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--gold-primary); font-size: 1.1rem; flex-shrink: 0;">
+              <i class="fa-solid fa-circle-play"></i>
+            </div>
+            <div>
+              <h4 style="font-size: 0.95rem; font-weight: 600; color: #fff; margin-bottom: 0.3rem;">${vid.titulo}</h4>
+              <div style="display: flex; align-items: center; gap: 10px; font-size: 0.75rem;">
+                <span style="color: var(--text-muted);"><i class="fa-solid fa-clock" style="margin-right: 4px;"></i> ${vid.duracao}</span>
+                ${statusBadge}
+              </div>
+            </div>
+          </div>
+          <button class="btn-outline-gold" onclick="app.abrirVideoPlayer('${vid.titulo.replace(/'/g, "\\'")}', '${vid.url}', ${vidIdx}, ${moduloIndex})" style="padding: 0.5rem 1rem; font-size: 0.78rem; font-weight: 600;">
+            <i class="fa-solid fa-play" style="margin-right: 5px;"></i> Assistir Aula
+          </button>
+        </div>
+      `;
+    }).join("");
+
+    modView.style.display = "none";
+    vidView.style.display = "block";
+  },
+
+  voltarModulosTreinamento: function() {
+    this.renderizarModulosTreinamento();
+  },
+
+  abrirVideoPlayer: function(titulo, url, videoIndex, moduloIndex) {
+    const player = document.getElementById("modal-video-player");
+    const iframe = document.getElementById("video-player-iframe");
+    const titleEl = document.getElementById("video-player-titulo");
+
+    if (!player || !iframe) return;
+
+    if (titleEl) titleEl.innerText = titulo;
+    iframe.src = url;
+    player.classList.add("active");
+
+    // Salva progresso concluído no local storage
+    const progresso = JSON.parse(localStorage.getItem("conectajoias_treinamento_progresso") || "{}");
+    if (!progresso[moduloIndex]) {
+      progresso[moduloIndex] = this.MODULOS_TREINAMENTO[moduloIndex].videos.map(() => false);
+    }
+    progresso[moduloIndex][videoIndex] = true;
+    localStorage.setItem("conectajoias_treinamento_progresso", JSON.stringify(progresso));
+  },
+
+  fecharVideoPlayer: function() {
+    const player = document.getElementById("modal-video-player");
+    const iframe = document.getElementById("video-player-iframe");
+
+    if (!player || !iframe) return;
+
+    player.classList.remove("active");
+    iframe.src = ""; // Para o vídeo imediatamente
+
+    // Se estiver exibindo a lista de vídeos, atualiza ela para refletir a badge de concluído
+    const vidView = document.getElementById("treinamento-videos-view");
+    if (vidView && vidView.style.display === "block") {
+      // Reconstrói a lista do módulo aberto
+      const modTitulo = document.getElementById("treinamento-modulo-titulo")?.innerText || "";
+      const moduloIndex = this.MODULOS_TREINAMENTO.findIndex(m => m.titulo === modTitulo);
+      if (moduloIndex !== -1) {
+        this.abrirModuloTreinamento(moduloIndex);
+      }
+    }
+  },
+
+  // ==========================================
+  // SISTEMA DE NOTIFICAÇÕES FUNCIONAL COM SINO
+  // ==========================================
+
+  _notificacoes: [],
+  _notifAberto: false,
+  _notifInterval: null,
+
+  inicializarSinoNotificacoes: function() {
+    // Carrega na inicialização
+    this.carregarNotificacoes();
+
+    // Polling a cada 2 minutos
+    this._notifInterval = setInterval(() => {
+      this.carregarNotificacoes();
+    }, 2 * 60 * 1000);
+
+    // Fecha painel ao clicar fora
+    document.addEventListener('click', (e) => {
+      const wrapper = document.getElementById('notif-wrapper');
+      if (wrapper && !wrapper.contains(e.target) && this._notifAberto) {
+        this.fecharPainelNotificacoes();
+      }
+    });
+  },
+
+  carregarNotificacoes: async function(forcar = false) {
+    try {
+      let notificacoes = [];
+
+      if (this.state.token && !this.state.token.startsWith('mock_')) {
+        try {
+          notificacoes = await this.requisitarAPI('/notificacoes');
+        } catch (err) {
+          // Endpoint pode não existir ainda; usa geração local
+          notificacoes = this._gerarNotificacoesLocais();
+        }
+      } else {
+        notificacoes = this._gerarNotificacoesLocais();
+      }
+
+      this._notificacoes = notificacoes;
+      this._atualizarSinoBadge();
+      if (this._notifAberto) this._renderizarListaNotificacoes();
+    } catch (e) {
+      console.warn('Erro ao carregar notificações:', e);
+    }
+  },
+
+  // Gera notificações contextuais com base nos dados locais do sistema
+  _gerarNotificacoesLocais: function() {
+    const notifs = [];
+    const lidas = JSON.parse(localStorage.getItem('conectajoias_notif_lidas') || '[]');
+    const agora = new Date();
+
+    // 1. Estoque crítico
+    const criticos = (this.state.produtos || []).filter(p =>
+      Number(p.quantidade || 0) > 0 &&
+      Number(p.quantidade || 0) <= (this.state.limiarEstoqueCritico || 3)
+    );
+    criticos.slice(0, 3).forEach(p => {
+      const id = `estoque_critico_${p.id}`;
+      notifs.push({
+        id, tipo: 'warning', lida: lidas.includes(id),
+        titulo: '⚠️ Estoque crítico',
+        corpo: `"${p.nome}" com apenas ${p.quantidade} unidade(s).`,
+        tempo: 'Agora'
+      });
+    });
+
+    // 2. Produtos zerados
+    (this.state.produtos || []).filter(p => Number(p.quantidade || 0) === 0).slice(0, 2).forEach(p => {
+      const id = `estoque_zero_${p.id}`;
+      notifs.push({
+        id, tipo: 'danger', lida: lidas.includes(id),
+        titulo: '🚫 Produto esgotado',
+        corpo: `"${p.nome}" está com estoque zerado.`,
+        tempo: 'Agora'
+      });
+    });
+
+    // 3. Aniversários (hoje ou amanhã)
+    const dHoje = agora.getDate(), mHoje = agora.getMonth() + 1;
+    const dAmanha = new Date(agora.getTime() + 86400000);
+    (this.state.clientes || []).forEach(c => {
+      if (!c.nascimento) return;
+      const dt = new Date(c.nascimento);
+      const dia = dt.getDate(), mes = dt.getMonth() + 1;
+      if (dia === dHoje && mes === mHoje) {
+        const id = `aniv_hoje_${c.id}_${mHoje}`;
+        notifs.push({ id, tipo: 'gold', lida: lidas.includes(id),
+          titulo: '🎂 Aniversário hoje!',
+          corpo: `${c.nome} faz aniversário hoje! Envie uma mensagem especial.`,
+          tempo: 'Hoje' });
+      } else if (dia === dAmanha.getDate() && mes === dAmanha.getMonth() + 1) {
+        const id = `aniv_amanha_${c.id}_${mHoje}`;
+        notifs.push({ id, tipo: 'info', lida: lidas.includes(id),
+          titulo: '🎁 Aniversário amanhã',
+          corpo: `${c.nome} faz aniversário amanhã.`,
+          tempo: 'Amanhã' });
+      }
+    });
+
+    // 4. Acertos pendentes / Ciclos de Acerto
+    const limite30 = new Date(agora.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const mesAtual = agora.getMonth() + 1;
+    const anoAtual = agora.getFullYear();
+
+    (this.state.revendedoras || []).forEach(r => {
+      // Ignora se não tiver peças na maleta
+      if (!r.consignado || r.consignado.length === 0) return;
+
+      if (r.ciclo && r.ciclo.ativo) {
+        // Lógica de Notificações Baseada no Ciclo de Acerto
+        const cicloInfo = this.calcularEstadoCiclo(r);
+        
+        if (cicloInfo.status === "JANELA_ACERTO") {
+          const id = `ciclo_aberto_${r.id}_${mesAtual}_${anoAtual}`;
+          notifs.push({
+            id, tipo: 'gold', lida: lidas.includes(id),
+            titulo: '📋 Janela de Acerto Aberta',
+            corpo: `Janela de acerto de ${r.nome} está aberta. Prazo até o dia ${r.ciclo.diaFimAcerto}.`,
+            tempo: 'Ciclo Ativo'
+          });
+        } else if (cicloInfo.status === "PRAZO_VENCIDO") {
+          const id = `ciclo_vencido_${r.id}_${mesAtual}_${anoAtual}`;
+          notifs.push({
+            id, tipo: 'danger', lida: lidas.includes(id),
+            titulo: '🚨 Acerto VENCIDO!',
+            corpo: `${r.nome} está com o prazo de acerto vencido! (${cicloInfo.detalhe}).`,
+            tempo: 'Atrasado'
+          });
+        } else if (cicloInfo.status === "PROXIMO") {
+          const id = `ciclo_proximo_${r.id}_${mesAtual}_${anoAtual}`;
+          notifs.push({
+            id, tipo: 'warning', lida: lidas.includes(id),
+            titulo: '⏰ Acerto Próximo',
+            corpo: `${r.nome}: ${cicloInfo.detalhe}.`,
+            tempo: 'Aviso'
+          });
+        }
+      } else {
+        // Fallback Tradicional: Acerto Pendente por tempo (30 dias sem acertos)
+        const ult = r.historico && r.historico.length > 0
+          ? new Date(r.historico[r.historico.length - 1].data) : null;
+        if (!ult || ult < limite30) {
+          const id = `acerto_tradicional_${r.id}`;
+          notifs.push({ id, tipo: 'warning', lida: lidas.includes(id),
+            titulo: '📋 Acerto pendente',
+            corpo: `${r.nome} tem peças sem acerto há mais de 30 dias.`,
+            tempo: 'Pendente' });
+        }
+      }
+    });
+
+    return notifs;
+  },
+
+  _atualizarSinoBadge: function() {
+    const btn = document.getElementById('btn-notificacoes');
+    const badge = document.getElementById('notif-badge');
+    if (!btn || !badge) return;
+
+    const naoLidas = this._notificacoes.filter(n => !n.lida).length;
+
+    if (naoLidas > 0) {
+      btn.classList.add('tem-notif');
+      badge.style.display = 'flex';
+      badge.textContent = naoLidas > 99 ? '99+' : String(naoLidas);
+    } else {
+      btn.classList.remove('tem-notif');
+      badge.style.display = 'none';
+    }
+  },
+
+  _renderizarListaNotificacoes: function() {
+    const lista = document.getElementById('notif-lista');
+    if (!lista) return;
+
+    if (this._notificacoes.length === 0) {
+      lista.innerHTML = `
+        <div style="text-align:center;padding:2.5rem 1rem;color:var(--text-muted);">
+          <i class="fa-solid fa-check-circle" style="font-size:1.8rem;margin-bottom:0.6rem;opacity:0.3;display:block;"></i>
+          <span style="font-size:0.85rem;">Nenhuma notificação pendente</span>
+        </div>`;
+      return;
+    }
+
+    const iconMap = {
+      warning: { cls: 'warning', icon: 'fa-triangle-exclamation' },
+      danger:  { cls: 'danger',  icon: 'fa-circle-xmark' },
+      success: { cls: 'success', icon: 'fa-circle-check' },
+      info:    { cls: 'info',    icon: 'fa-circle-info' },
+      gold:    { cls: 'gold',    icon: 'fa-star' }
+    };
+
+    lista.innerHTML = this._notificacoes.map(n => {
+      const ic = iconMap[n.tipo] || iconMap.info;
+      return `
+        <div class="notif-item ${n.lida ? '' : 'nao-lida'}" onclick="app.marcarNotificacaoLida('${n.id}')">
+          <div class="notif-icone ${ic.cls}"><i class="fa-solid ${ic.icon}"></i></div>
+          <div class="notif-corpo" style="flex:1;">
+            <h5>${n.titulo}</h5>
+            <p>${n.corpo}</p>
+            <span class="notif-tempo">${n.tempo}</span>
+          </div>
+          ${!n.lida ? '<div style="width:8px;height:8px;background:var(--gold-primary);border-radius:50%;flex-shrink:0;margin-top:6px;"></div>' : ''}
+        </div>`;
+    }).join('');
+  },
+
+  togglePainelNotificacoes: function() {
+    const painel = document.getElementById('painel-notificacoes');
+    if (!painel) return;
+    if (this._notifAberto) {
+      this.fecharPainelNotificacoes();
+    } else {
+      painel.style.display = 'block';
+      this._notifAberto = true;
+      this._renderizarListaNotificacoes();
+    }
+  },
+
+  fecharPainelNotificacoes: function() {
+    const painel = document.getElementById('painel-notificacoes');
+    if (painel) painel.style.display = 'none';
+    this._notifAberto = false;
+  },
+
+  marcarNotificacaoLida: function(id) {
+    const n = this._notificacoes.find(n => n.id === id);
+    if (n) n.lida = true;
+    const lidas = JSON.parse(localStorage.getItem('conectajoias_notif_lidas') || '[]');
+    if (!lidas.includes(id)) lidas.push(id);
+    localStorage.setItem('conectajoias_notif_lidas', JSON.stringify(lidas));
+    this._atualizarSinoBadge();
+    this._renderizarListaNotificacoes();
+  },
+
+  marcarTodasNotificacoesLidas: function() {
+    const lidas = JSON.parse(localStorage.getItem('conectajoias_notif_lidas') || '[]');
+    this._notificacoes.forEach(n => {
+      n.lida = true;
+      if (!lidas.includes(n.id)) lidas.push(n.id);
+    });
+    localStorage.setItem('conectajoias_notif_lidas', JSON.stringify(lidas));
+    this._atualizarSinoBadge();
+    this._renderizarListaNotificacoes();
+    this.toast('Todas as notificações foram marcadas como lidas.', 'success');
   }
 
 };

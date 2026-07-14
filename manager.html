@@ -62,9 +62,6 @@
           <li class="nav-item" data-target="treinamento-demand">
             <button id="btn-tab-treinamentos"><i class="fa-solid fa-graduation-cap"></i>Treinamentos</button>
           </li>
-          <li class="nav-item" data-target="marketing">
-            <button id="btn-tab-marketing"><i class="fa-solid fa-wand-magic-sparkles"></i>Divulgação & Mkt</button>
-          </li>
         </ul>
       </nav>
       
@@ -98,7 +95,96 @@
         </div>
         <a id="btn-assinar-termo-pendente" href="#" class="btn-gold" style="padding: 0.5rem 1rem; font-size: 0.82rem; text-decoration: none; display: inline-flex; align-items: center; gap: 6px;"><i class="fa-solid fa-signature"></i> Assinar Termo Agora</a>
       </div>
+
       <!-- ==========================================
+           SINO DE NOTIFICAÇÕES FUNCIONAL
+           ========================================== -->
+      <div id="notif-wrapper" style="position: fixed; top: 1.2rem; right: 1.5rem; z-index: 1500;">
+        <!-- Botão do sino -->
+        <button id="btn-notificacoes" onclick="app.togglePainelNotificacoes()" title="Notificações" style="
+          position: relative;
+          background: rgba(12,12,12,0.92);
+          border: 1px solid rgba(212,175,55,0.3);
+          color: var(--gold-primary);
+          width: 48px; height: 48px;
+          border-radius: 50%;
+          cursor: pointer;
+          display: flex; align-items: center; justify-content: center;
+          font-size: 1.15rem;
+          transition: all 0.25s ease;
+          box-shadow: 0 4px 20px rgba(0,0,0,0.5), 0 0 0 1px rgba(212,175,55,0.1) inset;
+          backdrop-filter: blur(10px);
+        ">
+          <i class="fa-solid fa-bell" id="icone-sino"></i>
+          <span id="notif-badge" style="
+            display: none;
+            position: absolute; top: -4px; right: -4px;
+            background: #d4af37; color: #0a0a0a;
+            font-size: 0.6rem; font-weight: 700;
+            min-width: 18px; height: 18px;
+            border-radius: 9px;
+            padding: 0 4px;
+            display: none;
+            align-items: center; justify-content: center;
+            border: 2px solid #0a0a0a;
+            font-family: var(--font-body);
+          ">0</span>
+        </button>
+
+        <!-- Painel dropdown de notificações -->
+        <div id="painel-notificacoes" style="
+          display: none;
+          position: absolute; top: 58px; right: 0;
+          width: 360px;
+          background: rgba(14,14,14,0.97);
+          border: 1px solid rgba(212,175,55,0.25);
+          border-radius: 16px;
+          box-shadow: 0 20px 60px rgba(0,0,0,0.7), 0 0 30px rgba(212,175,55,0.05);
+          backdrop-filter: blur(20px);
+          overflow: hidden;
+          animation: fadeIn 0.25s ease;
+        ">
+          <div style="
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 1rem 1.2rem;
+            border-bottom: 1px solid rgba(212,175,55,0.12);
+          ">
+            <h4 style="font-family: var(--font-title); font-size: 1rem; color: var(--gold-light); margin: 0;">
+              <i class="fa-solid fa-bell" style="margin-right: 0.5rem; font-size: 0.85rem;"></i>Notificações
+            </h4>
+            <button onclick="app.marcarTodasNotificacoesLidas()" style="
+              background: transparent; border: none;
+              color: var(--text-muted); font-size: 0.72rem;
+              cursor: pointer; font-family: var(--font-body);
+              transition: color 0.2s;
+            " onmouseover="this.style.color='var(--gold-primary)'" onmouseout="this.style.color='var(--text-muted)'">
+              Marcar todas como lidas
+            </button>
+          </div>
+          <div id="notif-lista" style="max-height: 400px; overflow-y: auto;">
+            <div style="text-align: center; padding: 2.5rem 1rem; color: var(--text-muted);">
+              <i class="fa-solid fa-check-circle" style="font-size: 1.8rem; margin-bottom: 0.6rem; opacity: 0.3; display: block;"></i>
+              <span style="font-size: 0.85rem;">Nenhuma notificação pendente</span>
+            </div>
+          </div>
+          <div style="
+            padding: 0.8rem 1.2rem;
+            border-top: 1px solid rgba(212,175,55,0.08);
+            text-align: center;
+          ">
+            <button onclick="app.carregarNotificacoes(true)" style="
+              background: transparent; border: none;
+              color: var(--gold-primary); font-size: 0.78rem;
+              cursor: pointer; font-family: var(--font-body);
+              display: inline-flex; align-items: center; gap: 0.4rem;
+            ">
+              <i class="fa-solid fa-rotate"></i> Atualizar
+            </button>
+          </div>
+        </div>
+      </div>
+
+
            ABA: DASHBOARD (INATIVA PARA REVENDEDORA)
            ========================================== -->
       <section id="dashboard" class="app-section" style="display: none !important;">
@@ -658,6 +744,51 @@
                   <h3 style="font-size: 0.75rem;">Sua Margem Líquida</h3>
                   <div class="metric-value" style="font-size: 1.4rem; color: #81c784;" id="detalhe-liquido-projetado">R$ 0,00</div>
                     </div>
+            </div>
+
+            <!-- Card: Status do Ciclo Atual da Revendedora -->
+            <div id="detalhe-ciclo-card" class="metric-card" style="
+              display: none;
+              flex-direction: column;
+              gap: 1rem;
+              padding: 1.5rem;
+              margin-bottom: 2rem;
+              background: rgba(255, 255, 255, 0.015);
+              border: 1px solid rgba(212, 175, 55, 0.15);
+              border-radius: 12px;
+            ">
+              <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <i class="fa-solid fa-calendar-days" style="color: var(--gold-primary); font-size: 1.1rem;"></i>
+                  <h4 style="font-family: var(--font-title); font-size: 0.95rem; margin: 0; color: var(--text-primary);">Ciclo de Acerto Mensal</h4>
+                </div>
+                <div id="detalhe-ciclo-badge-container">
+                  <!-- Renderizado via JS -->
+                  <span class="badge-ciclo sem-ciclo">Sem Ciclo</span>
+                </div>
+              </div>
+
+              <!-- Informação e contagem regressiva -->
+              <div style="display: flex; flex-direction: column; gap: 4px;">
+                <p id="detalhe-ciclo-status-texto" style="font-size: 0.85rem; color: var(--text-secondary); margin: 0; font-weight: 500;"></p>
+                <small id="detalhe-ciclo-datas-texto" style="font-size: 0.76rem; color: var(--text-muted);"></small>
+              </div>
+
+              <!-- Barra da Timeline Visual -->
+              <div style="margin-top: 0.5rem; width: 100%;">
+                <div id="detalhe-ciclo-timeline" style="
+                  display: flex;
+                  align-items: center;
+                  gap: 2px;
+                  height: 18px;
+                  border-radius: 4px;
+                  overflow: hidden;
+                  background: rgba(255, 255, 255, 0.04);
+                "></div>
+                <div style="display: flex; justify-content: space-between; margin-top: 4px; font-size: 0.65rem; color: var(--text-muted);">
+                  <span>Dia 1</span>
+                  <span>Dia 31</span>
+                </div>
               </div>
             </div>
 
@@ -856,104 +987,6 @@
         </div>
       </section>
 
-      <!-- ==========================================
-           ABA: DIVULGAÇÃO & MARKETING (INSTAGRAM / WHATSAPP)
-           ========================================== -->
-      <section id="marketing" class="app-section">
-        <div class="section-header">
-          <div class="section-title">
-            <h2>Planejamento Editorial e Público-Alvo</h2>
-            <p>Gerencie sua presença no Instagram, organize seu feed estético e otimize a comunicação pelo WhatsApp.</p>
-          </div>
-        </div>
-
-        <div class="mkt-tabs">
-          <button class="mkt-tab-btn active" id="tab-btn-feed" onclick="app.mudarSubAbaMarketing('feed')"><i class="fa-brands fa-instagram"></i> Simulador de Feed</button>
-          <button class="mkt-tab-btn" id="tab-btn-posts" onclick="app.mudarSubAbaMarketing('posts')"><i class="fa-solid fa-calendar-days"></i> Calendário Editorial & Hashtags</button>
-          <button class="mkt-tab-btn" id="tab-btn-personas" onclick="app.mudarSubAbaMarketing('personas')"><i class="fa-solid fa-users"></i> Público-Alvo & Personas</button>
-        </div>
-
-        <!-- SUB-ABA: SIMULADOR DE FEED -->
-        <div id="sub-aba-feed" class="sub-aba-mkt active">
-          <div class="feed-planner">
-            
-            <!-- Mockup do Celular -->
-            <div class="instagram-mockup">
-              <div class="ig-header">
-                <div class="ig-username">conectajoias_semijoias <i class="fa-solid fa-circle-check"></i></div>
-              </div>
-              <div class="ig-stats-row">
-                <div>
-                  <span class="ig-stat-num" id="ig-posts-count">9</span>
-                  <span class="ig-stat-label">publicações</span>
-                </div>
-                <div>
-                  <span class="ig-stat-num">5.2K</span>
-                  <span class="ig-stat-label">seguidores</span>
-                </div>
-                <div>
-                  <span class="ig-stat-num">384</span>
-                  <span class="ig-stat-label">seguindo</span>
-                </div>
-              </div>
-              <div class="ig-bio">
-                <span class="ig-name">Conecta Joias de Luxo</span>
-                <span>💎 Semijoias banhadas a Ouro 18k e Ródio</span><br>
-                <span>📦 Enviamos para todo o Brasil</span><br>
-                <span>💼 Faça parte: Seja uma Revendedora!</span><br>
-                <a href="#">wa.me/conectajoias</a>
-              </div>
-              
-              <!-- Grade 3x3 do Feed -->
-              <div class="ig-grid" id="instagram-feed-grid">
-                <!-- Preenchido via JS, padrão 9 slots -->
-              </div>
-            </div>
-
-            <!-- Uploads e Organização -->
-            <div class="feed-instructions">
-              <h3>Estética do Feed de Luxo</h3>
-              <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">Uma identidade visual elegante em preto e dourado gera valor imediato. Planeje a disposição das fotos das suas joias para garantir harmonia de cores.</p>
-              
-              <div class="post-uploader-box" id="zone-upload-feed">
-                <i class="fa-solid fa-cloud-arrow-up"></i>
-                <h4 style="color: var(--gold-light); margin-bottom: 0.3rem;">Adicionar Foto ao Feed</h4>
-                <p style="font-size: 0.8rem; color: var(--text-secondary);">Selecione imagens locais de semijoias para preencher o feed</p>
-                <input type="file" id="input-upload-feed" accept="image/*" style="display: none;">
-              </div>
-
-              <div style="margin-top: 2rem;">
-                <h4 style="font-family: var(--font-title); color: var(--gold-primary); margin-bottom: 0.8rem;">Estilo de Foto Sugerido</h4>
-                <ul style="font-size: 0.9rem; color: var(--text-secondary); padding-left: 1.2rem; display: flex; flex-direction: column; gap: 0.5rem;">
-                  <li><strong>Fotos em Close:</strong> Destaque os detalhes da lapidação das zircônias.</li>
-                  <li><strong>Contraste Escuro:</strong> Use fundos escuros (preto/cinza) para sobressair o brilho do ouro 18k.</li>
-                  <li><strong>Modelos:</strong> Exiba mix de brincos/colares na pele para dar proporção real do produto.</li>
-                </ul>
-              </div>
-              
-              <div style="margin-top: 1.5rem;">
-                <button class="btn-outline-gold" id="btn-clear-feed" style="width: 100%; justify-content: center;"><i class="fa-solid fa-rotate-left"></i> Reiniciar Feed Padrão</button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- SUB-ABA: CALENDÁRIO EDITORIAL -->
-        <div id="sub-aba-posts" class="sub-aba-mkt" style="display: none;">
-          <h3 style="font-family: var(--font-title); color: var(--gold-light); margin-bottom: 1.5rem; font-size: 1.5rem;">Calendário Editorial Semanal</h3>
-          <div id="mkt-ideias-container">
-            <!-- Inserido dinamicamente pelo JS baseado no marketing-data.js -->
-          </div>
-        </div>
-
-        <!-- SUB-ABA: PÚBLICO-ALVO & PERSONAS -->
-        <div id="sub-aba-personas" class="sub-aba-mkt" style="display: none;">
-          <h3 style="font-family: var(--font-title); color: var(--gold-light); margin-bottom: 1.5rem; font-size: 1.5rem;">Personas de Compras de Semijoias</h3>
-          <div class="persona-container" id="mkt-personas-container">
-            <!-- Inserido dinamicamente pelo JS baseado no marketing-data.js -->
-          </div>
-        </div>
-      </section>
 
       <!-- ==========================================
            ABA: PLANILHAS EXCEL (IMPORTAÇÃO E EXPORTAÇÃO)
@@ -1271,6 +1304,7 @@
                   <tr>
                     <th>Data</th>
                     <th>Cliente</th>
+                    <th>Produto(s)</th>
                     <th>Valor</th>
                     <th>Forma</th>
                     <th>Status</th>
@@ -1279,7 +1313,7 @@
                 </thead>
                 <tbody id="tbody-links-pagamento">
                   <tr>
-                    <td colspan="6" style="text-align: center; color: var(--text-secondary);">Nenhum link de pagamento gerado ainda.</td>
+                    <td colspan="7" style="text-align: center; color: var(--text-secondary);">Nenhum link de pagamento gerado ainda.</td>
                   </tr>
                 </tbody>
               </table>
@@ -1292,15 +1326,62 @@
               <h2><i class="fa-solid fa-link"></i> Novo Link</h2>
             </div>
             <div style="margin-top: 1.5rem;">
-              <div class="form-group" style="margin-bottom: 1rem;">
-                <label for="link-cliente-id" style="display: block; margin-bottom: 0.3rem;">Cliente Destinatário *</label>
-                <select id="link-cliente-id" class="form-control" required style="width: 100%; padding: 0.5rem; background: var(--bg-primary); border-color: rgba(212, 175, 55, 0.3); color: var(--text-primary);">
+
+              <!-- Toggle: Cliente Cadastrado vs Avulso -->
+              <div class="form-group" style="margin-bottom: 0.5rem;">
+                <label style="display: block; margin-bottom: 0.5rem;">Tipo de Cliente *</label>
+                <div class="link-tipo-cliente-toggle">
+                  <button class="link-tipo-btn active" id="link-btn-cliente-cadastrado" onclick="app.toggleTipoClienteLink('cadastrado')">
+                    <i class="fa-solid fa-address-book"></i> Cliente Cadastrado
+                  </button>
+                  <button class="link-tipo-btn" id="link-btn-cliente-avulso" onclick="app.toggleTipoClienteLink('avulso')">
+                    <i class="fa-solid fa-user-tag"></i> Cliente Avulso
+                  </button>
+                </div>
+              </div>
+
+              <!-- Cliente Cadastrado -->
+              <div id="link-cliente-cadastrado-box" class="form-group" style="margin-bottom: 1rem;">
+                <select id="link-cliente-id" class="form-control" style="width: 100%; padding: 0.5rem; background: var(--bg-primary); border-color: rgba(212, 175, 55, 0.3); color: var(--text-primary);">
                   <option value="">Selecione um cliente...</option>
                 </select>
               </div>
+
+              <!-- Cliente Avulso -->
+              <div id="link-cliente-avulso-box" style="display: none;">
+                <div class="form-group" style="margin-bottom: 0.7rem;">
+                  <input type="text" id="link-avulso-nome" class="form-control" placeholder="Nome do cliente (opcional)" style="width: 100%; padding: 0.5rem; background: var(--bg-primary); border-color: rgba(212, 175, 55, 0.3); color: var(--text-primary);">
+                </div>
+                <div class="form-group" style="margin-bottom: 1rem;">
+                  <input type="tel" id="link-avulso-whatsapp" class="form-control" placeholder="WhatsApp (opcional)" style="width: 100%; padding: 0.5rem; background: var(--bg-primary); border-color: rgba(212, 175, 55, 0.3); color: var(--text-primary);">
+                </div>
+              </div>
+
+              <!-- Produtos Vinculados ao Link -->
+              <div class="form-group" style="margin-bottom: 1rem;">
+                <label style="display: block; margin-bottom: 0.5rem;">
+                  <i class="fa-solid fa-gem" style="color: var(--gold-primary);"></i> Produtos do Pedido
+                  <button onclick="app.adicionarProdutoLink()" style="background: transparent; border: 1px solid rgba(212,175,55,0.3); color: var(--gold-primary); font-size: 0.75rem; padding: 0.2rem 0.6rem; border-radius: var(--radius-sm); cursor: pointer; margin-left: 0.5rem; transition: all 0.2s;" onmouseover="this.style.background='rgba(212,175,55,0.1)'" onmouseout="this.style.background='transparent'">
+                    <i class="fa-solid fa-plus"></i> Adicionar
+                  </button>
+                </label>
+                <div id="link-produtos-container">
+                  <p id="link-produtos-vazio" style="font-size: 0.8rem; color: var(--text-muted); font-style: italic;">Nenhum produto adicionado. Clique em "Adicionar" para vincular produtos ao link.</p>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid rgba(255,255,255,0.04);">
+                  <span style="font-size: 0.8rem; color: var(--text-secondary);">Subtotal dos produtos:</span>
+                  <strong id="link-subtotal-produtos" style="color: var(--gold-primary); font-size: 0.9rem;">R$ 0,00</strong>
+                </div>
+              </div>
+
               <div class="form-group" style="margin-bottom: 1rem;">
                 <label for="link-valor" style="display: block; margin-bottom: 0.3rem;">Valor Cobrado (R$) *</label>
-                <input type="number" id="link-valor" class="form-control" placeholder="Ex: 150.00" step="0.01" required style="width: 100%; padding: 0.5rem; background: var(--bg-primary); border-color: rgba(212, 175, 55, 0.3); color: var(--text-primary);">
+                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                  <input type="number" id="link-valor" class="form-control" placeholder="Ex: 150.00" step="0.01" required style="flex: 1; padding: 0.5rem; background: var(--bg-primary); border-color: rgba(212, 175, 55, 0.3); color: var(--text-primary);">
+                  <button onclick="app.usarSubtotalProdutosNoLink()" style="background: rgba(212,175,55,0.08); border: 1px solid rgba(212,175,55,0.2); color: var(--gold-primary); font-size: 0.75rem; padding: 0.45rem 0.7rem; border-radius: var(--radius-sm); cursor: pointer; white-space: nowrap; transition: all 0.2s;" title="Usar subtotal dos produtos" onmouseover="this.style.background='rgba(212,175,55,0.15)'" onmouseout="this.style.background='rgba(212,175,55,0.08)'">
+                    <i class="fa-solid fa-sync"></i> Usar Total
+                  </button>
+                </div>
               </div>
               <div class="form-group" style="margin-bottom: 1rem;">
                 <label for="link-forma" style="display: block; margin-bottom: 0.3rem;">Forma de Pagamento Aceita *</label>
@@ -1327,15 +1408,137 @@
       <section id="treinamento-demand" class="app-section">
         <div class="section-header">
           <div class="section-title">
-            <h2>Capacitação e Treinamentos Conecta Joias</h2>
-            <p>Assista aos vídeos de dicas de vendas, manuais de produtos e boas práticas da marca.</p>
+            <h2>Treinamentos &amp; Capacitação</h2>
+            <p>Aprenda a usar o sistema com vídeos organizados em módulos. Assista no seu ritmo.</p>
           </div>
         </div>
 
-        <div id="treinamento-cards-container" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.5rem; margin-top: 1rem;">
-          <!-- Renderizado via JS -->
-          <p style="color: var(--text-muted); font-style: italic;">Nenhum conteúdo de treinamento disponível no momento.</p>
+        <!-- Grade de Módulos -->
+        <div id="treinamento-modulos-view">
+          <div class="treinamento-modulos-grid" id="treinamento-modulos-grid">
+
+            <!-- Módulo 1: Primeiros Passos -->
+            <div class="modulo-card" onclick="app.abrirModuloTreinamento(0)">
+              <div class="modulo-card-header">
+                <div class="modulo-icon-wrap"><i class="fa-solid fa-rocket"></i></div>
+                <div class="modulo-info">
+                  <h3>Primeiros Passos</h3>
+                  <p>Navegue pelo sistema e configure sua conta para começar a vender.</p>
+                </div>
+              </div>
+              <div class="modulo-footer">
+                <span class="modulo-badge"><i class="fa-solid fa-play"></i> 3 vídeos</span>
+                <button class="modulo-btn-acessar"><i class="fa-solid fa-arrow-right"></i> Acessar</button>
+              </div>
+            </div>
+
+            <!-- Módulo 2: Cadastro de Produtos -->
+            <div class="modulo-card" onclick="app.abrirModuloTreinamento(1)">
+              <div class="modulo-card-header">
+                <div class="modulo-icon-wrap"><i class="fa-solid fa-gem"></i></div>
+                <div class="modulo-info">
+                  <h3>Cadastro e Precificação</h3>
+                  <p>Como cadastrar semijoias, definir custo, markup e preço de venda.</p>
+                </div>
+              </div>
+              <div class="modulo-footer">
+                <span class="modulo-badge"><i class="fa-solid fa-play"></i> 4 vídeos</span>
+                <button class="modulo-btn-acessar"><i class="fa-solid fa-arrow-right"></i> Acessar</button>
+              </div>
+            </div>
+
+            <!-- Módulo 3: Gestão de Consignação -->
+            <div class="modulo-card" onclick="app.abrirModuloTreinamento(2)">
+              <div class="modulo-card-header">
+                <div class="modulo-icon-wrap"><i class="fa-solid fa-briefcase"></i></div>
+                <div class="modulo-info">
+                  <h3>Gestão de Consignação</h3>
+                  <p>Cadastre revendedoras, consigne peças e acompanhe a maleta delas.</p>
+                </div>
+              </div>
+              <div class="modulo-footer">
+                <span class="modulo-badge"><i class="fa-solid fa-play"></i> 5 vídeos</span>
+                <button class="modulo-btn-acessar"><i class="fa-solid fa-arrow-right"></i> Acessar</button>
+              </div>
+            </div>
+
+            <!-- Módulo 4: Realizar Acerto -->
+            <div class="modulo-card" onclick="app.abrirModuloTreinamento(3)">
+              <div class="modulo-card-header">
+                <div class="modulo-icon-wrap"><i class="fa-solid fa-calculator"></i></div>
+                <div class="modulo-info">
+                  <h3>Realizar Acerto de Contas</h3>
+                  <p>Como fechar o mês com as revendedoras, registrar vendas e devoluções.</p>
+                </div>
+              </div>
+              <div class="modulo-footer">
+                <span class="modulo-badge"><i class="fa-solid fa-play"></i> 3 vídeos</span>
+                <button class="modulo-btn-acessar"><i class="fa-solid fa-arrow-right"></i> Acessar</button>
+              </div>
+            </div>
+
+            <!-- Módulo 5: Links de Pagamento -->
+            <div class="modulo-card" onclick="app.abrirModuloTreinamento(4)">
+              <div class="modulo-card-header">
+                <div class="modulo-icon-wrap"><i class="fa-solid fa-link"></i></div>
+                <div class="modulo-info">
+                  <h3>Links de Pagamento</h3>
+                  <p>Gere links de cobrança personalizados e envie para seus clientes.</p>
+                </div>
+              </div>
+              <div class="modulo-footer">
+                <span class="modulo-badge"><i class="fa-solid fa-play"></i> 2 vídeos</span>
+                <button class="modulo-btn-acessar"><i class="fa-solid fa-arrow-right"></i> Acessar</button>
+              </div>
+            </div>
+
+            <!-- Módulo 6: Emitir Nota Fiscal (em breve) -->
+            <div class="modulo-card" style="opacity: 0.6; cursor: default;" onclick="">
+              <div class="modulo-card-header">
+                <div class="modulo-icon-wrap"><i class="fa-solid fa-file-invoice"></i></div>
+                <div class="modulo-info">
+                  <h3>Como Emitir Nota Fiscal</h3>
+                  <p>Passo a passo para emissão de NF-e integrada ao sistema.</p>
+                </div>
+              </div>
+              <div class="modulo-footer">
+                <span class="modulo-badge em-breve"><i class="fa-solid fa-clock"></i> Em breve</span>
+                <button class="modulo-btn-acessar" disabled><i class="fa-solid fa-lock"></i> Indisponível</button>
+              </div>
+            </div>
+
+          </div>
         </div>
+
+        <!-- Painel de Vídeos do Módulo Selecionado -->
+        <div id="treinamento-videos-view" class="modulo-videos-painel">
+          <div class="modulo-videos-header">
+            <button onclick="app.voltarModulosTreinamento()" title="Voltar aos módulos">
+              <i class="fa-solid fa-arrow-left"></i>
+            </button>
+            <div>
+              <h2 id="treinamento-modulo-titulo">Módulo</h2>
+              <p style="color: var(--text-secondary); font-size: 0.82rem; margin: 0;" id="treinamento-modulo-descricao"></p>
+            </div>
+          </div>
+          <div class="video-list" id="treinamento-video-list">
+            <!-- Renderizado via JS -->
+          </div>
+        </div>
+
+        <!-- Modal de Player de Vídeo -->
+        <div id="modal-video-player">
+          <div class="video-player-card">
+            <div class="video-player-header">
+              <h3 id="video-player-titulo">Título do Vídeo</h3>
+              <button onclick="app.fecharVideoPlayer()"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="video-player-body">
+              <iframe id="video-player-iframe" src="" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+            </div>
+          </div>
+        </div>
+
       </section>
 
     </main>
@@ -1464,6 +1667,21 @@
               <span id="calc-preco-venda">R$ 0,00</span>
             </div>
 
+            <!-- Opção de Preço Manual -->
+            <div style="margin: 0.8rem 0; padding: 0.8rem; background: rgba(212,175,55,0.04); border: 1px solid rgba(212,175,55,0.15); border-radius: var(--radius-sm);">
+              <div style="display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.6rem;">
+                <input type="checkbox" id="prod-usar-preco-manual" onchange="app.togglePrecoManual()" style="width: 16px; height: 16px; cursor: pointer; accent-color: var(--gold-primary);">
+                <label for="prod-usar-preco-manual" style="cursor: pointer; font-size: 0.82rem; color: var(--text-secondary); margin: 0;">Definir meu próprio preço de venda</label>
+              </div>
+              <div id="prod-preco-manual-container" style="display: none;">
+                <div class="input-icon-wrapper">
+                  <span>R$</span>
+                  <input type="number" id="prod-preco-manual" class="form-control" placeholder="0,00" step="0.01" oninput="app.atualizarPrecoManual()" style="font-weight: 700; color: var(--gold-primary);">
+                </div>
+                <p style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.4rem; font-style: italic;">⚠️ Este valor substituirá o preço sugerido pelo markup.</p>
+              </div>
+            </div>
+
             <div class="pricing-row profit">
               <span>Lucro por Peça</span>
               <span id="calc-lucro-liquido">R$ 0,00</span>
@@ -1487,38 +1705,123 @@
        MODAL: CADASTRO DE REVENDEDORA
        ========================================== -->
   <div class="modal-backdrop" id="modal-revendedora">
-    <div class="modal-card" style="width: 450px;">
+    <div class="modal-card" style="width: 540px;">
       <div class="modal-title-row">
         <h3>Nova Revendedora</h3>
         <button class="btn-close-modal" id="btn-close-modal-revendedora"><i class="fa-solid fa-xmark"></i></button>
       </div>
 
-      <div class="form-group">
-        <label for="rev-nome">Nome Completo *</label>
-        <input type="text" id="rev-nome" class="form-control" placeholder="Ex: Ana Souza Martins" required>
+      <div class="form-grid" style="grid-template-columns: 1fr 1fr; gap: 1rem;">
+        <div class="form-group" style="grid-column: 1/-1;">
+          <label for="rev-nome">Nome Completo *</label>
+          <input type="text" id="rev-nome" class="form-control" placeholder="Ex: Ana Souza Martins" required>
+        </div>
+        <div class="form-group">
+          <label for="rev-whatsapp">WhatsApp / Celular *</label>
+          <input type="text" id="rev-whatsapp" class="form-control" placeholder="Ex: (11) 99999-9999" required>
+        </div>
+        <div class="form-group">
+          <label for="rev-comissao">Comissão (%) *</label>
+          <input type="number" id="rev-comissao" class="form-control" value="30" min="0" max="100">
+        </div>
+        <div class="form-group" id="group-rev-senha" style="grid-column: 1/-1;">
+          <label for="rev-senha">Senha de Acesso *</label>
+          <input type="password" id="rev-senha" class="form-control" placeholder="Defina a senha da revendedora" required>
+        </div>
       </div>
 
-      <div class="form-group">
-        <label for="rev-whatsapp">WhatsApp / Celular *</label>
-        <input type="text" id="rev-whatsapp" class="form-control" placeholder="Ex: (11) 99999-9999" required>
+      <!-- ── CICLO DE ACERTO ── -->
+      <div class="ciclo-config-section" id="ciclo-config-section">
+        <div class="ciclo-config-header" onclick="app.toggleCicloConfig()">
+          <div style="display:flex;align-items:center;gap:0.6rem;">
+            <i class="fa-solid fa-calendar-check" style="color:var(--gold-primary);"></i>
+            <span style="font-weight:600;font-size:0.9rem;">Ciclo de Acerto</span>
+            <span id="ciclo-config-badge" style="display:none;background:rgba(212,175,55,0.15);color:var(--gold-primary);font-size:0.7rem;padding:2px 8px;border-radius:20px;font-weight:600;">ATIVO</span>
+          </div>
+          <i class="fa-solid fa-chevron-down" id="ciclo-config-chevron" style="color:var(--text-muted);transition:transform 0.25s;"></i>
+        </div>
+
+        <div id="ciclo-config-body" style="display:none;padding:1.2rem;border-top:1px solid rgba(212,175,55,0.1);">
+
+          <!-- Toggle Ativar -->
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.2rem;">
+            <div>
+              <span style="font-size:0.85rem;color:var(--text-primary);font-weight:600;">Ativar ciclo automático</span>
+              <p style="font-size:0.74rem;color:var(--text-muted);margin:0.2rem 0 0;">O sistema alertará quando for hora de realizar o acerto.</p>
+            </div>
+            <label class="ciclo-toggle-switch">
+              <input type="checkbox" id="rev-ciclo-ativo" onchange="app.atualizarPreviewCiclo()">
+              <span class="ciclo-toggle-slider"></span>
+            </label>
+          </div>
+
+          <!-- Campos do ciclo -->
+          <div id="ciclo-campos" style="display:none;">
+            <p style="font-size:0.78rem;color:var(--text-muted);margin-bottom:1rem;">
+              <i class="fa-solid fa-circle-info" style="color:var(--gold-primary);margin-right:4px;"></i>
+              Defina os dias do mês em que a consignação circula e quando o acerto deve ser feito.
+            </p>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.8rem;margin-bottom:0.8rem;">
+              <div class="form-group" style="margin:0;">
+                <label style="font-size:0.78rem;">📦 Início da consignação (dia)</label>
+                <input type="number" id="rev-ciclo-inicio-consig" class="form-control" value="1" min="1" max="28"
+                  style="text-align:center;" oninput="app.atualizarPreviewCiclo()">
+              </div>
+              <div class="form-group" style="margin:0;">
+                <label style="font-size:0.78rem;">📦 Fim da consignação (dia)</label>
+                <input type="number" id="rev-ciclo-fim-consig" class="form-control" value="30" min="1" max="31"
+                  style="text-align:center;" oninput="app.atualizarPreviewCiclo()">
+              </div>
+            </div>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.8rem;margin-bottom:1rem;">
+              <div class="form-group" style="margin:0;">
+                <label style="font-size:0.78rem;">📋 Abertura do acerto (dia)</label>
+                <input type="number" id="rev-ciclo-inicio-acerto" class="form-control" value="25" min="1" max="28"
+                  style="text-align:center;border-color:rgba(212,175,55,0.4);" oninput="app.atualizarPreviewCiclo()">
+              </div>
+              <div class="form-group" style="margin:0;">
+                <label style="font-size:0.78rem;">📋 Encerramento do acerto (dia)</label>
+                <input type="number" id="rev-ciclo-fim-acerto" class="form-control" value="30" min="1" max="31"
+                  style="text-align:center;border-color:rgba(212,175,55,0.4);" oninput="app.atualizarPreviewCiclo()">
+              </div>
+            </div>
+
+            <!-- Preview dinâmico -->
+            <div id="ciclo-preview" style="
+              background:rgba(212,175,55,0.06);
+              border:1px solid rgba(212,175,55,0.2);
+              border-radius:10px;
+              padding:0.85rem 1rem;
+              font-size:0.78rem;
+              color:var(--text-secondary);
+              line-height:1.6;
+            ">
+              <i class="fa-solid fa-circle-check" style="color:var(--gold-primary);margin-right:6px;"></i>
+              <span id="ciclo-preview-texto">Configure os dias acima para ver o resumo.</span>
+            </div>
+
+            <!-- Linha do tempo visual -->
+            <div id="ciclo-timeline-wrapper" style="margin-top:1rem;">
+              <p style="font-size:0.73rem;color:var(--text-muted);margin-bottom:0.5rem;">Linha do tempo do mês:</p>
+              <div id="ciclo-timeline" style="display:flex;align-items:center;gap:2px;height:28px;border-radius:6px;overflow:hidden;background:rgba(255,255,255,0.04);"></div>
+              <div style="display:flex;justify-content:space-between;margin-top:4px;">
+                <span style="font-size:0.65rem;color:var(--text-muted);">Dia 1</span>
+                <span style="font-size:0.65rem;color:var(--text-muted);">Dia 31</span>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <div class="form-group">
-        <label for="rev-comissao">Comissão (%) *</label>
-        <input type="number" id="rev-comissao" class="form-control" value="30" min="0" max="100">
-      </div>
-
-      <div class="form-group" id="group-rev-senha">
-        <label for="rev-senha">Senha de Acesso *</label>
-        <input type="password" id="rev-senha" class="form-control" placeholder="Defina a senha da revendedora" required>
-      </div>
-
-      <div class="modal-footer">
+      <div class="modal-footer" style="margin-top:1rem;">
         <button class="btn-outline-gold" id="btn-cancelar-revendedora">Cancelar</button>
         <button class="btn-gold" id="btn-salvar-revendedora"><i class="fa-solid fa-floppy-disk"></i> Cadastrar</button>
       </div>
     </div>
   </div>
+
 
   <!-- ==========================================
        MODAL: CONSIGNAR PEÇAS (MONTAR KITS)
@@ -1674,16 +1977,47 @@
             </div>
             <div class="pricing-row">
               <span>Comissão (<span id="acerto-comissao-percent">30</span>%)</span>
-              <span id="acerto-comissao-valor" style="color: var(--text-secondary);">R$ 0,00</span>
+              <span id="acerto-comissao-valor" style="color: #81c784;">R$ 0,00</span>
             </div>
             <div class="pricing-row" style="color: #ef9a9a;">
               <span><i class="fa-solid fa-triangle-exclamation"></i> Desconto Perdas/Danos</span>
               <span id="acerto-desconto-perdas" style="color: #ef9a9a;">- R$ 0,00</span>
             </div>
 
-            <div class="pricing-row total" style="margin: 0.8rem 0; padding: 0.8rem 0; font-size: 1.15rem; background: rgba(212, 175, 55, 0.05); padding-left: 0.5rem; padding-right: 0.5rem; border-radius: var(--radius-sm);">
-              <span class="lbl-a-pagar-empresa">A pagar para Conecta Joias</span>
-              <span id="acerto-total-liquido-receber">R$ 0,00</span>
+            <!-- Breakdown por Forma de Pagamento -->
+            <div class="acerto-breakdown-box">
+              <h5><i class="fa-solid fa-chart-bar"></i> Por Forma de Pagamento</h5>
+              <div class="acerto-breakdown-row">
+                <span><i class="fa-solid fa-money-bill-wave" style="color: #81c784; margin-right: 4px;"></i> Vendas em Dinheiro</span>
+                <strong id="acerto-total-dinheiro">R$ 0,00</strong>
+              </div>
+              <div class="acerto-breakdown-row">
+                <span><i class="fa-brands fa-pix" style="color: #00bdae; margin-right: 4px;"></i> Vendas em Pix</span>
+                <strong id="acerto-total-pix">R$ 0,00</strong>
+              </div>
+              <div class="acerto-breakdown-row">
+                <span><i class="fa-solid fa-credit-card" style="color: #64b5f6; margin-right: 4px;"></i> Vendas em Cartão</span>
+                <strong id="acerto-total-cartao">R$ 0,00</strong>
+              </div>
+            </div>
+
+            <!-- Resultado do Acerto -->
+            <div class="pricing-row total" style="margin: 0.8rem 0; padding: 0.8rem 0; font-size: 1.1rem; background: rgba(212, 175, 55, 0.05); padding-left: 0.5rem; padding-right: 0.5rem; border-radius: var(--radius-sm);">
+              <span id="lbl-acerto-dinheiro-receber">Dinheiro a receber da Rev.</span>
+              <span id="acerto-total-liquido-receber" class="acerto-saldo-positivo">R$ 0,00</span>
+            </div>
+
+            <div class="pricing-row" style="font-size: 1rem; font-weight: 700; color: #81c784;">
+              <span>Comissão a pagar à Rev. (Pix/Cartão)</span>
+              <span id="acerto-comissao-pagar-rev">R$ 0,00</span>
+            </div>
+
+            <!-- Instrução sobre o fluxo de pagamento -->
+            <div class="acerto-instrucao-box">
+              <i class="fa-solid fa-circle-info"></i>
+              <strong>Como funciona o acerto:</strong><br>
+              <b>Dinheiro:</b> a revendedora fica com o dinheiro físico e deve entregar à admin o total menos sua comissão.<br>
+              <b>Pix/Cartão:</b> o valor já vai direto para a admin. Ela deve repassar a comissão à revendedora.
             </div>
 
             <div style="display: flex; flex-direction: column; gap: 0.8rem; margin-top: 1.5rem;">
@@ -1913,7 +2247,7 @@
        SCRIPTS JAVASCRIPT
        ========================================== -->
   <!-- 1. Dados Estáticos e Modelos de Marketing -->
-  <script src="marketing-data.js"></script>
+  <!-- script src="marketing-data.js" removido pois a seção de marketing foi excluída -->
   <!-- 2. Biblioteca Robusta de CSV (PapaParse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
   <!-- 3. Funções de Manipulação do Excel/CSV -->
@@ -1921,14 +2255,24 @@
   <!-- 3. Lógica do Aplicativo Principal -->
   <script src="manager.js"></script>
 
-  <!-- Registro do Service Worker para PWA -->
+  <!-- Script de Autolimpeza imperativa de Cache e Service Workers do Navegador -->
   <script>
-    // Registra o Service Worker apenas fora do localhost para evitar problemas de cache em desenvolvimento
-    if ('serviceWorker' in navigator && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('sw.js')
-          .then(reg => console.log('Service Worker registrado com sucesso:', reg.scope))
-          .catch(err => console.error('Falha ao registrar Service Worker:', err));
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(function(registrations) {
+        for(let registration of registrations) {
+          registration.unregister().then(function() {
+            console.log("Service Worker desregistrado com sucesso para forçar atualização.");
+          });
+        }
+      });
+    }
+    if ('caches' in window) {
+      caches.keys().then(function(names) {
+        for (let name of names) {
+          caches.delete(name).then(function() {
+            console.log("Cache deletado com sucesso:", name);
+          });
+        }
       });
     }
   </script>

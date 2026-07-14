@@ -68,9 +68,6 @@
           <li class="nav-item" data-target="admin-treinamentos">
             <button id="btn-tab-admin-treinamentos"><i class="fa-solid fa-graduation-cap"></i>Treinamentos</button>
           </li>
-          <li class="nav-item" data-target="marketing">
-            <button id="btn-tab-marketing"><i class="fa-solid fa-wand-magic-sparkles"></i>Divulgação & Mkt</button>
-          </li>
           <li class="nav-item" data-target="planilhas">
             <button id="btn-tab-planilhas"><i class="fa-solid fa-file-excel"></i>Planilhas Excel</button>
           </li>
@@ -921,104 +918,7 @@
         </div>
       </section>
 
-      <!-- ==========================================
-           ABA: DIVULGAÇÃO & MARKETING (INSTAGRAM / WHATSAPP)
-           ========================================== -->
-      <section id="marketing" class="app-section">
-        <div class="section-header">
-          <div class="section-title">
-            <h2>Planejamento Editorial e Público-Alvo</h2>
-            <p>Gerencie sua presença no Instagram, organize seu feed estético e otimize a comunicação pelo WhatsApp.</p>
-          </div>
-        </div>
 
-        <div class="mkt-tabs">
-          <button class="mkt-tab-btn active" id="tab-btn-feed" onclick="app.mudarSubAbaMarketing('feed')"><i class="fa-brands fa-instagram"></i> Simulador de Feed</button>
-          <button class="mkt-tab-btn" id="tab-btn-posts" onclick="app.mudarSubAbaMarketing('posts')"><i class="fa-solid fa-calendar-days"></i> Calendário Editorial & Hashtags</button>
-          <button class="mkt-tab-btn" id="tab-btn-personas" onclick="app.mudarSubAbaMarketing('personas')"><i class="fa-solid fa-users"></i> Público-Alvo & Personas</button>
-        </div>
-
-        <!-- SUB-ABA: SIMULADOR DE FEED -->
-        <div id="sub-aba-feed" class="sub-aba-mkt active">
-          <div class="feed-planner">
-            
-            <!-- Mockup do Celular -->
-            <div class="instagram-mockup">
-              <div class="ig-header">
-                <div class="ig-username">conectajoias_semijoias <i class="fa-solid fa-circle-check"></i></div>
-              </div>
-              <div class="ig-stats-row">
-                <div>
-                  <span class="ig-stat-num" id="ig-posts-count">9</span>
-                  <span class="ig-stat-label">publicações</span>
-                </div>
-                <div>
-                  <span class="ig-stat-num">5.2K</span>
-                  <span class="ig-stat-label">seguidores</span>
-                </div>
-                <div>
-                  <span class="ig-stat-num">384</span>
-                  <span class="ig-stat-label">seguindo</span>
-                </div>
-              </div>
-              <div class="ig-bio">
-                <span class="ig-name">Conecta Joias de Luxo</span>
-                <span>💎 Semijoias banhadas a Ouro 18k e Ródio</span><br>
-                <span>📦 Enviamos para todo o Brasil</span><br>
-                <span>💼 Faça parte: Seja uma Revendedora!</span><br>
-                <a href="#">wa.me/conectajoias</a>
-              </div>
-              
-              <!-- Grade 3x3 do Feed -->
-              <div class="ig-grid" id="instagram-feed-grid">
-                <!-- Preenchido via JS, padrão 9 slots -->
-              </div>
-            </div>
-
-            <!-- Uploads e Organização -->
-            <div class="feed-instructions">
-              <h3>Estética do Feed de Luxo</h3>
-              <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">Uma identidade visual elegante em preto e dourado gera valor imediato. Planeje a disposição das fotos das suas joias para garantir harmonia de cores.</p>
-              
-              <div class="post-uploader-box" id="zone-upload-feed">
-                <i class="fa-solid fa-cloud-arrow-up"></i>
-                <h4 style="color: var(--gold-light); margin-bottom: 0.3rem;">Adicionar Foto ao Feed</h4>
-                <p style="font-size: 0.8rem; color: var(--text-secondary);">Selecione imagens locais de semijoias para preencher o feed</p>
-                <input type="file" id="input-upload-feed" accept="image/*" style="display: none;">
-              </div>
-
-              <div style="margin-top: 2rem;">
-                <h4 style="font-family: var(--font-title); color: var(--gold-primary); margin-bottom: 0.8rem;">Estilo de Foto Sugerido</h4>
-                <ul style="font-size: 0.9rem; color: var(--text-secondary); padding-left: 1.2rem; display: flex; flex-direction: column; gap: 0.5rem;">
-                  <li><strong>Fotos em Close:</strong> Destaque os detalhes da lapidação das zircônias.</li>
-                  <li><strong>Contraste Escuro:</strong> Use fundos escuros (preto/cinza) para sobressair o brilho do ouro 18k.</li>
-                  <li><strong>Modelos:</strong> Exiba mix de brincos/colares na pele para dar proporção real do produto.</li>
-                </ul>
-              </div>
-              
-              <div style="margin-top: 1.5rem;">
-                <button class="btn-outline-gold" id="btn-clear-feed" style="width: 100%; justify-content: center;"><i class="fa-solid fa-rotate-left"></i> Reiniciar Feed Padrão</button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- SUB-ABA: CALENDÁRIO EDITORIAL -->
-        <div id="sub-aba-posts" class="sub-aba-mkt" style="display: none;">
-          <h3 style="font-family: var(--font-title); color: var(--gold-light); margin-bottom: 1.5rem; font-size: 1.5rem;">Calendário Editorial Semanal</h3>
-          <div id="mkt-ideias-container">
-            <!-- Inserido dinamicamente pelo JS baseado no marketing-data.js -->
-          </div>
-        </div>
-
-        <!-- SUB-ABA: PÚBLICO-ALVO & PERSONAS -->
-        <div id="sub-aba-personas" class="sub-aba-mkt" style="display: none;">
-          <h3 style="font-family: var(--font-title); color: var(--gold-light); margin-bottom: 1.5rem; font-size: 1.5rem;">Personas de Compras de Semijoias</h3>
-          <div class="persona-container" id="mkt-personas-container">
-            <!-- Inserido dinamicamente pelo JS baseado no marketing-data.js -->
-          </div>
-        </div>
-      </section>
 
       <!-- ==========================================
            ABA: PLANILHAS EXCEL (IMPORTAÇÃO E EXPORTAÇÃO)
@@ -2645,11 +2545,6 @@
     </div>
   </div>
 
-  <!-- ==========================================
-       SCRIPTS JAVASCRIPT
-       ========================================== -->
-  <!-- 1. Dados Estáticos e Modelos de Marketing -->
-  <script src="marketing-data.js"></script>
   <!-- 2. Biblioteca Robusta de CSV (PapaParse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
   <!-- 3. Funções de Manipulação do Excel/CSV -->
@@ -2659,14 +2554,24 @@
   <!-- 4. Módulo de Vendas Diretas da Administradora -->
   <script src="superadmin-vendas.js"></script>
 
-  <!-- Registro do Service Worker para PWA -->
+  <!-- Script de Autolimpeza imperativa de Cache e Service Workers do Navegador -->
   <script>
-    // Registra o Service Worker apenas fora do localhost para evitar problemas de cache em desenvolvimento
-    if ('serviceWorker' in navigator && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('sw.js')
-          .then(reg => console.log('Service Worker registrado com sucesso:', reg.scope))
-          .catch(err => console.error('Falha ao registrar Service Worker:', err));
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(function(registrations) {
+        for(let registration of registrations) {
+          registration.unregister().then(function() {
+            console.log("Service Worker desregistrado com sucesso para forçar atualização.");
+          });
+        }
+      });
+    }
+    if ('caches' in window) {
+      caches.keys().then(function(names) {
+        for (let name of names) {
+          caches.delete(name).then(function() {
+            console.log("Cache deletado com sucesso:", name);
+          });
+        }
       });
     }
   </script>

@@ -362,49 +362,75 @@
         <!-- Conteúdo 1: PIX -->
         <div class="tab-content active" id="tab-content-pix">
           <div class="pix-box">
-            <div class="qr-code-placeholder">
-              <!-- Gerador estático de QR code premium fictício -->
-              <img id="pix-qr-img" src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=conectajoias-pagamento-simulado-pix-2026" alt="QR Code PIX">
-            </div>
-            <p style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.8rem;">Escaneie o QR Code acima com o app do seu banco ou copie o código abaixo:</p>
-            <div class="pix-copia-cola" id="pix-code-text">
-              00020101021226850014br.gov.bcb.pix2563pix.conectajoias.com.br/qr/v2/5012b74a56a0496c9e1193a388ec1dd85204000053039865406150.005802BR5917CONECTAJOIAS6009SAOPAULO62070503***6304
+            <div id="pix-loading-section" style="padding: 2rem 0;">
+              <i class="fa-solid fa-circle-notch fa-spin" style="font-size: 2.5rem; color: var(--gold-primary);"></i>
+              <p style="margin-top: 1rem; color: var(--text-secondary); font-size: 0.85rem;">Gerando chave PIX segura do ASAAS...</p>
             </div>
             
-            <button class="btn-outline-checkout" onclick="copiarPix()">
-              <i class="fa-solid fa-copy"></i> Copiar Código PIX
-            </button>
-
-            <!-- Botão de Teste Simulado -->
-            <button class="btn-checkout" style="margin-top: 2rem; background: #2e7d32; color: white;" onclick="confirmarPagamentoSimulado()">
-              <i class="fa-solid fa-circle-check"></i> Confirmar Pagamento (Simulação)
-            </button>
+            <div id="pix-content-section" style="display: none;">
+              <div class="qr-code-placeholder">
+                <img id="pix-qr-img" src="" alt="QR Code PIX">
+              </div>
+              <p style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.8rem;">Escaneie o QR Code acima com o app do seu banco ou copie o código abaixo:</p>
+              <div class="pix-copia-cola" id="pix-code-text">-</div>
+              
+              <button class="btn-outline-checkout" onclick="copiarPix()">
+                <i class="fa-solid fa-copy"></i> Copiar Código PIX
+              </button>
+            </div>
           </div>
         </div>
 
         <!-- Conteúdo 2: CARTÃO -->
         <div class="tab-content" id="tab-content-cartao">
-          <form class="card-form" onsubmit="confirmarCartao(event)">
-            <div class="form-group">
-              <label for="card-holder">Nome no Cartão</label>
-              <input type="text" id="card-holder" placeholder="Como está impresso no cartão" required>
-            </div>
-            <div class="form-group">
-              <label for="card-number">Número do Cartão</label>
-              <input type="text" id="card-number" placeholder="0000 0000 0000 0000" required>
-            </div>
-            <div class="card-row">
-              <div class="form-group">
-                <label for="card-expiry">Validade</label>
-                <input type="text" id="card-expiry" placeholder="MM/AA" required>
+          <form class="card-form" onsubmit="confirmarCartaoReal(event)">
+            <!-- Dados do Cartão -->
+            <div style="border-bottom: 1px solid rgba(255, 255, 255, 0.05); padding-bottom: 1rem; margin-bottom: 1rem;">
+              <h4 style="color: var(--gold-primary); font-size: 0.9rem; margin-bottom: 0.8rem; text-align: left;"><i class="fa-solid fa-credit-card"></i> Dados do Cartão</h4>
+              <div class="form-group" style="text-align: left;">
+                <label for="card-holder">Nome no Cartão</label>
+                <input type="text" id="card-holder" placeholder="Como está impresso no cartão" required>
               </div>
-              <div class="form-group">
-                <label for="card-cvv">CVV</label>
-                <input type="password" id="card-cvv" placeholder="123" maxlength="4" required>
+              <div class="form-group" style="text-align: left; margin-top: 0.8rem;">
+                <label for="card-number">Número do Cartão</label>
+                <input type="text" id="card-number" placeholder="0000 0000 0000 0000" required>
+              </div>
+              <div class="card-row" style="margin-top: 0.8rem;">
+                <div class="form-group" style="text-align: left;">
+                  <label for="card-expiry">Validade</label>
+                  <input type="text" id="card-expiry" placeholder="MM/AA" required>
+                </div>
+                <div class="form-group" style="text-align: left;">
+                  <label for="card-cvv">CVV</label>
+                  <input type="password" id="card-cvv" placeholder="123" cvv-card maxlength="4" required>
+                </div>
               </div>
             </div>
 
-            <button type="submit" class="btn-checkout" id="btn-submit-cartao">
+            <!-- Dados de Faturamento -->
+            <div>
+              <h4 style="color: var(--gold-primary); font-size: 0.9rem; margin-bottom: 0.8rem; text-align: left;"><i class="fa-solid fa-user"></i> Dados do Titular & Endereço</h4>
+              <div class="form-group" style="text-align: left;">
+                <label for="card-cpf">CPF/CNPJ do Titular</label>
+                <input type="text" id="card-cpf" placeholder="000.000.000-00" required>
+              </div>
+              <div class="form-group" style="text-align: left; margin-top: 0.8rem;">
+                <label for="card-email">E-mail para envio de comprovante</label>
+                <input type="email" id="card-email" placeholder="seu-email@exemplo.com" required>
+              </div>
+              <div class="card-row" style="margin-top: 0.8rem;">
+                <div class="form-group" style="text-align: left;">
+                  <label for="card-cep">CEP</label>
+                  <input type="text" id="card-cep" placeholder="00000-000" required>
+                </div>
+                <div class="form-group" style="text-align: left;">
+                  <label for="card-num-end">Número</label>
+                  <input type="text" id="card-num-end" placeholder="123" required>
+                </div>
+              </div>
+            </div>
+
+            <button type="submit" class="btn-checkout" id="btn-submit-cartao" style="margin-top: 1.5rem;">
               <i class="fa-solid fa-shield-halved"></i> Pagar Agora com Cartão
             </button>
           </form>
@@ -412,21 +438,45 @@
 
         <!-- Conteúdo 3: BOLETO -->
         <div class="tab-content" id="tab-content-boleto">
-          <div class="boleto-box">
-            <i class="fa-solid fa-file-invoice-dollar" style="font-size: 3rem; color: var(--gold-primary); margin-bottom: 1rem;"></i>
-            <h3 style="font-family: var(--font-title); font-size: 1.1rem; color: var(--text-primary);">Boleto Bancário</h3>
+          <!-- Entrada dos dados -->
+          <div class="boleto-box" id="boleto-input-section">
+            <i class="fa-solid fa-file-invoice-dollar" style="font-size: 2.5rem; color: var(--gold-primary); margin-bottom: 0.8rem;"></i>
+            <h3 style="font-family: var(--font-title); font-size: 1.1rem; color: var(--text-primary);">Emitir Boleto Bancário</h3>
+            <p style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 1.2rem;">Preencha seus dados para gerar o boleto pelo ASAAS:</p>
+            
+            <div class="card-form">
+              <div class="form-group" style="text-align: left;">
+                <label for="boleto-nome">Nome Completo</label>
+                <input type="text" id="boleto-nome" placeholder="Nome do sacado" required>
+              </div>
+              <div class="form-group" style="text-align: left; margin-top: 0.8rem;">
+                <label for="boleto-cpf">CPF ou CNPJ</label>
+                <input type="text" id="boleto-cpf" placeholder="000.000.000-00" required>
+              </div>
+              <div class="form-group" style="text-align: left; margin-top: 0.8rem;">
+                <label for="boleto-email">E-mail para envio de cobrança</label>
+                <input type="email" id="boleto-email" placeholder="seu-email@exemplo.com" required>
+              </div>
+              <button class="btn-checkout" onclick="gerarBoletoReal(event)" id="btn-submit-boleto" style="margin-top: 1.2rem;">
+                <i class="fa-solid fa-barcode"></i> Gerar Boleto Bancário
+              </button>
+            </div>
+          </div>
+          
+          <!-- Resultado do Boleto -->
+          <div class="boleto-box" id="boleto-result-section" style="display: none;">
+            <i class="fa-solid fa-circle-check" style="font-size: 2.5rem; color: #81c784; margin-bottom: 0.8rem;"></i>
+            <h3 style="font-family: var(--font-title); font-size: 1.1rem; color: var(--text-primary);">Boleto Emitido com Sucesso!</h3>
             <p style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.3rem;">O boleto será compensado em até 1 dia útil após o pagamento.</p>
             
-            <div class="boleto-barcode" id="boleto-barcode-text">
-              34191.79001 01043.513184 91020.150008 7 96250000015000
-            </div>
+            <div class="boleto-barcode" id="boleto-barcode-text">-</div>
 
             <button class="btn-outline-checkout" onclick="copiarBoleto()">
               <i class="fa-solid fa-copy"></i> Copiar Código de Barras
             </button>
-            <button class="btn-checkout" onclick="baixarBoletoPDF()">
-              <i class="fa-solid fa-file-pdf"></i> Baixar Boleto em PDF (Simulado)
-            </button>
+            <a id="boleto-pdf-link" href="#" target="_blank" class="btn-checkout" style="text-decoration: none; margin-top: 0.8rem;">
+              <i class="fa-solid fa-file-pdf"></i> Baixar Boleto em PDF
+            </a>
           </div>
         </div>
 

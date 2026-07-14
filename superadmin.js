@@ -7,7 +7,9 @@
 const app = {
   // 1. Estado da Aplicação
   state: {
-    apiUrl: "http://localhost:5000/api",
+    apiUrl: window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1" 
+      ? "http://localhost:5000/api" 
+      : `${window.location.origin}/api`,
     token: null,
     usuarioLogado: null,
     produtos: [],
@@ -571,7 +573,6 @@ const app = {
       this.renderizarEstoque();
       this.renderizarRevendedoras();
       this.renderizarDashboard();
-      this.renderizarMarketing();
       this.renderizarClientes();
       
       // Inicia o polling de notificações de novas vendas
@@ -1490,7 +1491,6 @@ const app = {
       }
     }
     if (tabId === "revendedoras") this.renderizarRevendedoras();
-    if (tabId === "marketing") this.renderizarMarketing();
     if (tabId === "clientes") {
       if (this.state.subAbaClientesAtiva === "aniversariantes") {
         this.renderizarAniversariantes();
@@ -4157,224 +4157,6 @@ const app = {
     ExcelHandler.exportarAcertoRevendedora(rev, itensAcerto);
   },
 
-  // 11. ABA: MARKETING & DIVULGAÇÃO
-  renderizarMarketing: function() {
-    // 1. Ativa a sub-aba selecionada
-    document.querySelectorAll(".sub-aba-mkt").forEach(sec => {
-      if (sec.getAttribute("id") === `sub-aba-${this.state.subAbaMktAtiva}`) {
-        sec.classList.add("active");
-        sec.style.display = "block";
-      } else {
-        sec.classList.remove("active");
-        sec.style.display = "none";
-      }
-    });
-
-    document.querySelectorAll(".mkt-tab-btn").forEach(btn => {
-      if (btn.getAttribute("id") === `tab-btn-${this.state.subAbaMktAtiva}`) {
-        btn.classList.add("active");
-      } else {
-        btn.classList.remove("active");
-      }
-    });
-
-    // 2. Lógica da Sub-Aba de Feed (Organizar grade 3x3 do Insta)
-    if (this.state.subAbaMktAtiva === "feed") {
-      const feedGrid = document.getElementById("instagram-feed-grid");
-      feedGrid.innerHTML = "";
-
-      const totalPosts = this.state.feedImagens.length;
-      document.getElementById("ig-posts-count").innerText = totalPosts;
-
-      this.state.feedImagens.forEach((imgSrc, index) => {
-        const postDiv = document.createElement("div");
-        postDiv.className = "ig-post";
-        
-        // Se a string contiver 'gradient', estiliza com background inline
-        if (imgSrc.startsWith("linear-gradient") || imgSrc.startsWith("radial-gradient")) {
-          postDiv.style.background = imgSrc;
-          postDiv.innerHTML = `
-            <div class="ig-post-placeholder">
-              <i class="fa-solid fa-ring"></i>
-              <span>Brilho Bel</span>
-            </div>
-          `;
-        } else {
-          postDiv.innerHTML = `<img src="${imgSrc}" alt="Foto Joia">`;
-        }
-
-        // Evento para remover imagem do feed
-        postDiv.addEventListener("click", async () => {
-          if (await this.confirmar("Remover esta publicação do planejador de feed?")) {
-            this.state.feedImagens.splice(index, 1);
-            this.salvarDadosNoLocalStorage();
-            this.renderizarMarketing();
-            this.toast("Publicação removida com sucesso!", "success");
-          }
-        });
-
-        feedGrid.appendChild(postDiv);
-      });
-    }
-
-    // 3. Lógica do Calendário Editorial
-    if (this.state.subAbaMktAtiva === "posts") {
-      const ideiasContainer = document.getElementById("mkt-ideias-container");
-      ideiasContainer.innerHTML = "";
-
-      MarketingData.calendarioDivulgacao.forEach((cal, index) => {
-        const card = document.createElement("div");
-        card.className = "idea-card";
-        card.innerHTML = `
-          <div class="idea-header">
-            <span class="idea-day">${cal.dia}</span>
-            <span class="idea-channel"><i class="fa-solid fa-bullhorn"></i> ${cal.canal}</span>
-          </div>
-          <h4 class="idea-title">${cal.ideiaPost}</h4>
-          <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 0.8rem;">
-            <strong>Foco da Postagem:</strong> ${cal.foco}
-          </p>
-          <div class="caption-box" id="caption-text-${index}">
-            ${cal.sugestaoLegenda}
-            <button class="btn-copy" onclick="app.copiarTextoLegenda(${index})" title="Copiar Legenda"><i class="fa-regular fa-copy"></i></button>
-          </div>
-        `;
-        ideiasContainer.appendChild(card);
-      });
-    }
-
-    // 4. Lógica de Personas & Público-Alvo
-    if (this.state.subAbaMktAtiva === "personas") {
-      const personasContainer = document.getElementById("mkt-personas-container");
-      personasContainer.innerHTML = "";
-
-      MarketingData.personas.forEach(pers => {
-        const card = document.createElement("div");
-        card.className = "persona-card";
-        card.innerHTML = `
-          <div class="persona-header">
-            <div class="persona-avatar">${pers.nome.charAt(0)}</div>
-            <div class="persona-title">
-              <h3>${pers.nome}</h3>
-              <p>${pers.idade} anos • ${pers.profissao}</p>
-            </div>
-          </div>
-          <div class="persona-detail">
-            <strong>Perfil do Cliente</strong>
-            <p>${pers.perfil}</p>
-          </div>
-          <div class="persona-detail">
-            <strong>Estilo de Joias Favorito</strong>
-            <p>${pers.estiloPref}</p>
-          </div>
-          <div class="persona-detail">
-            <strong>Dor de Compra</strong>
-            <p>${pers.dorPrincipal}</p>
-          </div>
-          <div class="persona-detail" style="border-top: 1px dashed rgba(212, 175, 55, 0.2); padding-top: 0.8rem; margin-top: 0.8rem;">
-            <strong style="color: var(--gold-light);"><i class="fa-solid fa-lightbulb"></i> Como abordar para Venda:</strong>
-            <p style="font-style: italic; color: var(--gold-light);">${pers.abordagem}</p>
-          </div>
-        `;
-        personasContainer.appendChild(card);
-      });
-    }
-  },
-
-  mudarSubAbaMarketing: function(subAbaId) {
-    this.state.subAbaMktAtiva = subAbaId;
-    this.renderizarMarketing();
-  },
-
-  copiarTextoLegenda: function(index) {
-    const container = document.getElementById(`caption-text-${index}`);
-    
-    // Pega o texto da legenda limpando o botão de cópia do texto final
-    let texto = container.innerText.trim();
-    
-    navigator.clipboard.writeText(texto).then(() => {
-      this.toast("Legenda copiada com sucesso! Pronta para postar no Instagram. ✨📲", "success");
-    });
-  },
-
-  processarUploadFeed: async function(event) {
-    const files = event.target.files;
-    if (files.length === 0) return;
-
-    const file = files[0];
-    
-    // Se o usuário estiver autenticado, tenta fazer upload para a Azure
-    if (this.state.token) {
-      try {
-        const formData = new FormData();
-        formData.append("imagem", file);
-
-        const data = await this.requisitarAPI("/uploads", "POST", formData);
-        
-        this.state.feedImagens.unshift(data.url);
-        if (this.state.feedImagens.length > 12) {
-          this.state.feedImagens.pop();
-        }
-
-        this.salvarDadosNoLocalStorage();
-        this.renderizarMarketing();
-        this.toast("Imagem salva no contêiner da Azure com sucesso! Link público gerado.", "success");
-        return;
-      } catch (error) {
-        console.warn("Falha no upload para Azure Blob Storage. Usando fallback Base64 local:", error.message);
-      }
-    }
-
-    // Fallback: Salva no LocalStorage em Base64 comprimido
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement("canvas");
-        const maxDim = 450;
-        let width = img.width;
-        let height = img.height;
-
-        if (width > height) {
-          if (width > maxDim) {
-            height *= maxDim / width;
-            width = maxDim;
-          }
-        } else {
-          if (height > maxDim) {
-            width *= maxDim / height;
-            height = maxDim;
-          }
-        }
-
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext("2d");
-        ctx.drawImage(img, 0, 0, width, height);
-
-        const compressedBase64 = canvas.toDataURL("image/jpeg", 0.75);
-
-        this.state.feedImagens.unshift(compressedBase64);
-        if (this.state.feedImagens.length > 12) {
-          this.state.feedImagens.pop();
-        }
-
-        this.salvarDadosNoLocalStorage();
-        this.renderizarMarketing();
-      };
-      img.src = e.target.result;
-    };
-    reader.readAsDataURL(file);
-  },
-
-  reiniciarFeedPadrao: async function() {
-    if (await this.confirmar("Deseja realmente resetar e voltar ao feed padrão inicial?")) {
-      this.state.feedImagens = [];
-      this.inicializarFeedPadrao();
-      this.renderizarMarketing();
-      this.toast("Feed reiniciado para o padrão com sucesso!", "success");
-    }
-  },
 
   // 12. LÓGICA DE INTEGRAÇÃO COM PLANILHAS EXCEL IMPORTAÇÃO
   processarImportacaoExcel: function(event) {

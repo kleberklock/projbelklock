@@ -19,6 +19,21 @@ async function main() {
     console.log("Limpando dados de Histórico de Acertos...");
     await prisma.historicoAcerto.deleteMany({});
 
+    console.log("Limpando Links de Pagamento...");
+    await prisma.linkPagamento.deleteMany({});
+
+    console.log("Limpando Respostas do Onboarding...");
+    await prisma.respostaOnboarding.deleteMany({});
+
+    console.log("Limpando Documentos dos Usuários...");
+    await prisma.documentoUsuario.deleteMany({});
+
+    console.log("Limpando Termos de Consignação...");
+    await prisma.termoConsignacao.deleteMany({});
+
+    console.log("Limpando Faixas de Comissão...");
+    await prisma.faixaComissao.deleteMany({});
+
     console.log("Limpando logs de ações...");
     await prisma.logAcao.deleteMany({});
 
@@ -28,14 +43,51 @@ async function main() {
     console.log("Limpando dados de Produtos...");
     await prisma.produto.deleteMany({});
 
-    // 2. Limpar todos os usuários do sistema
+    console.log("Limpando Notificações do sistema...");
+    await prisma.notificacao.deleteMany({});
+
+    console.log("Limpando Configurações das lojas...");
+    await prisma.configuracao.deleteMany({});
+
     console.log("Limpando todos os Usuários...");
     await prisma.usuario.deleteMany({});
 
-    console.log("Todos os dados foram excluídos com sucesso!");
+    console.log("Limpando Mensagens do WhatsApp...");
+    await prisma.mensagemWhatsapp.deleteMany({});
+
+    console.log("Limpando Treinamentos cadastrados...");
+    await prisma.treinamento.deleteMany({});
+
+    console.log("Limpando Lojas do sistema...");
+    await prisma.loja.deleteMany({});
+
+    console.log("Todos os dados do banco foram limpos com sucesso!");
+
+    // 2. Criar a estrutura básica padrão
+    console.log("\nCriando Loja Padrão...");
+    await prisma.loja.create({
+      data: {
+        id: "default-loja",
+        nome: "Loja Padrão",
+        plano: "GOLD"
+      }
+    });
+
+    console.log("Criando Configuração da Loja Padrão...");
+    await prisma.configuracao.create({
+      data: {
+        lojaId: "default-loja",
+        nomeEmpresa: "Conecta Joias",
+        corPrimaria: "#d4af37",
+        corSecundaria: "#111111",
+        bgPrimary: "#0a0a0a",
+        bgCard: "#121212",
+        onboardingCompleto: true
+      }
+    });
 
     // 3. Criar a conta de SuperAdmin e Manager de forma segura
-    console.log("\nCriando conta do SuperAdmin e da Gestora padrão...");
+    console.log("Criando conta do SuperAdmin e da Gestora padrão...");
     const superAdminEmail = process.env.SUPER_ADMIN_EMAIL || "superadmin@plataforma.com";
     const superAdminSenha = process.env.SUPER_ADMIN_SENHA || "admin0001";
     const superAdminPin = process.env.SUPER_ADMIN_PIN || "0001";

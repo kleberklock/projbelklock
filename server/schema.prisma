@@ -11,6 +11,7 @@ model Loja {
   id           String             @id @default("default-loja")
   nome         String             @default("Loja Padrão")
   cnpj         String?            @unique
+  plano        String             @default("BRONZE") // "BRONZE" | "GOLD" | "PLATINUM"
   createdAt    DateTime           @default(now())
   usuarios     Usuario[]
   produtos     Produto[]
@@ -259,6 +260,8 @@ model LinkPagamento {
   status         String   @default("PENDENTE") // "PENDENTE" | "PAGO" | "EXPIRADO"
   linkSimulado   String
   vendaId        String?  // Id da venda associada, se houver
+  asaasPaymentId String?  // ID da cobrança no ASAAS
+  asaasInvoiceUrl String? // URL do boleto ou fatura no ASAAS
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 }

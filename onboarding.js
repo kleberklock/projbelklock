@@ -2,7 +2,9 @@
  * Conecta Joias - Cadastro & Onboarding Script
  */
 
-const API_BASE_URL = "http://localhost:5000/api";
+const API_BASE_URL = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1" 
+  ? "http://localhost:5000/api" 
+  : `${window.location.origin}/api`;
 
 const onboarding = {
   currentStep: 1,
@@ -167,6 +169,12 @@ const onboarding = {
       const enderecoFile = document.getElementById("enderecoFile").files[0];
       if (!enderecoFile) {
         this.toast("Por favor, anexe o comprovante de residência atual.", "warning");
+        return false;
+      }
+      
+      const aceiteLgpd = document.getElementById("aceite-termos-lgpd");
+      if (aceiteLgpd && !aceiteLgpd.checked) {
+        this.toast("Você precisa aceitar os Termos de Uso e a Política de Privacidade (LGPD) para prosseguir.", "warning");
         return false;
       }
       return true;
