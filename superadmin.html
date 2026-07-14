@@ -36,10 +36,40 @@
          SIDEBAR LATERAL (NAVEGAÇÃO SPA)
          ========================================== -->
     <aside class="sidebar">
-      <div class="brand">
+      <div class="brand" style="display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 2.5rem; padding: 0 0.5rem;">
         <!-- Inclusão do logotipo SVG premium criado previamente -->
-        <img src="assets/logo.svg" alt="Conecta Joias" id="logo-brand">
-        <span id="brand-text-span" class="brand-text" style="display: none;"></span>
+        <img src="assets/logo.svg" alt="Conecta Joias" id="logo-brand" style="max-width: 140px; height: auto;">
+        
+        <!-- Sino de Notificações na Sidebar (Super Admin) -->
+        <div id="notif-wrapper" style="position: relative; z-index: 100;">
+          <button id="btn-notificacoes" class="notification-bell-container" title="Notificações" style="
+            position: relative;
+            background: rgba(212, 175, 55, 0.1);
+            border: 1px solid rgba(212,175,55,0.25);
+            color: var(--gold-light);
+            width: 38px; height: 38px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.95rem;
+            transition: all 0.25s ease;
+          ">
+            <i class="fa-solid fa-bell" id="icone-sino"></i>
+            <span id="notification-count" class="notification-badge" style="
+              display: none;
+              position: absolute; top: -5px; right: -5px;
+              background: var(--danger); color: #fff;
+              font-size: 0.62rem; font-weight: 700;
+              min-width: 16px; height: 16px;
+              border-radius: 8px;
+              padding: 0 3px;
+              display: none;
+              align-items: center; justify-content: center;
+              border: 1px solid #111;
+              font-family: var(--font-body);
+            ">0</span>
+          </button>
+        </div>
       </div>
       
       <nav class="nav-container">
@@ -96,40 +126,7 @@
          ========================================== -->
     <main class="main-content">
       
-      <!-- ==========================================
-           SINO DE NOTIFICAÇÕES FUNCIONAL E FLUTUANTE (SUPER ADMIN)
-           ========================================== -->
-      <div id="notif-wrapper" style="position: fixed; top: 1.2rem; right: 1.5rem; z-index: 1500;">
-        <button id="btn-notificacoes" title="Notificações" style="
-          position: relative;
-          background: rgba(12,12,12,0.92);
-          border: 1px solid rgba(212,175,55,0.3);
-          color: var(--gold-primary);
-          width: 48px; height: 48px;
-          border-radius: 50%;
-          cursor: pointer;
-          display: flex; align-items: center; justify-content: center;
-          font-size: 1.15rem;
-          transition: all 0.25s ease;
-          box-shadow: 0 4px 20px rgba(0,0,0,0.5), 0 0 0 1px rgba(212,175,55,0.1) inset;
-          backdrop-filter: blur(10px);
-        ">
-          <i class="fa-solid fa-bell" id="icone-sino"></i>
-          <span id="notification-count" class="notification-badge" style="
-            display: none;
-            position: absolute; top: -4px; right: -4px;
-            background: #d4af37; color: #0a0a0a;
-            font-size: 0.6rem; font-weight: 700;
-            min-width: 18px; height: 18px;
-            border-radius: 9px;
-            padding: 0 4px;
-            display: none;
-            align-items: center; justify-content: center;
-            border: 2px solid #0a0a0a;
-            font-family: var(--font-body);
-          ">0</span>
-        </button>
-      </div>
+
 
       <!-- ==========================================
            ABA: DASHBOARD

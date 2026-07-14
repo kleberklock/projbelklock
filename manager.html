@@ -36,10 +36,92 @@
          SIDEBAR LATERAL (NAVEGAÇÃO SPA)
          ========================================== -->
     <aside class="sidebar">
-      <div class="brand">
+      <div class="brand" style="display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 2.5rem; padding: 0 0.5rem;">
         <!-- Inclusão do logotipo SVG premium criado previamente -->
-        <img src="assets/logo.svg" alt="Conecta Joias" id="logo-brand">
-        <span id="brand-text-span" class="brand-text" style="display: none;"></span>
+        <img src="assets/logo.svg" alt="Conecta Joias" id="logo-brand" style="max-width: 140px; height: auto;">
+        
+        <!-- Sino de Notificações na Sidebar (Manager) -->
+        <div id="notif-wrapper" style="position: relative; z-index: 100;">
+          <button id="btn-notificacoes" onclick="app.togglePainelNotificacoes()" title="Notificações" style="
+            position: relative;
+            background: rgba(212, 175, 55, 0.1);
+            border: 1px solid rgba(212,175,55,0.25);
+            color: var(--gold-light);
+            width: 38px; height: 38px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.95rem;
+            transition: all 0.25s ease;
+          ">
+            <i class="fa-solid fa-bell" id="icone-sino"></i>
+            <span id="notif-badge" style="
+              display: none;
+              position: absolute; top: -5px; right: -5px;
+              background: var(--danger); color: #fff;
+              font-size: 0.62rem; font-weight: 700;
+              min-width: 16px; height: 16px;
+              border-radius: 8px;
+              padding: 0 3px;
+              display: none;
+              align-items: center; justify-content: center;
+              border: 1px solid #111;
+              font-family: var(--font-body);
+            ">0</span>
+          </button>
+          
+          <!-- Dropdown flutuante de notificações com position: fixed para evitar corte na sidebar -->
+          <div id="painel-notificacoes" style="
+            display: none;
+            position: fixed; top: 1.2rem; left: 280px;
+            width: 360px;
+            background: rgba(14,14,14,0.97);
+            border: 1px solid rgba(212,175,55,0.25);
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.7), 0 0 30px rgba(212,175,55,0.05);
+            backdrop-filter: blur(20px);
+            overflow: hidden;
+            animation: fadeIn 0.25s ease;
+          ">
+            <div style="
+              display: flex; justify-content: space-between; align-items: center;
+              padding: 1rem 1.2rem;
+              border-bottom: 1px solid rgba(212,175,55,0.12);
+            ">
+              <h4 style="font-family: var(--font-title); font-size: 1rem; color: var(--gold-light); margin: 0;">
+                <i class="fa-solid fa-bell" style="margin-right: 0.5rem; font-size: 0.85rem;"></i>Notificações
+              </h4>
+              <button onclick="app.marcarTodasNotificacoesLidas()" style="
+                background: transparent; border: none;
+                color: var(--text-muted); font-size: 0.72rem;
+                cursor: pointer; font-family: var(--font-body);
+                transition: color 0.2s;
+              " onmouseover="this.style.color='var(--gold-primary)'" onmouseout="this.style.color='var(--text-muted)'">
+                Marcar todas como lidas
+              </button>
+            </div>
+            <div id="notif-lista" style="max-height: 400px; overflow-y: auto;">
+              <div style="text-align: center; padding: 2.5rem 1rem; color: var(--text-muted);">
+                <i class="fa-solid fa-check-circle" style="font-size: 1.8rem; margin-bottom: 0.6rem; opacity: 0.3; display: block;"></i>
+                <span style="font-size: 0.85rem;">Nenhuma notificação pendente</span>
+              </div>
+            </div>
+            <div style="
+              padding: 0.8rem 1.2rem;
+              border-top: 1px solid rgba(212,175,55,0.08);
+              text-align: center;
+            ">
+              <button onclick="app.carregarNotificacoes(true)" style="
+                background: transparent; border: none;
+                color: var(--gold-primary); font-size: 0.78rem;
+                cursor: pointer; font-family: var(--font-body);
+                display: inline-flex; align-items: center; gap: 0.4rem;
+              ">
+                <i class="fa-solid fa-rotate"></i> Atualizar
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
       
       <nav class="nav-container">
@@ -96,93 +178,7 @@
         <a id="btn-assinar-termo-pendente" href="#" class="btn-gold" style="padding: 0.5rem 1rem; font-size: 0.82rem; text-decoration: none; display: inline-flex; align-items: center; gap: 6px;"><i class="fa-solid fa-signature"></i> Assinar Termo Agora</a>
       </div>
 
-      <!-- ==========================================
-           SINO DE NOTIFICAÇÕES FUNCIONAL
-           ========================================== -->
-      <div id="notif-wrapper" style="position: fixed; top: 1.2rem; right: 1.5rem; z-index: 1500;">
-        <!-- Botão do sino -->
-        <button id="btn-notificacoes" onclick="app.togglePainelNotificacoes()" title="Notificações" style="
-          position: relative;
-          background: rgba(12,12,12,0.92);
-          border: 1px solid rgba(212,175,55,0.3);
-          color: var(--gold-primary);
-          width: 48px; height: 48px;
-          border-radius: 50%;
-          cursor: pointer;
-          display: flex; align-items: center; justify-content: center;
-          font-size: 1.15rem;
-          transition: all 0.25s ease;
-          box-shadow: 0 4px 20px rgba(0,0,0,0.5), 0 0 0 1px rgba(212,175,55,0.1) inset;
-          backdrop-filter: blur(10px);
-        ">
-          <i class="fa-solid fa-bell" id="icone-sino"></i>
-          <span id="notif-badge" style="
-            display: none;
-            position: absolute; top: -4px; right: -4px;
-            background: #d4af37; color: #0a0a0a;
-            font-size: 0.6rem; font-weight: 700;
-            min-width: 18px; height: 18px;
-            border-radius: 9px;
-            padding: 0 4px;
-            display: none;
-            align-items: center; justify-content: center;
-            border: 2px solid #0a0a0a;
-            font-family: var(--font-body);
-          ">0</span>
-        </button>
 
-        <!-- Painel dropdown de notificações -->
-        <div id="painel-notificacoes" style="
-          display: none;
-          position: absolute; top: 58px; right: 0;
-          width: 360px;
-          background: rgba(14,14,14,0.97);
-          border: 1px solid rgba(212,175,55,0.25);
-          border-radius: 16px;
-          box-shadow: 0 20px 60px rgba(0,0,0,0.7), 0 0 30px rgba(212,175,55,0.05);
-          backdrop-filter: blur(20px);
-          overflow: hidden;
-          animation: fadeIn 0.25s ease;
-        ">
-          <div style="
-            display: flex; justify-content: space-between; align-items: center;
-            padding: 1rem 1.2rem;
-            border-bottom: 1px solid rgba(212,175,55,0.12);
-          ">
-            <h4 style="font-family: var(--font-title); font-size: 1rem; color: var(--gold-light); margin: 0;">
-              <i class="fa-solid fa-bell" style="margin-right: 0.5rem; font-size: 0.85rem;"></i>Notificações
-            </h4>
-            <button onclick="app.marcarTodasNotificacoesLidas()" style="
-              background: transparent; border: none;
-              color: var(--text-muted); font-size: 0.72rem;
-              cursor: pointer; font-family: var(--font-body);
-              transition: color 0.2s;
-            " onmouseover="this.style.color='var(--gold-primary)'" onmouseout="this.style.color='var(--text-muted)'">
-              Marcar todas como lidas
-            </button>
-          </div>
-          <div id="notif-lista" style="max-height: 400px; overflow-y: auto;">
-            <div style="text-align: center; padding: 2.5rem 1rem; color: var(--text-muted);">
-              <i class="fa-solid fa-check-circle" style="font-size: 1.8rem; margin-bottom: 0.6rem; opacity: 0.3; display: block;"></i>
-              <span style="font-size: 0.85rem;">Nenhuma notificação pendente</span>
-            </div>
-          </div>
-          <div style="
-            padding: 0.8rem 1.2rem;
-            border-top: 1px solid rgba(212,175,55,0.08);
-            text-align: center;
-          ">
-            <button onclick="app.carregarNotificacoes(true)" style="
-              background: transparent; border: none;
-              color: var(--gold-primary); font-size: 0.78rem;
-              cursor: pointer; font-family: var(--font-body);
-              display: inline-flex; align-items: center; gap: 0.4rem;
-            ">
-              <i class="fa-solid fa-rotate"></i> Atualizar
-            </button>
-          </div>
-        </div>
-      </div>
 
 
            ABA: DASHBOARD (INATIVA PARA REVENDEDORA)
