@@ -423,7 +423,7 @@ app.post('/api/auth/signup', signupLimiter, async (req, res) => {
 
 // Admin cria novos usuários (Revendedoras ou outros Admins)
 app.post('/api/auth/register', autenticarJWT, autorizarRole(['Manager', 'SuperAdmin']), identificarLoja, async (req, res) => {
-  const { nome, email, senha, role, whatsapp, comissao, faixasComissao, tipoComissao, metaUnicaValor, metaUnicaBonus, metaUnicaTipoBonus, baseCalculo, regraPerda, limiteIsencaoPerda, periodoAcumulo } = req.body;
+  const { nome, email, senha, role, whatsapp, comissao, faixasComissao, tipoComissao, metaUnicaValor, metaUnicaBonus, metaUnicaTipoBonus, baseCalculo, regraPerda, limiteIsencaoPerda, periodoAcumulo, ciclo } = req.body;
   if (!nome || !email || !senha || !role) {
     return res.status(400).json({ error: 'Campos obrigatórios ausentes.' });
   }
@@ -483,6 +483,7 @@ app.post('/api/auth/register', autenticarJWT, autorizarRole(['Manager', 'SuperAd
         regraPerda: regraPerda || "VALOR_VENDA",
         limiteIsencaoPerda: parseInt(limiteIsencaoPerda) || 0,
         periodoAcumulo: periodoAcumulo || "MANUAL",
+        ciclo: ciclo ? JSON.stringify(ciclo) : null,
         lojaId: req.lojaId,
         faixasComissao: faixasComissao && Array.isArray(faixasComissao) ? {
           create: faixasComissao.map(f => ({
@@ -747,6 +748,7 @@ app.get('/api/revendedoras', autenticarJWT, autorizarRole(['Manager', 'SuperAdmi
         regraPerda: true,
         limiteIsencaoPerda: true,
         periodoAcumulo: true,
+        ciclo: true,
         createdAt: true,
         consignados: {
           where: { lojaId: req.lojaId },
@@ -768,7 +770,14 @@ app.get('/api/revendedoras', autenticarJWT, autorizarRole(['Manager', 'SuperAdmi
       },
       orderBy: { nome: 'asc' }
     });
-    res.json(revendedoras);
+    
+    // Desserializa o ciclo para devolver como objeto
+    const revendedorasFormatadas = revendedoras.map(r => ({
+      ...r,
+      ciclo: r.ciclo ? JSON.parse(r.ciclo) : null
+    }));
+
+    res.json(revendedorasFormatadas);
   } catch (error) {
     res.status(500).json({ error: 'Erro ao listar revendedoras.' });
   }
@@ -777,7 +786,7 @@ app.get('/api/revendedoras', autenticarJWT, autorizarRole(['Manager', 'SuperAdmi
 // Editar Revendedora (Admin)
 app.put('/api/revendedoras/:id', autenticarJWT, autorizarRole(['Manager', 'SuperAdmin']), identificarLoja, async (req, res) => {
   const { id } = req.params;
-  const { nome, email, whatsapp, comissao, faixasComissao, tipoComissao, metaUnicaValor, metaUnicaBonus, metaUnicaTipoBonus, baseCalculo, regraPerda, limiteIsencaoPerda, periodoAcumulo, senha } = req.body;
+  const { nome, email, whatsapp, comissao, faixasComissao, tipoComissao, metaUnicaValor, metaUnicaBonus, metaUnicaTipoBonus, baseCalculo, regraPerda, limiteIsencaoPerda, periodoAcumulo, senha, ciclo } = req.body;
 
   try {
     const revendedora = await prisma.usuario.findFirst({
@@ -800,7 +809,8 @@ app.put('/api/revendedoras/:id', autenticarJWT, autorizarRole(['Manager', 'Super
       baseCalculo: baseCalculo || "BRUTO",
       regraPerda: regraPerda || "VALOR_VENDA",
       limiteIsencaoPerda: parseInt(limiteIsencaoPerda) || 0,
-      periodoAcumulo: periodoAcumulo || "MANUAL"
+      periodoAcumulo: periodoAcumulo || "MANUAL",
+      ciclo: ciclo ? JSON.stringify(ciclo) : undefined
     };
 
     if (senha && senha.trim() !== '') {
@@ -1041,6 +1051,25 @@ app.post('/api/consignacoes', autenticarJWT, autorizarRole(['Manager', 'SuperAdm
 
     const nomeRevendedora = revendedora.nome;
     registrarLog(req, "CONSIGNACAO_CRIAR", `Consignou ${quantidade} unidades do produto ${produto.nome} (${produto.codigo}) para a revendedora ${nomeRevendedora}.`);
+
+    // Dispara mensagem automática de consignação para a revendedora (Opção A)
+    try {
+      if (revendedora.whatsapp && revendedora.whatsapp.trim() !== '') {
+        const msgConsignar = `Olá, *${revendedora.nome}*! ✨\nNovas semijoias foram adicionadas à sua maleta consignada pela administradora!\n\n*Novas Peças Recebidas:*\n- Produto: ${produto.nome} (${produto.codigo})\n- Quantidade: ${quantidade} unid.\n- Preço de venda sugerido: R$ ${precoVendaCalculado.toFixed(2).replace('.', ',')}\n- Valor total adicionado: R$ ${(precoVendaCalculado * quantidade).toFixed(2).replace('.', ',')}\n\nBoas vendas! Sucesso! 💎💼`;
+        
+        await prisma.mensagemWhatsapp.create({
+          data: {
+            numero: revendedora.whatsapp,
+            mensagem: msgConsignar,
+            tipo: 'CONSIGNACAO_ENTREGA',
+            status: 'PENDENTE',
+            lojaId: req.lojaId
+          }
+        });
+      }
+    } catch (wsErr) {
+      console.error("Erro ao agendar WhatsApp de consignacao (Opcao A):", wsErr);
+    }
 
     res.json(consignacao);
   } catch (error) {
@@ -1535,9 +1564,8 @@ app.get('/api/relatorios/dre', autenticarJWT, autorizarRole(['Manager', 'SuperAd
 // ROTAS DE VENDAS DE REVENDEDORAS
 // ==========================================
 
-// Registrar venda (Revendedora registra venda de item da maleta)
 app.post('/api/vendas-revendedora', autenticarJWT, autorizarRole(['Consultant']), identificarLoja, async (req, res) => {
-  const { produtoId, quantidade, desconto, motivoDesconto, formaPagamento } = req.body;
+  const { produtoId, quantidade, desconto, motivoDesconto, formaPagamento, clienteId } = req.body;
   const usuarioId = req.user.id;
 
   if (!produtoId || !quantidade || quantidade <= 0) {
@@ -1592,7 +1620,8 @@ app.post('/api/vendas-revendedora', autenticarJWT, autorizarRole(['Consultant'])
         lojaId: req.lojaId,
         desconto: descPorItem,
         motivoDesconto: motivoDesconto || null,
-        formaPagamento: formaPagamento || "Dinheiro"
+        formaPagamento: formaPagamento || "Dinheiro",
+        clienteId: clienteId || null
       }
     });
 
@@ -1619,6 +1648,57 @@ app.post('/api/vendas-revendedora', autenticarJWT, autorizarRole(['Consultant'])
       });
     } catch (notifErr) {
       console.error("Erro ao gerar notificação de venda no backend:", notifErr);
+    }
+
+    // Dispara mensagens automáticas no WhatsApp para Administradora e Cliente (Etapa 3)
+    try {
+      const config = await prisma.configuracao.findFirst({ where: { lojaId: req.lojaId } });
+      const whatsappAdmin = config?.whatsappAtendimento;
+      
+      let nomeCliente = 'Cliente Avulso';
+      let telCliente = null;
+
+      if (clienteId) {
+        const cliente = await prisma.cliente.findUnique({ where: { id: clienteId } });
+        if (cliente) {
+          nomeCliente = cliente.nome;
+          telCliente = cliente.whatsapp;
+        }
+      }
+
+      const valorTotal = precoFinal * quantidade;
+
+      // 1. WhatsApp para a Administradora (se configurado)
+      if (whatsappAdmin && whatsappAdmin.trim() !== '') {
+        const msgAdmin = `📢 *Nova Venda Registrada!*\nA consultora *${consignado.usuario.nome}* registrou uma venda no sistema.\n\n*Detalhes da Venda:*\n- Produto: ${consignado.produto.nome} (${consignado.produto.codigo})\n- Quantidade: ${quantidade} unid.\n- Preço unitário: R$ ${precoFinal.toFixed(2).replace('.', ',')}\n- Valor total: R$ ${valorTotal.toFixed(2).replace('.', ',')}\n- Forma de pagamento: ${formaPagamento || 'Dinheiro'}\n- Cliente: ${nomeCliente}`;
+
+        await prisma.mensagemWhatsapp.create({
+          data: {
+            numero: whatsappAdmin,
+            mensagem: msgAdmin,
+            tipo: 'NOTIFICACAO_VENDA_ADMIN',
+            status: 'PENDENTE',
+            lojaId: req.lojaId
+          }
+        });
+      }
+
+      // 2. WhatsApp para o Cliente (somente se clienteId estiver cadastrado e tiver WhatsApp)
+      if (clienteId && telCliente && telCliente.trim() !== '') {
+        const msgCliente = `Olá, *${nomeCliente}*! ✨\nAgradecemos a sua compra com a nossa consultora *${consignado.usuario.nome}*!\n\n*Resumo da sua Compra:*\n- Produto: ${consignado.produto.nome}\n- Quantidade: ${quantidade} unid.\n- Valor total: R$ ${valorTotal.toFixed(2).replace('.', ',')}\n- Forma de pagamento: ${formaPagamento || 'Dinheiro'}\n\nQualquer dúvida, estamos à disposição! 💖`;
+
+        await prisma.mensagemWhatsapp.create({
+          data: {
+            numero: telCliente,
+            mensagem: msgCliente,
+            tipo: 'NOTIFICACAO_VENDA_CLIENTE',
+            status: 'PENDENTE',
+            lojaId: req.lojaId
+          }
+        });
+      }
+    } catch (wsErr) {
+      console.error("Erro ao agendar notificações de WhatsApp da venda:", wsErr);
     }
 
     res.status(201).json({
@@ -2719,6 +2799,53 @@ app.post('/api/webhooks/asaas', async (req, res) => {
     }
   }
 
+  // Eventos de falha de pagamento (Opção C)
+  if (event === 'PAYMENT_REFUSED' || event === 'PAYMENT_OVERDUE') {
+    try {
+      const linkId = payment.externalReference;
+      let link = linkId ? await prisma.linkPagamento.findUnique({ where: { id: linkId } }) : null;
+      if (!link) {
+        link = await prisma.linkPagamento.findFirst({
+          where: { asaasPaymentId: payment.id }
+        });
+      }
+
+      if (link) {
+        const revendedora = await prisma.usuario.findUnique({
+          where: { id: link.usuarioId }
+        });
+
+        if (revendedora && revendedora.whatsapp && revendedora.whatsapp.trim() !== '') {
+          const motivo = event === 'PAYMENT_REFUSED' ? 'Transação Recusada (Cartão de Crédito)' : 'Link de pagamento expirado (Pix/Boleto)';
+          
+          let nomeCli = 'Cliente Avulso';
+          if (link.clienteId) {
+            const cliente = await prisma.cliente.findUnique({ where: { id: link.clienteId } });
+            if (cliente) {
+              nomeCli = cliente.nome;
+            }
+          }
+
+          const msgRecusa = `Olá, *${revendedora.nome}*! ⚠️\nO link de pagamento enviado para o cliente *${nomeCli}* no valor de R$ ${link.valor.toFixed(2).replace('.', ',')} não pôde ser concluído.\n\n*Motivo:* ${motivo}.\nVocê pode gerar um novo link ou tentar outra forma de cobrança no painel.`;
+
+          await prisma.mensagemWhatsapp.create({
+            data: {
+              numero: revendedora.whatsapp,
+              mensagem: msgRecusa,
+              tipo: 'LINK_PAGAMENTO_FALHA',
+              status: 'PENDENTE',
+              lojaId: revendedora.lojaId || 'default-loja'
+            }
+          });
+          
+          console.log(`[Webhook ASAAS] WhatsApp de falha de pagamento agendado para a revendedora ${revendedora.nome}.`);
+        }
+      }
+    } catch (err) {
+      console.error('[Webhook ASAAS] Erro ao agendar mensagem de falha de pagamento:', err);
+    }
+  }
+
   // Resposta padrão para outros tipos de eventos
   res.json({ received: true });
 });
@@ -3313,6 +3440,99 @@ async function processarFilaWhatsApp() {
   }
 }
 
+// Job diário para verificar janelas de ciclo de acerto e disparar notificações no WhatsApp (Nível 1)
+async function verificarCiclosENotificarRevendedoras() {
+  console.log('[Ciclo Worker] Iniciando verificação diária de ciclos de acerto...');
+  try {
+    const revendedoras = await prisma.usuario.findMany({
+      where: { role: 'Consultant' }
+    });
+
+    const diaHoje = new Date().getDate();
+
+    for (const rev of revendedoras) {
+      if (!rev.ciclo || !rev.whatsapp || rev.whatsapp.trim() === '') continue;
+
+      let ciclo = null;
+      try {
+        ciclo = JSON.parse(rev.ciclo);
+      } catch (e) {
+        continue;
+      }
+
+      if (!ciclo || !ciclo.ativo) continue;
+
+      const { diaInicioAcerto, diaFimAcerto } = ciclo;
+      if (!diaInicioAcerto || !diaFimAcerto) continue;
+
+      // 1. Lembrete do primeiro dia da Janela de Acerto
+      if (diaHoje === parseInt(diaInicioAcerto)) {
+        const msgAbertura = `Olá, *${rev.nome}*! 📋\nA sua janela mensal de acerto de contas da Conecta Joias iniciou hoje e vai até o dia *${diaFimAcerto}*.\n\nPor favor, separe as peças vendidas e as de devolução e acesse o painel ou entre em contato com a administradora para realizar o fechamento do seu acerto. 💎🤝`;
+
+        // Verifica se já não criamos mensagem idêntica nas últimas 12 horas para evitar duplicados
+        const hojeMenos12h = new Date(Date.now() - 12 * 60 * 60 * 1000);
+        const jaExiste = await prisma.mensagemWhatsapp.findFirst({
+          where: {
+            numero: rev.whatsapp,
+            tipo: 'LEMBRETE_CICLO_ABERTO',
+            createdAt: { gte: hojeMenos12h }
+          }
+        });
+
+        if (!jaExiste) {
+          await prisma.mensagemWhatsapp.create({
+            data: {
+              numero: rev.whatsapp,
+              mensagem: msgAbertura,
+              tipo: 'LEMBRETE_CICLO_ABERTO',
+              status: 'PENDENTE',
+              lojaId: rev.lojaId || 'default-loja'
+            }
+          });
+          console.log(`[Ciclo Worker] Agendado lembrete de janela aberta para ${rev.nome}`);
+        }
+      }
+
+      // 2. Lembrete de Atraso no Acerto (primeiro dia após o encerramento da janela)
+      const diaAtraso = parseInt(diaFimAcerto) === 31 ? 1 : parseInt(diaFimAcerto) + 1;
+      if (diaHoje === diaAtraso) {
+        // Verifica se ela realmente tem peças consignadas (maleta não vazia) para cobrar acerto
+        const totalConsignado = await prisma.consignado.count({
+          where: { usuarioId: rev.id }
+        });
+
+        if (totalConsignado > 0) {
+          const msgAtraso = `Olá, *${rev.nome}*! ⚠️\nIdentificamos que o prazo para o acerto do seu ciclo expirou ontem (dia *${diaFimAcerto}*).\n\nPor favor, entre em contato com a administradora o quanto antes para regularizar o saldo de peças e fechar o seu acerto. Agradecemos a colaboração! 💼✨`;
+
+          const hojeMenos12h = new Date(Date.now() - 12 * 60 * 60 * 1000);
+          const jaExiste = await prisma.mensagemWhatsapp.findFirst({
+            where: {
+              numero: rev.whatsapp,
+              tipo: 'LEMBRETE_CICLO_ATRASADO',
+              createdAt: { gte: hojeMenos12h }
+            }
+          });
+
+          if (!jaExiste) {
+            await prisma.mensagemWhatsapp.create({
+              data: {
+                numero: rev.whatsapp,
+                mensagem: msgAtraso,
+                tipo: 'LEMBRETE_CICLO_ATRASADO',
+                status: 'PENDENTE',
+                lojaId: rev.lojaId || 'default-loja'
+              }
+            });
+            console.log(`[Ciclo Worker] Agendado aviso de acerto atrasado para ${rev.nome}`);
+          }
+        }
+      }
+    }
+  } catch (err) {
+    console.error('[Ciclo Worker] Erro ao verificar ciclos mensais das revendedoras:', err);
+  }
+}
+
 // ==========================================
 // INICIALIZAÇÃO
 // ==========================================
@@ -3321,5 +3541,9 @@ app.listen(PORT, () => {
   inicializarLojaPadrao();
   // Iniciar worker de processamento do WhatsApp a cada 10 segundos
   setInterval(processarFilaWhatsApp, 10000);
+  
+  // Rodar a verificação de ciclos 5 segundos após a inicialização e depois a cada 24 horas
+  setTimeout(verificarCiclosENotificarRevendedoras, 5000);
+  setInterval(verificarCiclosENotificarRevendedoras, 24 * 60 * 60 * 1000);
 });
 

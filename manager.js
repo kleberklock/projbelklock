@@ -944,11 +944,22 @@ const app = {
   _abrirModalVendaRevInterno: function() {
     const rev = this.state.revendedoras.find(r => r.id === (this.state.usuarioLogado ? this.state.usuarioLogado.id : null));
     const maleta = rev ? (rev.consignado || []) : [];
-    const select = document.getElementById("venda-rev-produto");
-    if (!select) return;
-
     // Popula o select com as peças da maleta
     select.innerHTML = "<option value=''>— Selecione uma peça da sua maleta —</option>";
+    
+    // Popula o select de clientes cadastrados
+    const selectCliente = document.getElementById("venda-rev-cliente");
+    if (selectCliente) {
+      selectCliente.innerHTML = "<option value=''>— Cliente Avulso (Sem cadastro) —</option>";
+      if (Array.isArray(this.state.clientes)) {
+        this.state.clientes.forEach(cli => {
+          const opt = document.createElement("option");
+          opt.value = cli.id;
+          opt.textContent = `${cli.nome} (${cli.whatsapp})`;
+          selectCliente.appendChild(opt);
+        });
+      }
+    }
     maleta.forEach(item => {
       const opt = document.createElement("option");
       opt.value = item.produtoId;
@@ -1083,10 +1094,12 @@ const app = {
   confirmarVendaRevendedora: async function() {
     const select = document.getElementById("venda-rev-produto");
     const qtdInput = document.getElementById("venda-rev-qtd");
+    const selectCliente = document.getElementById("venda-rev-cliente");
     if (!select || !qtdInput) return;
 
     const produtoId = select.value;
     const quantidade = parseInt(qtdInput.value) || 0;
+    const clienteId = selectCliente ? selectCliente.value : "";
 
     if (!produtoId) {
       this.toast("Por favor, selecione uma peça para registrar a venda.", "warning");
@@ -1156,7 +1169,8 @@ const app = {
           comissaoValor: comissaoValor,
           desconto: desconto / quantidade,
           motivoDesconto: motivoDesconto,
-          formaPagamento: formaPagamento
+          formaPagamento: formaPagamento,
+          clienteId: clienteId || null
         };
 
         resp = {
@@ -1198,7 +1212,7 @@ const app = {
         });
         localStorage.setItem("conectajoias_notificacoes_mock", JSON.stringify(mockNotificacoes));
       } else {
-        resp = await this.requisitarAPI("/vendas-revendedora", "POST", { produtoId, quantidade, desconto, motivoDesconto, formaPagamento });
+        resp = await this.requisitarAPI("/vendas-revendedora", "POST", { produtoId, quantidade, desconto, motivoDesconto, formaPagamento, clienteId: clienteId || null });
 
         // Atualiza maleta local: reduz a quantidade consignada ou remove item
         const rev = this.state.revendedoras.find(r => r.id === this.state.usuarioLogado.id);

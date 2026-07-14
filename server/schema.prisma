@@ -35,6 +35,7 @@ model Usuario {
   senhaHash    String
   role         String             // Roles: "SuperAdmin" | "Manager" | "Consultant"
   whatsapp     String?
+  ciclo        String?            // Configurações do ciclo formatado em JSON
   comissao     Float              @default(30.0) // padrão 30%
   
   // Novas configurações de comissão e regras personalizadas
