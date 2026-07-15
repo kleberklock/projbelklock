@@ -370,9 +370,15 @@ const app = {
   carregarConfiguracaoAPI: async function() {
     try {
       const lojaId = localStorage.getItem("conectajoias_loja_id") || "default-loja";
-      const response = await fetch(`${this.state.apiUrl}/config`, {
-        headers: { "x-loja-id": lojaId }
-      });
+      const token = this.state.token || localStorage.getItem("conectajoias_token") || "";
+      
+      // Monta o header com o token JWT (para que o backend leia o lojaId correto do token)
+      const headers = { "x-loja-id": lojaId };
+      if (token && !token.startsWith("mock_")) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+      
+      const response = await fetch(`${this.state.apiUrl}/config`, { headers });
       if (response.ok) {
         const config = await response.json();
         this.aplicarConfiguracoes(config);
@@ -457,7 +463,7 @@ const app = {
     if (sidebarCopy) sidebarCopy.innerHTML = `&copy; 2026 ${config.nomeEmpresa}`;
     
     const secNote = document.getElementById("cfg-security-note");
-    if (secNote) secNote.innerText = `${config.nomeEmpresa} utiliza criptografia SSL ponta-a-ponta nas requisições da API e persistência reativa local para garantir a integridade dos seus dados em qualquer circunstância.`;
+    if (secNote) secNote.innerText = `Seus dados e relatórios financeiros estão totalmente protegidos sob protocolos de criptografia e backup automático diário de alta segurança.`;
     
     // Atualizar o placeholder do input de configurações se ele existir
     const inputNome = document.getElementById("cfg-nome-empresa");
@@ -597,6 +603,35 @@ const app = {
   // ==========================================
 
   requisitarAPI: async function(endpoint, metodo = "GET", body = null) {
+    // Interceptador para o Modo de Demonstração (Mocks / Offline)
+    if (this.state.token && this.state.token.startsWith("mock_")) {
+      console.warn(`[requisitarAPI] Modo de Demonstração Interceptado no Administrador: ${metodo} ${endpoint}`);
+      
+      // Simulação das respostas de endpoints para o modo demo
+      if (endpoint.startsWith("/produtos/defeitos")) {
+        return this.state.produtosComDefeito || [];
+      }
+      if (endpoint.startsWith("/produtos")) {
+        return this.state.produtos || [];
+      }
+      if (endpoint.startsWith("/revendedoras")) {
+        return this.state.revendedoras || [];
+      }
+      if (endpoint.startsWith("/clientes")) {
+        return this.state.clientes || [];
+      }
+      if (endpoint.startsWith("/vendas-diretas") || endpoint.startsWith("/vendas-revendedora") || endpoint.startsWith("/acertos")) {
+        return this.state.vendasConsolidadas || [];
+      }
+      if (endpoint.startsWith("/whatsapp/fila")) {
+        return JSON.parse(localStorage.getItem("conectajoias_whatsapp_mock") || "[]");
+      }
+      if (endpoint.startsWith("/treinamentos")) {
+        return JSON.parse(localStorage.getItem("conectajoias_treinamentos_mock") || "[]");
+      }
+      return {};
+    }
+
     const lojaId = localStorage.getItem("conectajoias_loja_id") || "default-loja";
     const headers = {
       "Authorization": `Bearer ${this.state.token}`,
@@ -618,9 +653,13 @@ const app = {
 
     const response = await fetch(`${this.state.apiUrl}${endpoint}`, config);
     
-    if (response.status === 401 || response.status === 403) {
+    if (response.status === 401) {
       this.fazerLogout();
       throw new Error("Sua sessão expirou. Por favor, realize login novamente.");
+    }
+
+    if (response.status === 403) {
+      throw new Error(`Acesso negado (Erro 403) ao recurso: ${endpoint}`);
     }
 
     const data = await response.json();
@@ -1384,7 +1423,8 @@ const app = {
     document.getElementById("btn-enviar-venda-rapida").addEventListener("click", () => this.processarVendaRapidaWhats());
 
     // Modal de Clientes
-    this.configurarModal("modal-cliente", "btn-open-modal-cliente", "btn-close-modal-cliente", "btn-cancelar-cliente");
+    this.configurarModal("modal-cliente", null, "btn-close-modal-cliente", "btn-cancelar-cliente");
+    document.getElementById("btn-open-modal-cliente").addEventListener("click", () => this.abrirModalCliente());
     document.getElementById("btn-salvar-cliente").addEventListener("click", () => this.salvarCliente());
     const clienteWhatsInput = document.getElementById("cliente-whatsapp");
     if (clienteWhatsInput) clienteWhatsInput.addEventListener("input", (e) => this.aplicarMascaraWhatsApp(e.target));
@@ -1404,20 +1444,27 @@ const app = {
 
     // Configuração Drag and Drop da planilha
     const dropzone = document.getElementById("dropzone-excel");
-    dropzone.addEventListener("dragover", (e) => { e.preventDefault(); dropzone.style.borderColor = "var(--gold-primary)"; });
-    dropzone.addEventListener("dragleave", () => { dropzone.style.borderColor = "rgba(212, 175, 55, 0.3)"; });
-    dropzone.addEventListener("drop", (e) => {
-      e.preventDefault();
-      dropzone.style.borderColor = "rgba(212, 175, 55, 0.3)";
-      if (e.dataTransfer.files.length > 0) {
-        const file = e.dataTransfer.files[0];
-        if (file.name.endsWith(".csv")) {
-          ExcelHandler.importarEstoque(file, (produtos) => this.mesclarEstoqueImportado(produtos));
-        } else {
-          this.toast("Por favor, envie apenas planilhas no formato .csv", "warning");
+    if (dropzone) {
+      dropzone.addEventListener("dragover", (e) => { 
+        e.preventDefault(); 
+        dropzone.classList.add("dragover"); 
+      });
+      dropzone.addEventListener("dragleave", () => { 
+        dropzone.classList.remove("dragover"); 
+      });
+      dropzone.addEventListener("drop", (e) => {
+        e.preventDefault();
+        dropzone.classList.remove("dragover");
+        if (e.dataTransfer.files.length > 0) {
+          const file = e.dataTransfer.files[0];
+          if (file.name.endsWith(".csv")) {
+            ExcelHandler.importarEstoque(file, (produtos) => this.mesclarEstoqueImportado(produtos));
+          } else {
+            this.toast("Por favor, envie apenas planilhas no formato .csv", "warning");
+          }
         }
-      }
-    });
+      });
+    }
 
     // Wizard de Onboarding
     const btnWzNext = document.getElementById("btn-wizard-next");
@@ -2177,7 +2224,7 @@ const app = {
   },
 
   carregarProdutosComDefeito: async function() {
-    if (this.state.token) {
+    if (this.state.token && !this.state.token.startsWith("mock_")) {
       try {
         const defeitos = await this.requisitarAPI("/produtos/defeitos");
         this.state.produtosComDefeito = defeitos;
@@ -2267,7 +2314,7 @@ const app = {
       prod._valoresDinamicos["Qtd. com Defeito"] = 0;
     }
 
-    if (this.state.token) {
+    if (this.state.token && !this.state.token.startsWith("mock_")) {
       try {
         await this.requisitarAPI(`/produtos/${prodId}`, "PUT", {
           codigo: prod.codigo,
@@ -2310,7 +2357,7 @@ const app = {
           prod._valoresDinamicos["Estoque Central"] = novaQtd;
         }
         // Persiste no servidor se autenticado
-        if (this.state.token) {
+        if (this.state.token && !this.state.token.startsWith("mock_")) {
           try {
             await this.requisitarAPI(`/produtos/${prodId}`, "PUT", {
               codigo: prod.codigo,
@@ -2413,7 +2460,7 @@ const app = {
 
       if (editId) {
         // Envia para a API se logado
-        if (this.state.token) {
+        if (this.state.token && !this.state.token.startsWith("mock_")) {
           produtoSalvo = await this.requisitarAPI(`/produtos/${editId}`, "PUT", bodyData);
         } else {
           produtoSalvo = { id: editId, ...bodyData };
@@ -2426,7 +2473,7 @@ const app = {
         }
       } else {
         // Novo Produto
-        if (this.state.token) {
+        if (this.state.token && !this.state.token.startsWith("mock_")) {
           produtoSalvo = await this.requisitarAPI("/produtos", "POST", bodyData);
         } else {
           produtoSalvo = {
@@ -2496,7 +2543,7 @@ const app = {
   excluirProduto: async function(prodId) {
     if (await this.confirmar("Tem certeza que deseja excluir esta semijoia do seu estoque?")) {
       try {
-        if (this.state.token) {
+        if (this.state.token && !this.state.token.startsWith("mock_")) {
           await this.requisitarAPI(`/produtos/${prodId}`, "DELETE");
         }
 
@@ -2644,7 +2691,7 @@ const app = {
     const confirmou = await this.confirmar("Deseja realmente regenerar o PIN de acesso e a senha desta revendedora? O acesso dela anterior será invalidado imediatamente.");
     if (!confirmou) return;
 
-    if (this.state.token) {
+    if (this.state.token && !this.state.token.startsWith("mock_")) {
       try {
         const resp = await this.requisitarAPI(`/revendedoras/${revId}/reset-pin`, "PUT");
         
@@ -3010,7 +3057,7 @@ const app = {
     try {
       if (editId) {
         // Envia atualização para a API Azure se autenticado
-        if (this.state.token) {
+        if (this.state.token && !this.state.token.startsWith("mock_")) {
           await this.requisitarAPI(`/revendedoras/${editId}`, "PUT", { 
             nome, 
             whatsapp, 
@@ -3049,7 +3096,7 @@ const app = {
         const emailTemporario = nome.toLowerCase().replace(/\s+/g, '') + "_" + Math.floor(Math.random() * 1000) + "@conectajoias.com";
 
         // Cria na API Azure se autenticado
-        if (this.state.token) {
+        if (this.state.token && !this.state.token.startsWith("mock_")) {
           const res = await this.requisitarAPI("/auth/register", "POST", {
             nome,
             email: emailTemporario,
@@ -3319,7 +3366,7 @@ const app = {
             algumaPecaAdicionada = true;
             
             // Sincroniza com o banco Azure SQL
-            if (this.state.token) {
+            if (this.state.token && !this.state.token.startsWith("mock_")) {
               await this.requisitarAPI("/consignacoes", "POST", {
                 usuarioId: rev.id,
                 produtoId: prodId,
@@ -4189,7 +4236,7 @@ const app = {
       const substituirTudo = this.state.usandoFicticio || await this.confirmar("Deseja substituir todo o estoque atual do sistema pelas informações desta planilha?\n\n- Confirmar para apagar os produtos e revendedoras atuais e carregar apenas os dados da planilha.\n- Cancelar para apenas mesclar e atualizar os preços/estoques existentes de acordo com o arquivo.");
 
       // Se o servidor local estiver ativo, envia para persistência real no banco de dados SQLite
-      if (this.state.token) {
+      if (this.state.token && !this.state.token.startsWith("mock_")) {
         try {
           await this.requisitarAPI("/importar", "POST", {
             produtos: produtosImportados,
@@ -4266,7 +4313,7 @@ const app = {
       }
 
       // Se estiver conectado ao servidor, recarrega os dados diretamente do banco de dados para garantir sincronia total
-      if (this.state.token) {
+      if (this.state.token && !this.state.token.startsWith("mock_")) {
         await this.carregarProdutosDaAPI();
         if (this.state.usuarioLogado.role === 'admin') {
           await this.carregarRevendedorasDaAPI();
@@ -4321,7 +4368,7 @@ const app = {
 
     try {
       // Se estiver conectado ao servidor local
-      if (this.state.token) {
+      if (this.state.token && !this.state.token.startsWith("mock_")) {
         await this.requisitarAPI("/produtos", "DELETE");
       }
 
@@ -4488,7 +4535,7 @@ const app = {
         const descPorItem = descontoTotal / selecionados.length;
         for (const item of selecionados) {
           // Se houver conexão de API ativa
-          if (this.state.token) {
+          if (this.state.token && !this.state.token.startsWith("mock_")) {
             await this.requisitarAPI("/vendas-diretas", "POST", {
               codigo: item.codigo,
               nome: item.nome,
@@ -5074,32 +5121,29 @@ const app = {
  
     if (statusConexao) {
       if (this.state.token && !this.state.token.startsWith("mock_")) {
-        statusConexao.innerText = "Conectado à API (Autenticado)";
+        statusConexao.innerText = "Automática e Segura (Ativa)";
         statusConexao.style.color = "#66bb6a";
       } else {
-        statusConexao.innerText = "Desconectado (Apenas Local)";
-        statusConexao.style.color = "#ef5350";
+        statusConexao.innerText = "Local e Segura (Ativa)";
+        statusConexao.style.color = "#66bb6a";
       }
     }
 
     if (statusModo) {
-      if (this.state.token && !this.state.token.startsWith("mock_")) {
-        statusModo.innerText = "Inativo (Operação Real)";
-        statusModo.style.color = "#81c784";
-      } else {
-        statusModo.innerText = "Ativo (Demonstração / Offline)";
-        statusModo.style.color = "var(--gold-primary)";
-      }
+      // Ocultar parágrafo do modo fictício
+      const parentP = statusModo.closest('p');
+      if (parentP) parentP.style.display = "none";
     }
   },
 
   salvarConfiguracoes: async function() {
     const inputNome = document.getElementById("cfg-nome-empresa").value.trim();
     const inputLogo = document.getElementById("cfg-logo-url").value.trim();
-    const inputCorPrimaria = document.getElementById("cfg-cor-primaria").value;
-    const inputCorSecundaria = document.getElementById("cfg-cor-secundaria").value;
-    const inputBgPrimary = document.getElementById("cfg-bg-primary").value;
-    const inputBgCard = document.getElementById("cfg-bg-card").value;
+    // Lê dos campos HEX (texto) que são mais confiáveis, com fallback para o color picker
+    const inputCorPrimaria = (document.getElementById("cfg-cor-primaria-hex") || document.getElementById("cfg-cor-primaria"))?.value || "#d4af37";
+    const inputCorSecundaria = (document.getElementById("cfg-cor-secundaria-hex") || document.getElementById("cfg-cor-secundaria"))?.value || "#111111";
+    const inputBgPrimary = (document.getElementById("cfg-bg-primary-hex") || document.getElementById("cfg-bg-primary"))?.value || "#0a0a0a";
+    const inputBgCard = (document.getElementById("cfg-bg-card-hex") || document.getElementById("cfg-bg-card"))?.value || "#121212";
     
     const inputLimiar = parseInt(document.getElementById("cfg-limiar-critico").value) || 3;
     const inputApi = document.getElementById("cfg-api-url").value.trim();
@@ -5125,10 +5169,13 @@ const app = {
     try {
       if (this.state.token && !this.state.token.startsWith("mock_")) {
         await this.requisitarAPI("/config", "PUT", configData);
+        console.log("✅ Configurações salvas no banco de dados:", configData);
+      } else {
+        this.toast("Salvo apenas localmente (modo de demonstração).", "info");
       }
     } catch (err) {
       console.warn("Erro ao salvar configurações na API:", err.message);
-      this.toast("Salvo localmente (Servidor offline/indisponível).", "info");
+      this.toast(`Erro ao salvar no servidor: ${err.message}. Salvo localmente.`, "warning");
     }
 
     // Aplica na interface imediatamente
@@ -5401,6 +5448,7 @@ const app = {
       }
 
       document.getElementById("modal-cliente").classList.remove("active");
+      this.salvarDadosNoLocalStorage();
       this.renderizarClientes();
     } catch (err) {
       console.error(err);
@@ -5877,12 +5925,24 @@ const app = {
           let acaoBtn = "";
           if (m.status === "PENDENTE") {
             acaoBtn = `
-              <button class="btn-gold" style="padding: 0.3rem 0.6rem; font-size: 0.8rem; background: linear-gradient(135deg, #2e7d32, #43a047); border-color: #43a047; color: white;" onclick="app.dispararMensagemFila('${m.id}', '${m.numero}', '${encodeURIComponent(m.mensagem)}')">
-                <i class="fa-brands fa-whatsapp"></i> Disparar Link
-              </button>
+              <div style="display: flex; gap: 0.4rem; align-items: center;">
+                <button class="btn-gold" style="padding: 0.35rem 0.7rem; font-size: 0.8rem; background: linear-gradient(135deg, #2e7d32, #43a047); border-color: #43a047; color: white; display: inline-flex; align-items: center; gap: 4px;" onclick="app.dispararMensagemFila('${m.id}', '${m.numero}', '${encodeURIComponent(m.mensagem)}')">
+                  <i class="fa-brands fa-whatsapp"></i> Disparar
+                </button>
+                <button class="btn-outline-gold" style="padding: 0.35rem; font-size: 0.8rem; min-width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center;" title="Editar Mensagem" onclick="app.abrirEditarWhats('${m.id}')">
+                  <i class="fa-solid fa-pen"></i>
+                </button>
+              </div>
             `;
           } else {
-            acaoBtn = `<span style="font-size: 0.8rem; color: var(--text-muted);"><i class="fa-solid fa-circle-check"></i> Disparado</span>`;
+            acaoBtn = `
+              <div style="display: flex; gap: 0.4rem; align-items: center;">
+                <span style="font-size: 0.8rem; color: var(--text-muted); display: inline-flex; align-items: center; gap: 3px; margin-right: 4px;"><i class="fa-solid fa-circle-check" style="color: #81c784;"></i> Disparado</span>
+                <button class="btn-outline-gold" style="padding: 0.35rem 0.6rem; font-size: 0.78rem; display: inline-flex; align-items: center; gap: 3px;" onclick="app.abrirEditarWhats('${m.id}')">
+                  <i class="fa-solid fa-pen-to-square"></i> Editar / Reenviar
+                </button>
+              </div>
+            `;
           }
 
           return `
@@ -5924,6 +5984,80 @@ const app = {
       this.carregarCentralWhatsApp();
     } catch (e) {
       this.toast("Erro ao marcar envio no servidor: " + e.message, "error");
+    }
+  },
+
+  abrirEditarWhats: async function(id) {
+    let item = null;
+    if (this.state.token && !this.state.token.startsWith("mock_")) {
+      try {
+        const fila = await this.requisitarAPI("/whatsapp/fila");
+        item = fila.find(m => m.id === id);
+      } catch (e) {
+        console.error("Erro ao obter mensagem da API:", e);
+      }
+    }
+    
+    if (!item) {
+      const mockFila = JSON.parse(localStorage.getItem("conectajoias_whatsapp_mock") || "[]");
+      item = mockFila.find(m => m.id === id);
+    }
+
+    if (!item) {
+      this.toast("Mensagem não encontrada.", "error");
+      return;
+    }
+
+    document.getElementById("edit-whats-id").value = item.id;
+    document.getElementById("edit-whats-numero").value = item.numero || "";
+    document.getElementById("edit-whats-mensagem").value = item.mensagem || "";
+    
+    // Aplicar máscara
+    const numInput = document.getElementById("edit-whats-numero");
+    if (numInput) this.aplicarMascaraWhatsApp(numInput);
+
+    document.getElementById("modal-editar-whats").classList.add("active");
+  },
+
+  fecharEditarWhats: function() {
+    document.getElementById("modal-editar-whats").classList.remove("active");
+  },
+
+  salvarEditarWhats: async function() {
+    const id = document.getElementById("edit-whats-id").value;
+    const numero = document.getElementById("edit-whats-numero").value.trim();
+    const mensagem = document.getElementById("edit-whats-mensagem").value.trim();
+
+    if (!numero || !mensagem) {
+      this.toast("Por favor, preencha o número e a mensagem.", "warning");
+      return;
+    }
+
+    try {
+      if (this.state.token && !this.state.token.startsWith("mock_")) {
+        await this.requisitarAPI(`/whatsapp/fila/${id}`, "PUT", { numero, mensagem });
+      } else {
+        let mockFila = JSON.parse(localStorage.getItem("conectajoias_whatsapp_mock") || "[]");
+        const foundIdx = mockFila.findIndex(m => m.id === id);
+        if (foundIdx !== -1) {
+          mockFila[foundIdx].numero = numero;
+          mockFila[foundIdx].mensagem = mensagem;
+          localStorage.setItem("conectajoias_whatsapp_mock", JSON.stringify(mockFila));
+        }
+      }
+
+      this.toast("Mensagem salva na fila!", "success");
+      this.fecharEditarWhats();
+      this.carregarCentralWhatsApp();
+      
+      // Auto-dispara a mensagem recém-salva após fechar o modal
+      setTimeout(() => {
+        this.dispararMensagemFila(id, numero, encodeURIComponent(mensagem));
+      }, 500);
+
+    } catch (e) {
+      console.error(e);
+      this.toast("Erro ao salvar mensagem: " + e.message, "error");
     }
   },
 
@@ -5988,6 +6122,39 @@ const app = {
     } catch (e) {
       this.toast("Erro ao cadastrar treinamento: " + e.message, "error");
     }
+  },
+
+  abrirVideoPlayer: function(titulo, url) {
+    const player = document.getElementById("modal-video-player");
+    const iframe = document.getElementById("video-player-iframe");
+    const titleEl = document.getElementById("video-player-titulo");
+
+    if (!player || !iframe) return;
+
+    if (titleEl) titleEl.innerText = titulo;
+    
+    // Converte links normais do YouTube para o formato embed se necessário
+    let embedUrl = url;
+    if (url.includes("youtube.com/watch?v=")) {
+      const vidId = url.split("v=")[1]?.split("&")[0];
+      embedUrl = `https://www.youtube.com/embed/${vidId}`;
+    } else if (url.includes("youtu.be/")) {
+      const vidId = url.split("youtu.be/")[1]?.split("?")[0];
+      embedUrl = `https://www.youtube.com/embed/${vidId}`;
+    }
+    
+    iframe.src = embedUrl;
+    player.classList.add("active");
+  },
+
+  fecharVideoPlayer: function() {
+    const player = document.getElementById("modal-video-player");
+    const iframe = document.getElementById("video-player-iframe");
+
+    if (!player || !iframe) return;
+
+    player.classList.remove("active");
+    iframe.src = "";
   },
 
   excluirTreinamento: async function(id) {

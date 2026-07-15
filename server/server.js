@@ -170,6 +170,22 @@ const autenticarJWT = (req, res, next) => {
   }
 };
 
+// Middleware opcional: decodifica o JWT se presente, mas não bloqueia se ausente.
+// Usado em rotas públicas que também atendem usuários autenticados (ex: /api/config).
+const autenticarJWTOpcional = (req, res, next) => {
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    const token = authHeader.split(' ')[1];
+    try {
+      req.user = jwt.verify(token, JWT_SECRET);
+    } catch (_) {
+      // Token inválido: ignora silenciosamente e continua como anônimo
+      req.user = null;
+    }
+  }
+  next();
+};
+
 const autorizarRole = (rolesAutorizadas) => {
   return (req, res, next) => {
     if (!req.user || !rolesAutorizadas.includes(req.user.role)) {
@@ -324,6 +340,19 @@ app.post('/api/auth/login', loginLimiter, async (req, res) => {
       { expiresIn: '7d' }
     );
 
+    // Busca as configurações visuais da loja para retornar junto com o login
+    // (garante que a revendedora herde as cores corretas sem uma segunda requisição)
+    let configLoja = null;
+    if (usuario.lojaId) {
+      try {
+        configLoja = await prisma.configuracao.findFirst({
+          where: { lojaId: usuario.lojaId }
+        });
+      } catch (configErr) {
+        console.warn('Aviso: não foi possível buscar config da loja no login:', configErr.message);
+      }
+    }
+
     // Registra log de auditoria
     registrarLog(req, "LOGIN", `Usuário realizou login com sucesso usando ${usuario.pin ? 'PIN' : 'E-mail'}.`, usuario);
 
@@ -337,12 +366,23 @@ app.post('/api/auth/login', loginLimiter, async (req, res) => {
         role: usuario.role,
         comissao: usuario.comissao,
         lojaId: usuario.lojaId
-      }
+      },
+      // Configurações visuais da loja para aplicação imediata no frontend
+      configLoja: configLoja ? {
+        nomeEmpresa: configLoja.nomeEmpresa,
+        logoUrl: configLoja.logoUrl,
+        corPrimaria: configLoja.corPrimaria,
+        corSecundaria: configLoja.corSecundaria,
+        bgPrimary: configLoja.bgPrimary,
+        bgCard: configLoja.bgCard,
+        temaPref: configLoja.temaPref
+      } : null
     });
   } catch (error) {
     res.status(500).json({ error: 'Erro interno no servidor ao tentar logar.' });
   }
 });
+
 
 // Auto-cadastro público de Gestora (Manager)
 app.post('/api/auth/signup', signupLimiter, async (req, res) => {
@@ -418,6 +458,49 @@ app.post('/api/auth/signup', signupLimiter, async (req, res) => {
   } catch (error) {
     console.error('Erro no auto-cadastro de gestora:', error);
     res.status(500).json({ error: 'Erro interno no servidor ao tentar realizar cadastro.' });
+  }
+});
+
+// GET /api/auth/pre-login-config - Obter configuração de tema pública do usuário (PIN ou E-mail) para a tela de login
+app.get('/api/auth/pre-login-config', async (req, res) => {
+  const { identificador } = req.query;
+  if (!identificador) {
+    return res.status(400).json({ error: 'Identificador ausente.' });
+  }
+
+  try {
+    let usuario;
+    if (/^\d{4}$/.test(identificador)) {
+      usuario = await prisma.usuario.findUnique({ where: { pin: identificador } });
+    } else {
+      usuario = await prisma.usuario.findUnique({ where: { email: identificador } });
+    }
+
+    if (!usuario) {
+      return res.status(404).json({ error: 'Usuário não encontrado.' });
+    }
+
+    // Busca as configurações da loja do usuário
+    const config = await prisma.configuracao.findFirst({
+      where: { lojaId: usuario.lojaId }
+    });
+
+    if (!config) {
+      return res.status(404).json({ error: 'Configuração da loja não encontrada.' });
+    }
+
+    // Retorna apenas dados de tema visual públicos e seguros
+    res.json({
+      nomeEmpresa: config.nomeEmpresa,
+      logoUrl: config.logoUrl,
+      corPrimaria: config.corPrimaria,
+      corSecundaria: config.corSecundaria,
+      bgPrimary: config.bgPrimary,
+      bgCard: config.bgCard,
+      temaPref: config.temaPref
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Erro ao carregar pré-configuração de login.' });
   }
 });
 
@@ -2101,7 +2184,7 @@ app.delete('/api/clientes', autenticarJWT, autorizarRole(['Manager', 'SuperAdmin
 // ==========================================
 
 // Listar notificações não lidas
-app.get('/api/notificacoes', autenticarJWT, autorizarRole(['Manager', 'SuperAdmin']), identificarLoja, async (req, res) => {
+app.get('/api/notificacoes', autenticarJWT, autorizarRole(['Consultant', 'Manager', 'SuperAdmin']), identificarLoja, async (req, res) => {
   try {
     const notificacoes = await prisma.notificacao.findMany({
       where: { lida: false, lojaId: req.lojaId },
@@ -2115,7 +2198,7 @@ app.get('/api/notificacoes', autenticarJWT, autorizarRole(['Manager', 'SuperAdmi
 });
 
 // Marcar notificações como lidas
-app.put('/api/notificacoes/ler', autenticarJWT, autorizarRole(['Manager', 'SuperAdmin']), identificarLoja, async (req, res) => {
+app.put('/api/notificacoes/ler', autenticarJWT, autorizarRole(['Consultant', 'Manager', 'SuperAdmin']), identificarLoja, async (req, res) => {
   const { ids } = req.body;
   try {
     if (ids && Array.isArray(ids) && ids.length > 0) {
@@ -2141,7 +2224,7 @@ app.put('/api/notificacoes/ler', autenticarJWT, autorizarRole(['Manager', 'Super
 // ==========================================
 
 // GET /api/config - Buscar configuração pública da loja
-app.get('/api/config', identificarLoja, async (req, res) => {
+app.get('/api/config', autenticarJWTOpcional, identificarLoja, async (req, res) => {
   try {
     let config = await prisma.configuracao.findFirst({
       where: { lojaId: req.lojaId }

@@ -880,7 +880,7 @@
           <div class="metric-card">
             <div class="metric-icon"><i class="fa-solid fa-percent"></i></div>
             <div class="metric-info">
-              <h3>Comissões Pagas</h3>
+              <h3>Comissões a Pagar</h3>
               <div class="metric-value" id="vendas-geral-comissoes" style="color: #81c784;">R$ 0,00</div>
             </div>
           </div>
@@ -965,9 +965,31 @@
             <div class="panel-header">
               <h2><i class="fa-solid fa-file-import"></i> Importar Produtos</h2>
             </div>
+
+            <!-- INFOGRÁFICO DE PASSO A PASSO -->
+            <div class="infografico-excel-passos" style="display: flex; gap: 0.8rem; margin-top: 1.5rem; margin-bottom: 1.5rem; justify-content: space-between;">
+              <div class="passo-card" style="flex: 1; background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 8px; padding: 0.8rem; text-align: center; position: relative;">
+                <span class="passo-numero" style="position: absolute; top: -8px; left: 50%; transform: translateX(-50%); background: var(--gold-primary); color: #000; font-size: 0.7rem; font-weight: 700; width: 18px; height: 18px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">1</span>
+                <i class="fa-solid fa-file-arrow-down" style="color: var(--gold-primary); font-size: 1.2rem; margin-top: 0.3rem; margin-bottom: 0.4rem; display: block;"></i>
+                <h5 style="color: #fff; font-size: 0.8rem; margin: 0 0 0.2rem 0; font-weight: 600;">Baixe o Modelo</h5>
+                <p style="font-size: 0.7rem; color: var(--text-muted); margin: 0; line-height: 1.3;">Estruture sua lista usando nosso padrão.</p>
+              </div>
+              <div class="passo-card" style="flex: 1; background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 8px; padding: 0.8rem; text-align: center; position: relative;">
+                <span class="passo-numero" style="position: absolute; top: -8px; left: 50%; transform: translateX(-50%); background: var(--gold-primary); color: #000; font-size: 0.7rem; font-weight: 700; width: 18px; height: 18px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">2</span>
+                <i class="fa-solid fa-file-signature" style="color: var(--gold-primary); font-size: 1.2rem; margin-top: 0.3rem; margin-bottom: 0.4rem; display: block;"></i>
+                <h5 style="color: #fff; font-size: 0.8rem; margin: 0 0 0.2rem 0; font-weight: 600;">Preencha Custos</h5>
+                <p style="font-size: 0.7rem; color: var(--text-muted); margin: 0; line-height: 1.3;">Insira custos de bruto, banho e markup.</p>
+              </div>
+              <div class="passo-card" style="flex: 1; background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 8px; padding: 0.8rem; text-align: center; position: relative;">
+                <span class="passo-numero" style="position: absolute; top: -8px; left: 50%; transform: translateX(-50%); background: var(--gold-primary); color: #000; font-size: 0.7rem; font-weight: 700; width: 18px; height: 18px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">3</span>
+                <i class="fa-solid fa-cloud-arrow-up" style="color: var(--gold-primary); font-size: 1.2rem; margin-top: 0.3rem; margin-bottom: 0.4rem; display: block;"></i>
+                <h5 style="color: #fff; font-size: 0.8rem; margin: 0 0 0.2rem 0; font-weight: 600;">Arraste & Salve</h5>
+                <p style="font-size: 0.7rem; color: var(--text-muted); margin: 0; line-height: 1.3;">Solte a planilha no campo para importar.</p>
+              </div>
+            </div>
             
             <div class="import-excel-zone" id="dropzone-excel">
-              <i class="fa-solid fa-file-csv"></i>
+              <i class="fa-solid fa-file-excel icon-excel-glow"></i>
               <h3>Arraste sua Planilha de Estoque</h3>
               <p>Compatível com arquivos .csv exportados do Excel (separador ";" ou ",")</p>
               <button class="btn-outline-gold" id="btn-trigger-import-file"><i class="fa-solid fa-search"></i> Procurar Arquivo</button>
@@ -975,8 +997,8 @@
             </div>
 
             <div style="font-size: 0.85rem; color: var(--text-secondary);">
-              <h4 style="color: var(--gold-primary); margin-bottom: 0.5rem;"><i class="fa-solid fa-circle-info"></i> Como formatar sua planilha para importar:</h4>
-              <p style="margin-bottom: 0.3rem;">Certifique-se de que a primeira linha contém os cabeçalhos das colunas:</p>
+              <h4 style="color: var(--gold-primary); margin-bottom: 0.5rem;"><i class="fa-solid fa-circle-info"></i> Formato de colunas exigido:</h4>
+              <p style="margin-bottom: 0.3rem;">Certifique-se de que a primeira linha contém exatamente esses cabeçalhos:</p>
               <code style="display: block; background: #000; padding: 0.6rem; border-radius: var(--radius-sm); border: var(--border-gold); color: var(--gold-light); font-size: 0.8rem; margin-top: 0.5rem; overflow-x: auto; white-space: nowrap;">
                 Código; Nome do Produto; Categoria; Qtd. Estoque; Custo Bruto; Custo Banho; Custo Líquido; Markup
               </code>
@@ -1174,10 +1196,7 @@
                 <p style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.3rem;">Define a quantidade mínima em estoque para que o produto seja listado no painel de alertas do Dashboard.</p>
               </div>
 
-              <div class="form-group" style="margin-bottom: 1.5rem;">
-                <label for="cfg-api-url" style="display: block; margin-bottom: 0.5rem; font-weight: 600;">URL da API de Integração</label>
-                <input type="text" id="cfg-api-url" class="form-control" placeholder="http://localhost:5000/api">
-              </div>
+              <input type="hidden" id="cfg-api-url" value="">
 
               <div style="border-top: 1px solid var(--border-color); margin: 1.5rem 0; padding-top: 1.5rem;">
                 <h3 style="font-family: var(--font-title); font-size: 1.1rem; color: var(--gold-light); margin-bottom: 1rem;"><i class="fa-solid fa-calculator"></i> Personalização de Margens & Contas (DRE)</h3>
@@ -1205,21 +1224,40 @@
             </div>
           </div>
 
-          <!-- Informações e Status -->
-          <div class="dashboard-panel" style="display: flex; flex-direction: column; justify-content: space-between;">
-            <div>
-              <div class="panel-header">
-                <h2><i class="fa-solid fa-circle-info"></i> Status do Sistema</h2>
+          <!-- Coluna Direita (Status + Tutorial) -->
+          <div style="display: flex; flex-direction: column; gap: 2rem;">
+            <!-- Informações e Status -->
+            <div class="dashboard-panel" style="display: flex; flex-direction: column; justify-content: space-between; flex: 1;">
+              <div>
+                <div class="panel-header">
+                  <h2><i class="fa-solid fa-circle-info"></i> Status do Sistema</h2>
+                </div>
+                <div style="margin-top: 1.5rem; font-size: 0.9rem; line-height: 1.6;">
+                  <p style="margin: 0.4rem 0;"><strong>Licença:</strong> Premium (Ativa)</p>
+                  <p style="margin: 0.4rem 0;"><strong>Armazenamento:</strong> Nuvem Conecta Joias</p>
+                  <p style="margin: 0.4rem 0;"><strong>Sincronização:</strong> <span id="cfg-conexao-status" style="color: #66bb6a; font-weight: bold;">Automática e Segura (Ativa)</span></p>
+                  <p style="margin: 0.4rem 0; display: none;"><strong>Modo Fictício:</strong> <span id="cfg-modo-status" style="color: var(--gold-primary); font-weight: bold;">Inativo</span></p>
+                </div>
               </div>
-              <div style="margin-top: 1.5rem; font-size: 0.9rem; line-height: 1.6;">
-                <p style="margin: 0.4rem 0;"><strong>Versão:</strong> 1.0.0 (Premium)</p>
-                <p style="margin: 0.4rem 0;"><strong>Banco de Dados:</strong> SQLite (Local)</p>
-                <p style="margin: 0.4rem 0;"><strong>Status da Conexão:</strong> <span id="cfg-conexao-status" style="color: #66bb6a; font-weight: bold;">Conectado à API</span></p>
-                <p style="margin: 0.4rem 0;"><strong>Modo Fictício:</strong> <span id="cfg-modo-status" style="color: var(--gold-primary); font-weight: bold;">Inativo (Operação Real)</span></p>
+              <div style="border-top: 1px solid var(--border-color); padding-top: 1.5rem; margin-top: 1.5rem; font-size: 0.85rem; color: var(--text-secondary);">
+                <p id="cfg-security-note">Seus dados e relatórios financeiros estão totalmente protegidos sob protocolos de criptografia e backup automático diário de alta segurança.</p>
               </div>
             </div>
-            <div style="border-top: 1px solid var(--border-color); padding-top: 1.5rem; margin-top: 1.5rem; font-size: 0.85rem; color: var(--text-secondary);">
-              <p id="cfg-security-note">Conecta Joias utiliza criptografia SSL ponta-a-ponta nas requisições da API e persistência reativa local para garantir a integridade dos seus dados em qualquer circunstância.</p>
+
+            <!-- Ajuda & Onboarding -->
+            <div class="dashboard-panel" style="display: flex; flex-direction: column; justify-content: space-between;">
+              <div>
+                <div class="panel-header">
+                  <h2><i class="fa-solid fa-sparkles"></i> Ajuda & Onboarding</h2>
+                </div>
+                <div style="margin-top: 1.5rem; font-size: 0.9rem; line-height: 1.6;">
+                  <p>Precisa de ajuda para entender as seções e os botões da plataforma?</p>
+                  <p style="margin-top: 0.5rem; color: var(--text-secondary); font-size: 0.82rem; line-height: 1.4;">Inicie o tutorial guiado para que o sistema a acompanhe passo a passo em cada aba principal.</p>
+                </div>
+              </div>
+              <div style="margin-top: 1.5rem; border-top: 1px solid var(--border-color); padding-top: 1rem;">
+                <button class="btn-gold" onclick="window.initOnboardingTour(true)" style="width: 100%; justify-content: center; padding: 0.65rem; font-size: 0.85rem; display: flex; align-items: center; gap: 0.5rem;"><i class="fa-solid fa-play"></i> Iniciar Tutorial Interativo</button>
+              </div>
             </div>
           </div>
         </div>
@@ -1341,10 +1379,80 @@
       <section id="admin-treinamentos" class="app-section">
         <div class="section-header">
           <div class="section-title">
-            <h2>Repositório de Treinamentos On-Demand</h2>
-            <p>Gerencie os vídeos e arquivos em PDF que serão disponibilizados no portal das revendedoras.</p>
+            <h2>Portal de Treinamento e Capacitação</h2>
+            <p>Assista aos treinamentos oficiais do sistema e gerencie materiais disponibilizados para suas revendedoras.</p>
           </div>
         </div>
+
+        <!-- MÓDULOS DE TREINAMENTO INTEGRADOS (VISUAL LUXO) -->
+        <div style="margin-bottom: 2.5rem;">
+          <h3 style="color: var(--gold-primary); font-size: 1.25rem; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 8px;">
+            <i class="fa-solid fa-graduation-cap"></i> Treinamento Oficial da Distribuidora
+          </h3>
+          <div class="treinamento-modulos-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem;">
+            
+            <!-- Módulo 1 -->
+            <div class="modulo-premium-card" onclick="app.abrirVideoPlayer('Módulo 1: Visão Geral & Métricas', 'https://www.youtube.com/embed/dQw4w9WgXcQ')">
+              <div class="modulo-video-cover cover-1">
+                <div class="play-btn-glow"><i class="fa-solid fa-play"></i></div>
+                <span class="modulo-tag">Módulo 1</span>
+              </div>
+              <div class="modulo-premium-content">
+                <h4>Visão Geral & Métricas</h4>
+                <p>Domine o Painel Geral: faturamento, controle de lucro real e o fluxo do demonstrativo DRE.</p>
+                <div class="modulo-premium-footer">
+                  <span class="aula-duration"><i class="fa-regular fa-clock"></i> 4 min</span>
+                  <button class="btn-gold btn-assistir-aula" onclick="event.stopPropagation(); app.abrirVideoPlayer('Módulo 1: Visão Geral & Métricas', 'https://www.youtube.com/embed/dQw4w9WgXcQ')">
+                    <i class="fa-solid fa-play"></i> Assistir Aula
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Módulo 2 -->
+            <div class="modulo-premium-card" onclick="app.abrirVideoPlayer('Módulo 2: Cadastro de Estoque & Custos', 'https://www.youtube.com/embed/dQw4w9WgXcQ')">
+              <div class="modulo-video-cover cover-2">
+                <div class="play-btn-glow"><i class="fa-solid fa-play"></i></div>
+                <span class="modulo-tag">Módulo 2</span>
+              </div>
+              <div class="modulo-premium-content">
+                <h4>Cadastro de Estoque & Custos</h4>
+                <p>Aprenda a cadastrar peças, registrar banhos de ouro, markup dinâmico e precificação.</p>
+                <div class="modulo-premium-footer">
+                  <span class="aula-duration"><i class="fa-regular fa-clock"></i> 6 min</span>
+                  <button class="btn-gold btn-assistir-aula" onclick="event.stopPropagation(); app.abrirVideoPlayer('Módulo 2: Cadastro de Estoque & Custos', 'https://www.youtube.com/embed/dQw4w9WgXcQ')">
+                    <i class="fa-solid fa-play"></i> Assistir Aula
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Módulo 3 -->
+            <div class="modulo-premium-card" onclick="app.abrirVideoPlayer('Módulo 3: Revendedoras & Consignados', 'https://www.youtube.com/embed/dQw4w9WgXcQ')">
+              <div class="modulo-video-cover cover-3">
+                <div class="play-btn-glow"><i class="fa-solid fa-play"></i></div>
+                <span class="modulo-tag">Módulo 3</span>
+              </div>
+              <div class="modulo-premium-content">
+                <h4>Revendedoras & Consignados</h4>
+                <p>Aprenda como cadastrar vendedoras, montar maletas e efetuar acertos fiscais e comissões.</p>
+                <div class="modulo-premium-footer">
+                  <span class="aula-duration"><i class="fa-regular fa-clock"></i> 5 min</span>
+                  <button class="btn-gold btn-assistir-aula" onclick="event.stopPropagation(); app.abrirVideoPlayer('Módulo 3: Revendedoras & Consignados', 'https://www.youtube.com/embed/dQw4w9WgXcQ')">
+                    <i class="fa-solid fa-play"></i> Assistir Aula
+                  </button>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <hr style="border: 0; border-top: 1px solid rgba(255,255,255,0.08); margin: 2.5rem 0;">
+
+        <h3 style="color: #fff; font-size: 1.15rem; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 8px;">
+          <i class="fa-solid fa-photo-film"></i> Repositório de Conteúdos On-Demand (Revendedoras)
+        </h3>
 
         <div class="split-layout" style="grid-template-columns: 1.2fr 0.8fr; gap: 2rem;">
           <!-- Lista de Treinamentos -->
@@ -2557,6 +2665,50 @@
     </div>
   </div>
 
+  <!-- ==========================================
+       MODAL: EDITAR MENSAGEM WHATSAPP
+       ========================================== -->
+  <div class="modal-backdrop" id="modal-editar-whats">
+    <div class="modal-card" style="width: 480px;">
+      <div class="modal-title-row">
+        <h3><i class="fa-solid fa-pen-to-square"></i> Editar Mensagem Fila</h3>
+        <button class="btn-close-modal" id="btn-close-modal-editar-whats" onclick="app.fecharEditarWhats()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <input type="hidden" id="edit-whats-id">
+
+      <div class="form-group">
+        <label for="edit-whats-numero">Número do WhatsApp *</label>
+        <input type="text" id="edit-whats-numero" class="form-control" placeholder="Ex: (11) 99999-9999" required>
+      </div>
+
+      <div class="form-group">
+        <label for="edit-whats-mensagem">Mensagem de Cobrança / Notificação *</label>
+        <textarea id="edit-whats-mensagem" class="form-control" rows="8" style="resize: vertical; font-family: inherit; font-size: 0.9rem;" placeholder="Digite a mensagem..." required></textarea>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn-outline-gold" id="btn-cancelar-editar-whats" onclick="app.fecharEditarWhats()">Cancelar</button>
+        <button class="btn-gold" id="btn-salvar-editar-whats" onclick="app.salvarEditarWhats()"><i class="fa-solid fa-floppy-disk"></i> Salvar & Disparar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================
+       MODAL: PLAYER DE VÍDEO TUTORIAL
+       ========================================== -->
+  <div class="modal-backdrop" id="modal-video-player">
+    <div class="modal-card" style="width: 780px; max-width: 95%; background: #0f0f0f; border-color: rgba(212, 175, 55, 0.35);">
+      <div class="modal-title-row" style="border-bottom: 1px solid rgba(255, 255, 255, 0.08); padding-bottom: 1rem; margin-bottom: 1rem;">
+        <h3 id="video-player-titulo" style="font-size: 1.15rem; color: #fff;"><i class="fa-solid fa-circle-play" style="color: var(--gold-primary); margin-right: 6px;"></i> Assistir Vídeo</h3>
+        <button class="btn-close-modal" onclick="app.fecharVideoPlayer()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="video-player-body" style="position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.05); background: #000;">
+        <iframe id="video-player-iframe" src="" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0;" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+      </div>
+    </div>
+  </div>
+
   <!-- Container de Toasts Dinâmicos -->
   <div id="toast-container"></div>
 
@@ -2581,6 +2733,8 @@
   <script src="superadmin.js"></script>
   <!-- 4. Módulo de Vendas Diretas da Administradora -->
   <script src="superadmin-vendas.js"></script>
+  <!-- 5. Módulo de Tutorial Interativo (Onboarding Tour) -->
+  <script src="superadmin-tour.js"></script>
 
   <!-- Script de Autolimpeza imperativa de Cache e Service Workers do Navegador -->
   <script>

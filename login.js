@@ -21,16 +21,28 @@ const loginApp = {
   init: async function() {
     await this.carregarConfiguracoesLoja();
 
-    const token = localStorage.getItem("conectajoias_token");
-    const usuarioJson = localStorage.getItem("conectajoias_usuario");
+    const params = new URLSearchParams(window.location.search);
 
-    if (token && usuarioJson) {
-      try {
-        const usuario = JSON.parse(usuarioJson);
-        this.redirecionarPorPerfil(usuario.role);
-        return;
-      } catch (e) {
-        localStorage.clear();
+    // Se vier do redirecionamento com erro de logout
+    const errorMsg = params.get("error");
+    if (errorMsg) {
+      const errorBox = document.getElementById("login-error-msg");
+      if (errorBox) {
+        errorBox.innerText = errorMsg;
+        errorBox.style.display = "block";
+      }
+    } else {
+      const token = localStorage.getItem("conectajoias_token");
+      const usuarioJson = localStorage.getItem("conectajoias_usuario");
+
+      if (token && usuarioJson) {
+        try {
+          const usuario = JSON.parse(usuarioJson);
+          this.redirecionarPorPerfil(usuario.role);
+          return;
+        } catch (e) {
+          localStorage.clear();
+        }
       }
     }
 
@@ -38,7 +50,6 @@ const loginApp = {
     this.registrarEventosWizard();
 
     // Se vier do botão 'Cadastrar Minha Marca' da landing page
-    const params = new URLSearchParams(window.location.search);
     if (params.get("cadastro") === "true") {
       const loginCard = document.getElementById("login-card");
       const signupCard = document.getElementById("signup-card");
@@ -133,7 +144,19 @@ const loginApp = {
     const enterHandler = (e) => { if (e.key === "Enter") this.fazerLogin(); };
     const inputEmail = document.getElementById("login-email");
     const inputSenha = document.getElementById("login-senha");
-    if (inputEmail) inputEmail.addEventListener("keypress", enterHandler);
+    if (inputEmail) {
+      inputEmail.addEventListener("keypress", enterHandler);
+      // Detecção dinâmica de PIN ou E-mail para herdar as configurações de marca na tela de login
+      const preLoginHandler = () => this.carregarTemaPreLogin(inputEmail.value.trim());
+      inputEmail.addEventListener("blur", preLoginHandler);
+      inputEmail.addEventListener("input", () => {
+        const val = inputEmail.value.trim();
+        // Se for PIN de 4 dígitos ou e-mail com arroba
+        if (/^\d{4}$/.test(val) || (val.includes("@") && val.length > 5)) {
+          this.carregarTemaPreLogin(val);
+        }
+      });
+    }
     if (inputSenha) inputSenha.addEventListener("keypress", enterHandler);
 
     const signupEnterHandler = (e) => { if (e.key === "Enter") this.fazerCadastro(); };
@@ -383,6 +406,28 @@ const loginApp = {
     }
   },
 
+  carregarTemaPreLogin: async function(identificador) {
+    if (!identificador) return;
+    try {
+      const response = await fetch(`${this.apiUrl}/auth/pre-login-config?identificador=${encodeURIComponent(identificador)}`);
+      if (response.ok) {
+        const config = await response.json();
+        this.aplicarConfiguracoes(config);
+        
+        // Salva as configurações de cores herdadas no LocalStorage para que o manager.html
+        // já inicie com o tema correto mesmo se demorar para buscar na inicialização!
+        localStorage.setItem("conectajoias_nome_empresa", config.nomeEmpresa);
+        localStorage.setItem("conectajoias_logo_url", config.logoUrl || "");
+        localStorage.setItem("conectajoias_cor_primaria", config.corPrimaria);
+        localStorage.setItem("conectajoias_cor_secundaria", config.corSecundaria);
+        localStorage.setItem("conectajoias_bg_primary", config.bgPrimary);
+        localStorage.setItem("conectajoias_bg_card", config.bgCard);
+      }
+    } catch (e) {
+      console.warn("Falha ao pré-carregar configurações de tema no login:", e);
+    }
+  },
+
   // helper de toast (fallback simples)
   toast: function(msg, type) {
     const el = document.createElement("div");
@@ -428,6 +473,41 @@ const loginApp = {
       localStorage.setItem("conectajoias_token", data.token);
       localStorage.setItem("conectajoias_usuario", JSON.stringify(data.usuario));
       localStorage.setItem("conectajoias_loja_id", data.usuario.lojaId);
+
+      // Salva as cores/configurações da loja ANTES de redirecionar.
+      // Prioridade: configLoja da resposta de login (mais rápido, sem 2ª requisição).
+      // Fallback: busca separada à /api/config caso o servidor não retorne configLoja.
+      if (data.configLoja) {
+        // Configuração recebida diretamente na resposta de login
+        const cfg = data.configLoja;
+        localStorage.setItem("conectajoias_nome_empresa", cfg.nomeEmpresa || "Conecta Joias");
+        localStorage.setItem("conectajoias_logo_url", cfg.logoUrl || "");
+        localStorage.setItem("conectajoias_cor_primaria", cfg.corPrimaria || "#d4af37");
+        localStorage.setItem("conectajoias_cor_secundaria", cfg.corSecundaria || "#111111");
+        localStorage.setItem("conectajoias_bg_primary", cfg.bgPrimary || "#0a0a0a");
+        localStorage.setItem("conectajoias_bg_card", cfg.bgCard || "#121212");
+      } else {
+        // Fallback: busca separada das configurações de cor da loja
+        try {
+          const configResp = await fetch(`${this.apiUrl}/config`, {
+            headers: {
+              "Authorization": `Bearer ${data.token}`,
+              "x-loja-id": data.usuario.lojaId
+            }
+          });
+          if (configResp.ok) {
+            const config = await configResp.json();
+            localStorage.setItem("conectajoias_nome_empresa", config.nomeEmpresa || "Conecta Joias");
+            localStorage.setItem("conectajoias_logo_url", config.logoUrl || "");
+            localStorage.setItem("conectajoias_cor_primaria", config.corPrimaria || "#d4af37");
+            localStorage.setItem("conectajoias_cor_secundaria", config.corSecundaria || "#111111");
+            localStorage.setItem("conectajoias_bg_primary", config.bgPrimary || "#0a0a0a");
+            localStorage.setItem("conectajoias_bg_card", config.bgCard || "#121212");
+          }
+        } catch (configErr) {
+          console.warn("Não foi possível pré-carregar as cores da loja:", configErr);
+        }
+      }
 
       this.redirecionarPorPerfil(data.usuario.role);
     } catch (error) {

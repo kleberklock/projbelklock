@@ -1,4 +1,4 @@
-# Pastas de Dependências (NUNCA enviar ao GitHub/Gemini)
+# Pastas de Dependências (NUNCA enviar ao GitHub)
 node_modules/
 server/node_modules/
 
@@ -17,5 +17,15 @@ server/.env
 Thumbs.db
 Desktop.ini
 
-# Configurações locais da IDE (VS Code)
+# Configurações locais da IDE
 .vscode/
+
+# Scripts de debug/manutenção local (não fazem parte do produto)
+server/check_db.js
+server/limpar_para_teste.js
+
+# Pasta de exportação gerada (gerada pelo export-code.js)
+gemini_export/
+
+# Arquivo de código exportado antigo
+codigo_conecta_joias.md

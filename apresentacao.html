@@ -3,191 +3,1016 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Conecta Joias - Gestão Premium de Consignados</title>
+  <title>Conecta Joias - Gestão Premium de Consignados White-Label</title>
   
-  <!-- Fonts de Luxo -->
+  <!-- Fontes de Luxo -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;0,700;1,400&family=Montserrat:wght@200;300;400;500;600;700&display=swap" rel="stylesheet">
   
   <!-- FontAwesome Ícones -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   
-  <!-- Estilos Globais Premium -->
-  <link rel="stylesheet" href="style.css">
-  
   <style>
+    /* ─────────────────────────────────────────────────────────────────────────
+       SISTEMA DE DESIGN E ESTILOS GLOBAIS PREMIUM
+       ───────────────────────────────────────────────────────────────────────── */
     :root {
+      --bg-deep: #050505;
+      --bg-dark: #0a0a0a;
+      --bg-card: #111111;
+      --bg-card-light: #161616;
       --gold-primary: #d4af37;
       --gold-light: #f3e5ab;
       --gold-dark: #aa8c2c;
-      --bg-dark: #070707;
-      --bg-card-dark: #121212;
-      --text-gray: #a0a0a0;
+      --gold-gradient: linear-gradient(135deg, #bf953f 0%, #fcf6ba 25%, #b38728 50%, #fbf5b7 75%, #aa771c 100%);
+      --gold-glow: rgba(212, 175, 55, 0.15);
+      --text-main: #f5f5f7;
+      --text-muted: #8e8e93;
+      --text-dark: #1d1d1f;
+      --border-color: rgba(255, 255, 255, 0.05);
+      --border-gold: rgba(212, 175, 55, 0.15);
+      --radius-sm: 8px;
+      --radius-md: 16px;
+      --radius-lg: 24px;
+      --transition-smooth: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+      --transition-fast: all 0.25s ease;
     }
 
-    body {
-      background: var(--bg-dark);
-      color: #f5f5f5;
-      font-family: 'Montserrat', sans-serif;
-      margin: 0;
+    html, body {
+      max-width: 100%;
       overflow-x: hidden;
-      scroll-behavior: smooth;
     }
 
-    /* Header / Navbar */
-    header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 1.5rem 5%;
-      background: rgba(7, 7, 7, 0.85);
-      backdrop-filter: blur(12px);
-      position: sticky;
-      top: 0;
-      z-index: 100;
-      border-bottom: 1px solid rgba(212, 175, 55, 0.1);
-    }
-
-    .logo-container {
-      display: flex;
-      align-items: center;
-      gap: 0.8rem;
-    }
-
-    .logo-container img {
-      width: 42px;
-      height: 42px;
-    }
-
-    .logo-text {
-      font-family: 'Cormorant Garamond', serif;
-      font-size: 1.8rem;
-      font-weight: 700;
-      color: var(--gold-primary);
-      letter-spacing: 2px;
-    }
-
-    .nav-links {
-      display: flex;
-      gap: 2.5rem;
-      list-style: none;
+    * {
+      box-sizing: border-box;
       margin: 0;
       padding: 0;
     }
 
-    .nav-links a {
-      color: var(--text-gray);
-      text-decoration: none;
-      font-size: 0.88rem;
-      font-weight: 500;
-      transition: all 0.3s;
-      letter-spacing: 1px;
+    body {
+      background: var(--bg-deep);
+      color: var(--text-main);
+      font-family: 'Montserrat', sans-serif;
+      scroll-behavior: smooth;
+      -webkit-font-smoothing: antialiased;
     }
 
-    .nav-links a:hover {
-      color: var(--gold-primary);
-      text-shadow: 0 0 10px rgba(212, 175, 55, 0.3);
+    /* Scrollbar Premium */
+    ::-webkit-scrollbar {
+      width: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: var(--bg-deep);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #222;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: var(--gold-primary);
     }
 
-    .btn-login-nav {
-      border: 1px solid var(--gold-primary);
-      color: var(--gold-primary);
-      background: transparent;
-      padding: 0.6rem 1.4rem;
-      border-radius: var(--radius-sm);
-      cursor: pointer;
-      font-weight: 600;
-      font-size: 0.82rem;
-      letter-spacing: 1px;
-      transition: all 0.35s;
-    }
-
-    .btn-login-nav:hover {
-      background: var(--gold-gradient);
-      color: #070707;
-      box-shadow: 0 0 15px rgba(212, 175, 55, 0.25);
-      transform: translateY(-2px);
-    }
-
-    /* Hero Section */
-    .hero {
-      position: relative;
-      padding: 8rem 5% 6rem;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      text-align: center;
-      background: radial-gradient(circle at center, rgba(212, 175, 55, 0.05) 0%, rgba(7, 7, 7, 0) 70%);
-    }
-
-    .hero h1 {
+    h1, h2, h3, .font-serif {
       font-family: 'Cormorant Garamond', serif;
-      font-size: 4rem;
-      font-weight: 700;
-      line-height: 1.15;
-      margin-bottom: 1.5rem;
-      max-width: 900px;
+      font-weight: 600;
+      letter-spacing: 1px;
     }
 
-    .hero h1 span {
+    /* Cursor Glow - Efeito de luz dinâmica sênior */
+    #cursor-glow {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      pointer-events: none;
+      z-index: 1;
+      background: radial-gradient(600px circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(212, 175, 55, 0.04), transparent 45%);
+      transition: background 0.1s ease;
+    }
+
+    section {
+      position: relative;
+      z-index: 2;
+      padding: 8rem 5% 6rem;
+      max-width: 1400px;
+      margin: 0 auto;
+      overflow: hidden; /* Previne estouros de gradientes absolutos */
+    }
+
+    /* Efeitos de Revelação por Scroll */
+    .reveal {
+      opacity: 0;
+      transform: translateY(30px);
+      transition: var(--transition-smooth);
+      transition-duration: 0.8s;
+    }
+
+    .reveal.active {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .delay-1 { transition-delay: 0.1s; }
+    .delay-2 { transition-delay: 0.2s; }
+    .delay-3 { transition-delay: 0.3s; }
+
+    /* Botões Premium */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.8rem;
+      padding: 1.1rem 2.5rem;
+      border-radius: 50px;
+      font-family: 'Montserrat', sans-serif;
+      font-size: 0.9rem;
+      font-weight: 600;
+      letter-spacing: 1px;
+      text-decoration: none;
+      cursor: pointer;
+      transition: var(--transition-smooth);
+      position: relative;
+      overflow: hidden;
+      z-index: 1;
+    }
+
+    .btn-gold {
+      background: var(--gold-gradient);
+      color: var(--bg-deep);
+      border: none;
+      box-shadow: 0 4px 20px rgba(191, 149, 63, 0.2);
+    }
+
+    .btn-gold::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+      transition: 0.6s;
+      z-index: -1;
+    }
+
+    .btn-gold:hover::before {
+      left: 100%;
+    }
+
+    .btn-gold:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 8px 30px rgba(191, 149, 63, 0.4);
+    }
+
+    .btn-outline {
+      background: transparent;
+      color: var(--text-main);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+    }
+
+    .btn-outline:hover {
+      border-color: var(--gold-primary);
+      color: var(--gold-primary);
+      transform: translateY(-3px);
+      box-shadow: 0 5px 15px rgba(212, 175, 55, 0.1);
+    }
+
+    /* Badges */
+    .badge-premium {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: rgba(212, 175, 55, 0.08);
+      border: 1px solid var(--border-gold);
+      color: var(--gold-primary);
+      padding: 0.5rem 1.2rem;
+      border-radius: 50px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      margin-bottom: 2rem;
+    }
+
+    /* Títulos de Seção */
+    .section-header {
+      text-align: center;
+      max-width: 800px;
+      margin: 0 auto 5rem;
+    }
+
+    .section-header h2 {
+      font-size: 3.2rem;
+      margin-bottom: 1.2rem;
+      line-height: 1.15;
+    }
+
+    .section-header h2 span {
       background: var(--gold-gradient);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
     }
 
-    .hero p {
+    .section-header p {
+      color: var(--text-muted);
       font-size: 1.1rem;
-      color: var(--text-gray);
-      max-width: 650px;
+      line-height: 1.6;
+      font-weight: 300;
+    }
+
+    /* ─────────────────────────────────────────────────────────────────────────
+       HEADER / NAVIGATION
+       ───────────────────────────────────────────────────────────────────────── */
+    header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      padding: 1.5rem 5%;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 1000;
+      background: rgba(5, 5, 5, 0.8);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border-color);
+      transition: var(--transition-fast);
+    }
+
+    header.scrolled {
+      padding: 1rem 5%;
+      border-bottom: 1px solid rgba(212, 175, 55, 0.15);
+      background: rgba(5, 5, 5, 0.95);
+    }
+
+    .logo-container {
+      display: flex;
+      align-items: center;
+      text-decoration: none;
+    }
+
+    .logo-container img {
+      height: 36px;
+      width: auto;
+      display: block;
+    }
+
+    .nav-menu {
+      display: flex;
+      gap: 2.5rem;
+      list-style: none;
+    }
+
+    .nav-menu a {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.85rem;
+      font-weight: 500;
+      letter-spacing: 1px;
+      transition: var(--transition-fast);
+    }
+
+    .nav-menu a:hover {
+      color: var(--gold-primary);
+      text-shadow: 0 0 10px rgba(212, 175, 55, 0.3);
+    }
+
+    .btn-portal {
+      border: 1px solid var(--gold-primary);
+      color: var(--gold-primary);
+      background: transparent;
+      padding: 0.6rem 1.5rem;
+      border-radius: 50px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      letter-spacing: 1px;
+      cursor: pointer;
+      transition: var(--transition-fast);
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .btn-portal:hover {
+      background: var(--gold-gradient);
+      color: var(--bg-deep);
+      box-shadow: 0 0 15px rgba(212, 175, 55, 0.3);
+      transform: translateY(-2px);
+    }
+
+    /* ─────────────────────────────────────────────────────────────────────────
+       HERO SECTION
+       ───────────────────────────────────────────────────────────────────────── */
+    .hero {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      align-items: center;
+      gap: 4rem;
+      padding-top: 8rem;
+    }
+
+    .hero-content {
+      text-align: left;
+    }
+
+    .hero-content h1 {
+      font-size: 4.8rem;
+      line-height: 1.05;
+      margin-bottom: 1.5rem;
+      font-weight: 700;
+    }
+
+    .hero-content h1 span {
+      background: var(--gold-gradient);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .hero-content p {
+      font-size: 1.15rem;
+      color: var(--text-muted);
+      line-height: 1.7;
+      margin-bottom: 3rem;
+      font-weight: 300;
+      max-width: 620px;
+    }
+
+    .hero-actions {
+      display: flex;
+      gap: 1.5rem;
+    }
+
+    /* Mockup de Smartphone Premium na Direita */
+    .hero-visual {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      position: relative;
+    }
+
+    .hero-visual::before {
+      content: '';
+      position: absolute;
+      width: 400px;
+      height: 400px;
+      background: radial-gradient(circle, rgba(212, 175, 55, 0.08) 0%, transparent 70%);
+      filter: blur(30px);
+      z-index: -1;
+    }
+
+    .phone-mockup {
+      width: 310px;
+      height: 630px;
+      background: #010101;
+      border: 11px solid #1a1a1a;
+      border-radius: 40px;
+      box-shadow: 0 25px 60px -10px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(212, 175, 55, 0.15);
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Notch do Smartphone */
+    .phone-notch {
+      position: absolute;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 110px;
+      height: 25px;
+      background: #1a1a1a;
+      border-bottom-left-radius: 15px;
+      border-bottom-right-radius: 15px;
+      z-index: 10;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    .phone-notch::after {
+      content: '';
+      width: 40px;
+      height: 4px;
+      background: #333;
+      border-radius: 10px;
+      margin-bottom: 2px;
+    }
+
+    .phone-screen {
+      width: 100%;
+      height: 100%;
+      padding: 35px 16px 16px;
+      display: flex;
+      flex-direction: column;
+      background: #09090b;
+      font-size: 0.75rem;
+      color: #fff;
+    }
+
+    /* Conteúdo Simulado da Vendedora no Celular */
+    .phone-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.2rem;
+    }
+
+    .phone-user {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .phone-avatar {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: var(--gold-gradient);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      color: #000;
+      font-size: 0.65rem;
+    }
+
+    .phone-brand-title {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--gold-primary);
+    }
+
+    .phone-card {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 12px;
+      padding: 0.9rem;
+      margin-bottom: 1rem;
+    }
+
+    .phone-card-title {
+      color: var(--text-muted);
+      font-size: 0.6rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 0.3rem;
+    }
+
+    .phone-card-value {
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .phone-commission-bar {
+      width: 100%;
+      height: 6px;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 10px;
+      margin-top: 0.5rem;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .phone-commission-progress {
+      width: 75%;
+      height: 100%;
+      background: var(--gold-gradient);
+      border-radius: 10px;
+      animation: commissionGrow 4s infinite alternate cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    @keyframes commissionGrow {
+      0% { width: 35%; }
+      100% { width: 85%; }
+    }
+
+    .phone-list-title {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-muted);
+      margin-bottom: 0.6rem;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .phone-items {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      flex: 1;
+      overflow-y: hidden;
+    }
+
+    .phone-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.6rem;
+      background: rgba(255, 255, 255, 0.02);
+      border-radius: 8px;
+      border-left: 3px solid var(--gold-primary);
+    }
+
+    .phone-item-info {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .phone-item-name {
+      font-weight: 500;
+      color: #fff;
+    }
+
+    .phone-item-qty {
+      font-size: 0.6rem;
+      color: var(--text-muted);
+    }
+
+    .phone-item-price {
+      font-weight: 600;
+      color: var(--gold-primary);
+    }
+
+    .phone-badge-status {
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 0.55rem;
+      font-weight: 600;
+      background: rgba(76, 175, 80, 0.15);
+      color: #4caf50;
+    }
+
+    .phone-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.5rem;
+      margin-top: auto;
+    }
+
+    .phone-btn {
+      padding: 0.6rem;
+      border-radius: 8px;
+      border: none;
+      font-size: 0.65rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.3rem;
+    }
+
+    .phone-btn-gold {
+      background: var(--gold-gradient);
+      color: #000;
+    }
+
+    .phone-btn-outline {
+      background: rgba(255, 255, 255, 0.05);
+      color: #fff;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    /* ─────────────────────────────────────────────────────────────────────────
+       DORES VS SOLUÇÃO (O CAOS VS O CONECTA JOIAS)
+       ───────────────────────────────────────────────────────────────────────── */
+    .contrast-section {
+      background: linear-gradient(180deg, var(--bg-deep) 0%, rgba(212, 175, 55, 0.02) 50%, var(--bg-deep) 100%);
+    }
+
+    .contrast-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 3rem;
+    }
+
+    .contrast-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      padding: 3.5rem;
+      position: relative;
+      overflow: hidden;
+      transition: var(--transition-smooth);
+    }
+
+    .contrast-card::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: radial-gradient(circle at top right, rgba(255, 255, 255, 0.02), transparent 60%);
+      pointer-events: none;
+    }
+
+    .contrast-card.caos {
+      border-top: 4px solid #ef5350;
+    }
+
+    .contrast-card.sucesso {
+      border-top: 4px solid var(--gold-primary);
+      box-shadow: 0 10px 40px -10px rgba(212, 175, 55, 0.05);
+    }
+
+    .contrast-card h3 {
+      font-size: 2.2rem;
+      margin-bottom: 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.8rem;
+    }
+
+    .contrast-card.caos h3 { color: #ef5350; }
+    .contrast-card.sucesso h3 { color: var(--gold-primary); }
+
+    .contrast-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+      margin-top: 2rem;
+    }
+
+    .contrast-list li {
+      display: flex;
+      gap: 1rem;
+      align-items: flex-start;
+      font-size: 0.95rem;
+      line-height: 1.5;
+    }
+
+    .contrast-list li i {
+      font-size: 1.1rem;
+      margin-top: 0.15rem;
+    }
+
+    .contrast-card.caos .contrast-list li i { color: #ef5350; }
+    .contrast-card.sucesso .contrast-list li i { color: #4caf50; }
+
+    .contrast-card.caos .contrast-list li { color: rgba(255, 255, 255, 0.6); }
+
+    .contrast-footer-tag {
+      margin-top: 3rem;
+      padding: 1rem;
+      border-radius: var(--radius-sm);
+      text-align: center;
+      font-weight: 600;
+      font-size: 0.85rem;
+      letter-spacing: 1px;
+    }
+
+    .contrast-card.caos .contrast-footer-tag {
+      background: rgba(239, 83, 80, 0.05);
+      color: #ef5350;
+      border: 1px solid rgba(239, 83, 80, 0.1);
+    }
+
+    .contrast-card.sucesso .contrast-footer-tag {
+      background: rgba(212, 175, 55, 0.08);
+      color: var(--gold-primary);
+      border: 1px solid var(--border-gold);
+    }
+
+    /* Estilos do Alternador de Contraste (Mobile) */
+    .contrast-toggle-wrapper {
+      display: none;
+      justify-content: center;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border-color);
+      padding: 6px;
+      border-radius: 50px;
+      margin: 0 auto 3rem;
+      width: fit-content;
+      gap: 0.5rem;
+    }
+
+    .contrast-toggle-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      padding: 0.7rem 1.5rem;
+      border-radius: 50px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: 'Montserrat', sans-serif;
+      transition: var(--transition-fast);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .contrast-toggle-btn.active {
+      background: var(--gold-gradient);
+      color: var(--bg-deep);
+      box-shadow: 0 4px 15px rgba(212, 175, 55, 0.2);
+    }
+
+    /* ─────────────────────────────────────────────────────────────────────────
+       SHOWCASE INTERATIVO (TOUR DO PRODUTO)
+       ───────────────────────────────────────────────────────────────────────── */
+    .showcase-section {
+      background: var(--bg-dark);
+      border-top: 1px solid var(--border-color);
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .tabs-nav {
+      display: flex;
+      justify-content: center;
+      gap: 1.5rem;
+      margin-bottom: 4rem;
+    }
+
+    .tab-btn {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--border-color);
+      color: var(--text-muted);
+      padding: 1rem 2.5rem;
+      border-radius: 50px;
+      cursor: pointer;
+      font-family: 'Montserrat', sans-serif;
+      font-weight: 600;
+      font-size: 0.9rem;
+      letter-spacing: 1px;
+      transition: var(--transition-smooth);
+    }
+
+    .tab-btn:hover {
+      color: var(--text-main);
+      border-color: rgba(255, 255, 255, 0.15);
+    }
+
+    .tab-btn.active {
+      background: var(--gold-gradient);
+      color: var(--bg-deep);
+      border-color: transparent;
+      box-shadow: 0 5px 20px rgba(191, 149, 63, 0.25);
+    }
+
+    .tab-content {
+      display: none;
+      grid-template-columns: 0.95fr 1.05fr;
+      align-items: center;
+      gap: 4rem;
+      animation: fadeSlide 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    .tab-content.active {
+      display: grid;
+    }
+
+    @keyframes fadeSlide {
+      from {
+        opacity: 0;
+        transform: translateX(30px);
+        filter: blur(5px);
+      }
+      to {
+        opacity: 1;
+        transform: translateX(0);
+        filter: blur(0);
+      }
+    }
+
+    .showcase-info h3 {
+      font-size: 2.5rem;
+      margin-bottom: 1.5rem;
+      color: #fff;
+    }
+
+    .showcase-info p {
+      color: var(--text-muted);
+      font-size: 1.05rem;
       line-height: 1.7;
       margin-bottom: 2.5rem;
       font-weight: 300;
     }
 
-    .hero-ctas {
-      display: flex;
+    .showcase-features {
+      list-style: none;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
       gap: 1.5rem;
     }
 
-    /* Features Grid */
-    .features {
-      padding: 6rem 5%;
+    .showcase-features li {
+      display: flex;
+      align-items: center;
+      gap: 0.8rem;
+      font-size: 0.9rem;
+      font-weight: 500;
+    }
+
+    .showcase-features li i {
+      color: var(--gold-primary);
+      font-size: 1.1rem;
+    }
+
+    /* Telas Simuladas Interativas (CSS Premium) */
+    .showcase-visual {
       background: rgba(255, 255, 255, 0.01);
-      border-top: 1px solid rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      padding: 2.5rem;
+      box-shadow: inset 0 0 40px rgba(255, 255, 255, 0.01);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    /* Painel do Administrador Simulado */
+    .admin-mockup {
+      width: 100%;
+      background: #0d0d0d;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+    }
+
+    .admin-bar {
+      background: #141414;
+      padding: 0.8rem 1.2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .admin-dots {
+      display: flex;
+      gap: 6px;
+    }
+
+    .admin-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+    .admin-dot:nth-child(1) { background: #ff5f56; }
+    .admin-dot:nth-child(2) { background: #ffbd2e; }
+    .admin-dot:nth-child(3) { background: #27c93f; }
+
+    .admin-title {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      font-weight: 500;
+      letter-spacing: 0.5px;
+    }
+
+    .admin-content {
+      padding: 1.5rem;
+      display: grid;
+      grid-template-columns: 60px 1fr;
+      gap: 1.2rem;
+      min-height: 280px;
+    }
+
+    .admin-sidebar {
+      display: flex;
+      flex-direction: column;
+      gap: 1.2rem;
+      align-items: center;
+      border-right: 1px solid rgba(255, 255, 255, 0.03);
+      padding-right: 0.8rem;
+    }
+
+    .admin-icon {
+      font-size: 1.1rem;
+      color: rgba(255, 255, 255, 0.25);
+      cursor: pointer;
+      transition: var(--transition-fast);
+    }
+
+    .admin-icon.active, .admin-icon:hover {
+      color: var(--gold-primary);
+    }
+
+    .admin-body {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .admin-grid-stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.8rem;
+    }
+
+    .admin-stat {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.03);
+      padding: 0.8rem;
+      border-radius: 8px;
+    }
+
+    .admin-stat-lbl {
+      font-size: 0.6rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      margin-bottom: 0.2rem;
+    }
+
+    .admin-stat-val {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .admin-stat-val.gold {
+      color: var(--gold-primary);
+    }
+
+    .admin-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.7rem;
+    }
+
+    .admin-table th {
+      text-align: left;
+      color: var(--text-muted);
+      padding: 0.5rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      font-weight: 500;
+    }
+
+    .admin-table td {
+      padding: 0.7rem 0.5rem;
       border-bottom: 1px solid rgba(255, 255, 255, 0.02);
     }
 
-    .section-title-wrap {
-      text-align: center;
-      margin-bottom: 4rem;
+    .admin-pulse-indicator {
+      width: 8px;
+      height: 8px;
+      background: #4caf50;
+      border-radius: 50%;
+      display: inline-block;
+      margin-right: 4px;
+      box-shadow: 0 0 8px #4caf50;
     }
 
-    .section-title-wrap h2 {
-      font-family: 'Cormorant Garamond', serif;
-      font-size: 2.8rem;
-      color: var(--gold-primary);
-      margin-bottom: 0.5rem;
+    /* Animação de Acerto Virtual no Painel do Celular */
+    .receipt-modal-sim {
+      position: absolute;
+      bottom: -100%;
+      left: 0;
+      width: 100%;
+      background: #111;
+      border-top: 1px solid var(--gold-primary);
+      border-top-left-radius: 20px;
+      border-top-right-radius: 20px;
+      padding: 1.5rem;
+      z-index: 5;
+      box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.8);
+      transition: var(--transition-smooth);
     }
 
-    .section-title-wrap p {
-      color: var(--text-gray);
-      font-size: 0.95rem;
-      font-weight: 300;
+    .receipt-modal-sim.active {
+      bottom: 0;
     }
 
+    .receipt-dashed-line {
+      border-top: 2px dashed rgba(255, 255, 255, 0.1);
+      margin: 0.8rem 0;
+    }
+
+    .receipt-success-icon {
+      width: 32px;
+      height: 32px;
+      background: rgba(76, 175, 80, 0.15);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #4caf50;
+      margin: 0 auto 0.5rem;
+      font-size: 0.9rem;
+    }
+
+    /* ─────────────────────────────────────────────────────────────────────────
+       RECURSOS FACILITADORES DA VENDEDORA
+       ───────────────────────────────────────────────────────────────────────── */
     .features-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
       gap: 2rem;
     }
 
     .feature-card {
-      background: var(--bg-card-dark);
-      border: 1px solid rgba(255, 255, 255, 0.03);
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
       border-radius: var(--radius-md);
       padding: 2.5rem;
-      transition: all 0.35s ease;
+      transition: var(--transition-smooth);
       position: relative;
       overflow: hidden;
     }
@@ -198,313 +1023,1927 @@
       top: 0;
       left: 0;
       width: 100%;
-      height: 2px;
-      background: var(--gold-gradient);
-      transform: scaleX(0);
-      transform-origin: left;
-      transition: transform 0.4s ease;
+      height: 100%;
+      background: radial-gradient(300px circle at var(--card-x, 0px) var(--card-y, 0px), rgba(212, 175, 55, 0.08), transparent 50%);
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.5s ease;
+    }
+
+    .feature-card:hover::before {
+      opacity: 1;
     }
 
     .feature-card:hover {
       transform: translateY(-8px);
-      border-color: rgba(212, 175, 55, 0.15);
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+      border-color: var(--border-gold);
+      box-shadow: 0 15px 40px -10px rgba(212, 175, 55, 0.05);
     }
 
-    .feature-card:hover::before {
-      transform: scaleX(1);
-    }
-
-    .feature-card i {
-      font-size: 2.2rem;
+    .feature-icon-wrapper {
+      width: 58px;
+      height: 58px;
+      background: rgba(212, 175, 55, 0.06);
+      border: 1px solid var(--border-gold);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 2rem;
       color: var(--gold-primary);
-      margin-bottom: 1.5rem;
+      font-size: 1.5rem;
+      transition: var(--transition-smooth);
+    }
+
+    .feature-card:hover .feature-icon-wrapper {
+      background: var(--gold-gradient);
+      color: var(--bg-deep);
+      transform: scale(1.05);
     }
 
     .feature-card h3 {
-      font-size: 1.25rem;
-      font-weight: 600;
-      margin-bottom: 0.8rem;
+      font-size: 1.45rem;
+      margin-bottom: 1rem;
       color: #fff;
     }
 
     .feature-card p {
-      font-size: 0.88rem;
-      color: var(--text-gray);
+      color: var(--text-muted);
+      font-size: 0.92rem;
       line-height: 1.6;
       font-weight: 300;
     }
 
-    /* Simulador Interativo de Comissão (Atrativo Principal da Landing Page) */
+    /* ─────────────────────────────────────────────────────────────────────────
+       SIMULADOR DE COMISSÃO E LUCRO
+       ───────────────────────────────────────────────────────────────────────── */
     .simulator-section {
-      padding: 6rem 5%;
-      display: flex;
-      justify-content: center;
+      background: var(--bg-dark);
+      border-top: 1px solid var(--border-color);
+      border-bottom: 1px solid var(--border-color);
     }
 
     .simulator-container {
-      width: 100%;
-      max-width: 850px;
-      background: var(--bg-card-dark);
-      border: 1px solid rgba(212, 175, 55, 0.15);
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 4rem;
+      background: var(--bg-card);
+      border: 1px solid var(--border-gold);
       border-radius: var(--radius-lg);
-      padding: 3rem;
-      box-shadow: var(--shadow-premium);
-      text-align: center;
+      padding: 4rem;
+      box-shadow: 0 30px 70px rgba(0, 0, 0, 0.8);
     }
 
-    .simulator-container h2 {
-      font-family: 'Cormorant Garamond', serif;
-      font-size: 2.4rem;
-      color: var(--gold-primary);
-      margin-bottom: 0.5rem;
+    .simulator-controls {
+      display: flex;
+      flex-direction: column;
+      gap: 2.2rem;
     }
 
     .slider-group {
-      margin: 2.5rem 0;
-      text-align: left;
+      display: flex;
+      flex-direction: column;
     }
 
-    .slider-group label {
+    .slider-header {
       display: flex;
       justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+
+    .slider-label {
       font-size: 0.95rem;
-      margin-bottom: 0.8rem;
-      color: var(--text-gray);
+      font-weight: 500;
+      color: var(--text-main);
     }
 
-    .slider-group label span.val-label {
-      color: var(--gold-primary);
+    .slider-value {
+      font-size: 1.25rem;
       font-weight: 700;
-      font-size: 1.1rem;
+      color: var(--gold-primary);
     }
 
-    .range-input {
+    /* Custom range input styling */
+    .range-slider {
       width: 100%;
       height: 6px;
-      background: rgba(255, 255, 255, 0.1);
+      background: rgba(255, 255, 255, 0.08);
       border-radius: 5px;
       outline: none;
       -webkit-appearance: none;
       accent-color: var(--gold-primary);
+      transition: var(--transition-fast);
     }
 
-    .results-row {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 1.5rem;
-      margin-top: 2rem;
-      border-top: 1px solid rgba(255, 255, 255, 0.05);
-      padding-top: 2rem;
+    .range-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: var(--gold-gradient);
+      cursor: pointer;
+      box-shadow: 0 0 10px rgba(212, 175, 55, 0.5);
+      transition: var(--transition-fast);
     }
 
-    .result-box {
-      text-align: center;
+    .range-slider::-webkit-slider-thumb:hover {
+      transform: scale(1.2);
     }
 
-    .result-box span {
-      display: block;
-      font-size: 0.78rem;
-      color: var(--text-gray);
+    /* Painel de Resultados do Simulador */
+    .simulator-display {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      border-left: 1px solid rgba(255, 255, 255, 0.05);
+      padding-left: 4rem;
+      position: relative;
+    }
+
+    .pie-chart-wrapper {
+      position: relative;
+      width: 200px;
+      height: 200px;
+      margin-bottom: 3rem;
+    }
+
+    .pie-chart-sim {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      background: conic-gradient(var(--gold-primary) 0% 35%, rgba(255, 255, 255, 0.05) 35% 100%);
+      transition: background 0.3s ease;
+      box-shadow: 0 0 30px rgba(212, 175, 55, 0.1);
+    }
+
+    .pie-center-hole {
+      position: absolute;
+      top: 15px;
+      left: 15px;
+      width: 170px;
+      height: 170px;
+      background: var(--bg-card);
+      border-radius: 50%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .pie-lbl {
+      font-size: 0.65rem;
+      color: var(--text-muted);
       text-transform: uppercase;
       letter-spacing: 1px;
-      margin-bottom: 0.4rem;
     }
 
-    .result-box strong {
-      font-size: 1.6rem;
-      color: #fff;
+    .pie-val {
+      font-size: 1.4rem;
       font-weight: 700;
+      color: #fff;
+      margin-top: 0.2rem;
     }
 
-    .result-box strong.gold {
+    .results-legend {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 1.2rem;
+    }
+
+    .legend-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.8rem 1rem;
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.03);
+      border-radius: 10px;
+    }
+
+    .legend-label-col {
+      display: flex;
+      align-items: center;
+      gap: 0.8rem;
+    }
+
+    .legend-color-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+    }
+    .legend-color-dot.gold { background: var(--gold-primary); }
+    .legend-color-dot.dark { background: rgba(255, 255, 255, 0.15); }
+    .legend-color-dot.total { background: #fff; }
+
+    .legend-lbl {
+      font-size: 0.85rem;
+      font-weight: 500;
+    }
+
+    .legend-val {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .legend-val.gold {
       color: var(--gold-primary);
     }
 
-    /* CTA Section */
-    .cta-banner {
-      padding: 6rem 5%;
+    /* ─────────────────────────────────────────────────────────────────────────
+       MÉTRICAS E BENEFÍCIOS EM NÚMEROS (RETORNO DO INVESTIMENTO)
+       ───────────────────────────────────────────────────────────────────────── */
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 2rem;
+    }
+
+    .metric-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      padding: 3rem 1.5rem;
       text-align: center;
-      background: linear-gradient(180deg, rgba(7, 7, 7, 0) 0%, rgba(212, 175, 55, 0.04) 50%, rgba(7, 7, 7, 0) 100%);
+      transition: var(--transition-smooth);
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
     }
 
-    .cta-banner h2 {
+    .metric-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: radial-gradient(250px circle at var(--card-x, 0px) var(--card-y, 0px), rgba(212, 175, 55, 0.07), transparent 50%);
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.5s ease;
+    }
+
+    .metric-card:hover::before {
+      opacity: 1;
+    }
+
+    .metric-card:hover {
+      border-color: var(--border-gold);
+      transform: translateY(-5px);
+      box-shadow: 0 15px 40px -10px rgba(212, 175, 55, 0.05);
+    }
+
+    .metric-number {
       font-family: 'Cormorant Garamond', serif;
-      font-size: 3rem;
+      font-size: 3.8rem;
+      font-weight: 700;
+      background: var(--gold-gradient);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
       margin-bottom: 1rem;
+      line-height: 1;
     }
 
-    .cta-banner p {
-      font-size: 1.05rem;
-      color: var(--text-gray);
-      margin-bottom: 2.5rem;
-      max-width: 600px;
-      margin-left: auto;
-      margin-right: auto;
+    .metric-title {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: #fff;
+      margin-bottom: 0.8rem;
+    }
+
+    .metric-text {
+      color: var(--text-muted);
+      font-size: 0.88rem;
+      line-height: 1.6;
       font-weight: 300;
     }
 
-    /* Footer */
-    footer {
-      padding: 3rem 5%;
-      background: #040404;
-      border-top: 1px solid rgba(255, 255, 255, 0.03);
-      text-align: center;
-      font-size: 0.8rem;
-      color: var(--text-muted);
+    /* ─────────────────────────────────────────────────────────────────────────
+       FAQ SECTION (ACORDEÃO SUAVE)
+       ───────────────────────────────────────────────────────────────────────── */
+    .faq-container {
+      max-width: 900px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 1.2rem;
     }
 
-    /* Responsive */
+    .faq-item {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      overflow: hidden;
+      transition: var(--transition-smooth);
+    }
+
+    .faq-question {
+      padding: 1.5rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+      font-weight: 500;
+      font-size: 1.1rem;
+      color: #fff;
+      user-select: none;
+    }
+
+    .faq-question i {
+      font-size: 0.9rem;
+      color: var(--gold-primary);
+      transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .faq-answer {
+      max-height: 0;
+      overflow: hidden;
+      transition: var(--transition-smooth);
+      padding: 0 2rem;
+    }
+
+    .faq-answer p {
+      padding-bottom: 1.5rem;
+      color: var(--text-muted);
+      line-height: 1.7;
+      font-size: 0.95rem;
+      font-weight: 300;
+    }
+
+    .faq-item.active {
+      border-color: var(--border-gold);
+    }
+
+    .faq-item.active .faq-question i {
+      transform: rotate(180deg);
+    }
+
+    .faq-item.active .faq-answer {
+      max-height: 200px; /* valor limite alto o suficiente */
+    }
+
+    /* ─────────────────────────────────────────────────────────────────────────
+       CTA BANNER FINAL
+       ───────────────────────────────────────────────────────────────────────── */
+    .cta-section {
+      text-align: center;
+      padding: 10rem 5%;
+      background: radial-gradient(circle, rgba(212, 175, 55, 0.06) 0%, transparent 65%);
+      position: relative;
+    }
+
+    .cta-box {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 5rem;
+      background: rgba(255, 255, 255, 0.01);
+      border: 1px solid var(--border-gold);
+      border-radius: var(--radius-lg);
+      backdrop-filter: blur(20px);
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+    }
+
+    .cta-box h2 {
+      font-size: 3.8rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .cta-box p {
+      color: var(--text-muted);
+      font-size: 1.15rem;
+      line-height: 1.6;
+      margin-bottom: 3rem;
+      font-weight: 300;
+      max-width: 650px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    /* ─────────────────────────────────────────────────────────────────────────
+       FOOTER
+       ───────────────────────────────────────────────────────────────────────── */
+    footer {
+      background: #020202;
+      border-top: 1px solid var(--border-color);
+      padding: 4rem 5% 3rem;
+      text-align: center;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      position: relative;
+      z-index: 10;
+    }
+
+    .footer-content {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2rem;
+    }
+
+    .footer-links {
+      display: flex;
+      gap: 2rem;
+    }
+
+    .footer-links a {
+      color: var(--text-muted);
+      text-decoration: none;
+      transition: var(--transition-fast);
+    }
+
+    .footer-links a:hover {
+      color: var(--gold-primary);
+    }
+
+    .footer-copy {
+      font-weight: 300;
+      opacity: 0.7;
+    }
+
+    /* ─────────────────────────────────────────────────────────────────────────
+       ESTILOS ADICIONAIS DO MENU MOBILE E GAVETA (GERAL)
+       ───────────────────────────────────────────────────────────────────────── */
+    .menu-toggle {
+      display: none;
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      padding: 8px;
+      z-index: 1100;
+      position: relative;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .hamburger {
+      display: block;
+      width: 22px;
+      height: 2px;
+      background: var(--text-main);
+      position: relative;
+      transition: background 0.3s ease;
+    }
+
+    .hamburger::before, .hamburger::after {
+      content: '';
+      position: absolute;
+      width: 22px;
+      height: 2px;
+      background: var(--text-main);
+      transition: all 0.3s ease;
+    }
+
+    .hamburger::before { top: -7px; }
+    .hamburger::after { top: 7px; }
+
+    /* Animação Hamburger -> X */
+    .menu-toggle.active .hamburger {
+      background: transparent;
+    }
+
+    .menu-toggle.active .hamburger::before {
+      transform: rotate(45deg);
+      top: 0;
+      background: var(--gold-primary);
+    }
+
+    .menu-toggle.active .hamburger::after {
+      transform: rotate(-45deg);
+      top: 0;
+      background: var(--gold-primary);
+    }
+
+    /* Mobile Nav Drawer */
+    .mobile-nav {
+      position: fixed;
+      top: 0;
+      right: -100%;
+      width: 100%;
+      height: 100vh;
+      background: rgba(5, 5, 5, 0.98);
+      backdrop-filter: blur(25px);
+      z-index: 999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: right 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+      border-left: 1px solid rgba(212, 175, 55, 0.1);
+    }
+
+    .mobile-nav.active {
+      right: 0;
+    }
+
+    .mobile-nav-links {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2.2rem;
+      width: 80%;
+      max-width: 300px;
+      text-align: center;
+    }
+
+    .mobile-nav-links a {
+      color: var(--text-main);
+      text-decoration: none;
+      font-size: 1.4rem;
+      font-weight: 500;
+      font-family: 'Cormorant Garamond', serif;
+      letter-spacing: 1px;
+      transition: var(--transition-fast);
+      display: block;
+      width: 100%;
+      padding: 0.5rem 0;
+    }
+
+    .mobile-nav-links a:hover {
+      color: var(--gold-primary);
+      text-shadow: 0 0 10px rgba(212, 175, 55, 0.3);
+    }
+
+    /* Container de Scroll do Mockup Administrativo */
+    .mockup-scroll-container {
+      width: 100%;
+      overflow-x: auto;
+      padding-bottom: 15px;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(212, 175, 55, 0.2) transparent;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .mockup-scroll-container::-webkit-scrollbar {
+      height: 5px;
+    }
+
+    .mockup-scroll-container::-webkit-scrollbar-thumb {
+      background: rgba(212, 175, 55, 0.2);
+      border-radius: 10px;
+    }
+
+    /* ─────────────────────────────────────────────────────────────────────────
+       RESPONSIVIDADE (MOBILE & TABLET) - SENIOR REFACTOR
+       ───────────────────────────────────────────────────────────────────────── */
+    @media (max-width: 1024px) {
+      section {
+        padding: 5rem 6% 3.5rem; /* Ajuste mais compacto de padding lateral */
+      }
+
+      .hero {
+        grid-template-columns: 1fr;
+        text-align: center;
+        padding-top: 8.5rem;
+        gap: 3.5rem;
+      }
+
+      .hero-content {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 0;
+      }
+
+      .hero-content h1 {
+        font-size: clamp(2.3rem, 7vw, 3.5rem); /* Reduzindo proporções de zoom */
+        max-width: 800px;
+        line-height: 1.15;
+      }
+
+      .hero-content p {
+        max-width: 680px;
+        margin-bottom: 2.2rem;
+        font-size: 1.05rem;
+      }
+
+      .hero-actions {
+        justify-content: center;
+      }
+
+      .contrast-grid {
+        grid-template-columns: 1fr;
+        gap: 2rem;
+      }
+
+      .tab-content {
+        grid-template-columns: 1fr;
+        gap: 2.5rem;
+      }
+
+      .simulator-container {
+        grid-template-columns: 1fr;
+        gap: 3rem;
+        padding: 2.8rem 1.8rem;
+      }
+
+      .simulator-display {
+        border-left: none;
+        padding-left: 0;
+        padding-top: 2.8rem;
+        border-top: 1px solid rgba(255, 255, 255, 0.05);
+      }
+
+      .metrics-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
     @media (max-width: 768px) {
-      .hero h1 { font-size: 2.6rem; }
-      .results-row { grid-template-columns: 1fr; gap: 2rem; }
-      .nav-links { display: none; }
+      header {
+        padding: 1rem 6%;
+      }
+
+      .logo-container img {
+        height: 25px; /* Compactação da logo no celular */
+      }
+
+      .nav-menu {
+        display: none;
+      }
+
+      .nav-portal-btn {
+        display: none;
+      }
+
+      .menu-toggle {
+        display: flex;
+      }
+
+      section {
+        padding: 4rem 6% 3rem;
+      }
+
+      .section-header {
+        margin-bottom: 2.5rem;
+      }
+
+      .section-header h2 {
+        font-size: clamp(1.8rem, 6vw, 2.2rem); /* Otimização contra zoom gigante */
+      }
+
+      .section-header p {
+        font-size: 0.92rem;
+        line-height: 1.5;
+      }
+
+      .hero-content h1 {
+        font-size: clamp(1.9rem, 7vw, 2.5rem); /* Otimização contra zoom gigante */
+        padding: 0;
+      }
+
+      .hero-content p {
+        font-size: 0.95rem;
+        line-height: 1.6;
+      }
+
+      .badge-premium {
+        font-size: 0.62rem;
+        letter-spacing: 1px;
+        padding: 0.4rem 0.8rem;
+        margin-bottom: 1.2rem;
+        max-width: 100%;
+        white-space: normal;
+        text-align: center;
+      }
+
+      .hero-actions {
+        flex-direction: column;
+        width: 100%;
+        max-width: 290px;
+        gap: 0.8rem;
+        padding: 0;
+      }
+
+      .btn {
+        width: 100%;
+        padding: 0.9rem 1.4rem; /* Ajuste sênior de tamanho de botões */
+        font-size: 0.82rem;
+      }
+
+      /* Alternador de Comparação Criativo no Mobile */
+      .contrast-toggle-wrapper {
+        display: flex;
+      }
+
+      .contrast-card {
+        display: none;
+        opacity: 0;
+        transform: scale(0.98) translateY(10px);
+        padding: 2.2rem 1.5rem;
+        border-radius: var(--radius-md);
+      }
+
+      .contrast-card.active-card {
+        display: block;
+        opacity: 1;
+        transform: scale(1) translateY(0);
+      }
+
+      .contrast-card h3 {
+        font-size: 1.6rem;
+      }
+
+      .contrast-list li {
+        font-size: 0.85rem;
+        gap: 0.8rem;
+      }
+
+      .tabs-nav {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.6rem;
+        width: 100%;
+        margin-bottom: 2rem;
+      }
+
+      .tab-btn {
+        padding: 0.8rem 0.4rem;
+        font-size: 0.75rem;
+        border-radius: 30px;
+      }
+
+      .showcase-info h3 {
+        font-size: clamp(1.4rem, 5.5vw, 1.8rem);
+        margin-bottom: 1rem;
+        line-height: 1.3;
+      }
+
+      .showcase-info p {
+        font-size: 0.9rem;
+        margin-bottom: 1.5rem;
+      }
+
+      .showcase-features {
+        grid-template-columns: 1fr;
+        gap: 0.8rem;
+        margin-bottom: 1.5rem;
+      }
+
+      /* Compactação de Admin Mockup Simulada */
+      .admin-mockup {
+        min-width: unset;
+        width: 100%;
+      }
+
+      .admin-content {
+        padding: 1rem;
+        grid-template-columns: 45px 1fr;
+        gap: 0.8rem;
+      }
+
+      .admin-grid-stats {
+        grid-template-columns: 1fr 1fr;
+        gap: 0.6rem;
+      }
+
+      .admin-stat {
+        padding: 0.5rem;
+      }
+
+      .admin-stat-lbl {
+        font-size: 0.52rem;
+      }
+
+      .admin-stat-val {
+        font-size: 0.85rem;
+      }
+
+      .admin-table th, .admin-table td {
+        padding: 0.5rem 0.3rem;
+        font-size: 0.65rem;
+      }
+
+      /* Correção dos Blocos da Vendedora Cortados */
+      .features-grid {
+        grid-template-columns: 1fr; /* Coluna única robusta */
+        gap: 1.2rem;
+      }
+
+      .feature-card {
+        width: 100%;
+        max-width: 100%;
+        padding: 2rem 1.5rem; /* Menos padding interno contra zoom e estouro */
+      }
+
+      .feature-card h3 {
+        font-size: 1.25rem;
+      }
+
+      .feature-card p {
+        font-size: 0.88rem;
+        line-height: 1.5;
+      }
+
+      .metrics-grid {
+        grid-template-columns: 1fr;
+        gap: 1.2rem;
+      }
+
+      .metric-card {
+        padding: 2.2rem 1.5rem;
+      }
+
+      .metric-number {
+        font-size: 2.8rem;
+      }
+
+      .cta-box {
+        padding: 3rem 1.5rem;
+      }
+
+      .cta-box h2 {
+        font-size: clamp(1.8rem, 8vw, 2.4rem);
+      }
+
+      .cta-box p {
+        font-size: 0.95rem;
+        margin-bottom: 1.8rem;
+      }
+
+      .faq-question {
+        padding: 1.1rem 1.2rem;
+        font-size: 0.92rem;
+      }
+
+      .faq-answer p {
+        padding-bottom: 1.1rem;
+        font-size: 0.85rem;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .admin-grid-stats {
+        grid-template-columns: 1fr;
+      }
+
+      .phone-mockup {
+        width: 260px;
+        height: 520px;
+        border-width: 7px;
+        border-radius: 28px;
+      }
+
+      .phone-screen {
+        padding: 22px 8px 8px;
+      }
+
+      .phone-card {
+        padding: 0.65rem;
+        margin-bottom: 0.8rem;
+      }
+
+      .phone-card-value {
+        font-size: 1.05rem;
+      }
+
+      .phone-item {
+        padding: 0.45rem;
+      }
+
+      .phone-item-name {
+        font-size: 0.62rem;
+      }
+
+      .phone-item-price {
+        font-size: 0.62rem;
+      }
+
+      .phone-btn {
+        font-size: 0.6rem;
+        padding: 0.45rem;
+      }
+
+      .simulator-container {
+        padding: 2rem 1rem;
+      }
+
+      .pie-chart-wrapper {
+        width: 140px;
+        height: 140px;
+        margin-bottom: 1.5rem;
+      }
+
+      .pie-center-hole {
+        top: 8px;
+        left: 8px;
+        width: 124px;
+        height: 124px;
+      }
+
+      .pie-center-hole .pie-lbl {
+        font-size: 0.5rem;
+      }
+
+      .pie-val {
+        font-size: 1rem;
+      }
+
+      .legend-val {
+        font-size: 0.85rem;
+      }
+
+      .legend-lbl {
+        font-size: 0.7rem;
+      }
+
+      .testimonial-card, .faq-item {
+        border-radius: 8px;
+      }
     }
   </style>
 </head>
 <body>
 
+  <!-- Cursor Glow Dinâmico -->
+  <div id="cursor-glow"></div>
+
   <!-- Header -->
   <header>
-    <div class="logo-container">
+    <a href="#" class="logo-container">
       <img src="assets/logo.svg" alt="Conecta Joias Logo">
-      <span class="logo-text">Conecta Joias</span>
-    </div>
-    <ul class="nav-links">
-      <li><a href="#features">Recursos</a></li>
+    </a>
+    <ul class="nav-menu">
+      <li><a href="#solucoes">Diferencial</a></li>
+      <li><a href="#tour">Recursos</a></li>
+      <li><a href="#vendedora">A Vendedora</a></li>
       <li><a href="#simulador">Simulador</a></li>
-      <li><a href="#planos">Planos</a></li>
     </ul>
-    <button class="btn-login-nav" onclick="window.location.href='index.html'">
-      <i class="fa-solid fa-lock"></i> Acessar Portal
-    </button>
+    <div style="display: flex; align-items: center; gap: 1rem;">
+      <a href="index.html" class="btn-portal nav-portal-btn">
+        <i class="fa-solid fa-lock"></i> <span class="portal-text">Acessar Portal</span>
+      </a>
+      <button class="menu-toggle" id="menu-toggle" aria-label="Menu de Navegação">
+        <span class="hamburger"></span>
+      </button>
+    </div>
   </header>
 
+  <!-- Mobile Navigation Menu Drawer -->
+  <div class="mobile-nav" id="mobile-nav">
+    <ul class="mobile-nav-links">
+      <li><a href="#solucoes" onclick="toggleMobileNav()">Diferencial</a></li>
+      <li><a href="#tour" onclick="toggleMobileNav()">Recursos</a></li>
+      <li><a href="#vendedora" onclick="toggleMobileNav()">A Vendedora</a></li>
+      <li><a href="#simulador" onclick="toggleMobileNav()">Simulador</a></li>
+      <li><a href="index.html" class="btn btn-gold" style="width: 100%; margin-top: 1.5rem;"><i class="fa-solid fa-lock"></i> Acessar Portal</a></li>
+    </ul>
+  </div>
+
   <!-- Hero Section -->
-  <section class="hero">
-    <h1>Gestão Premium de Semijoias e Consignados <span>White-Label</span></h1>
-    <p>A primeira plataforma desenvolvida exclusivamente para marcas de semijoias gerenciarem suas maletas de consignação, consultoras de vendas e acertos financeiros com luxo, elegância e controle absoluto.</p>
-    <div class="hero-ctas">
-      <button class="btn-gold" style="padding: 1.1rem 2.2rem; font-size: 0.95rem;" onclick="window.location.href='index.html?cadastro=true'">
-        <i class="fa-solid fa-wand-magic-sparkles"></i> Cadastrar Minha Marca
-      </button>
-      <button class="btn-outline" style="padding: 1.1rem 2.2rem; font-size: 0.95rem;" onclick="document.getElementById('features').scrollIntoView()">
-        Conhecer Recursos <i class="fa-solid fa-arrow-down"></i>
-      </button>
+  <section class="hero" id="home">
+    <div class="hero-content reveal">
+      <div class="badge-premium">
+        <i class="fa-solid fa-gem"></i> Tecnologia White-Label Premium
+      </div>
+      <h1>Gestão Inteligente de Consignados para <span>Marcas de Joias</span></h1>
+      <p>Desenvolvido para distribuidoras que querem modernizar sua rede. Dê adeus às planilhas e traga clareza jurídica e financeira para as suas vendedoras, reduzindo perdas e impulsionando vendas através de um app premium.</p>
+      <div class="hero-actions">
+        <a href="index.html?cadastro=true" class="btn btn-gold">
+          <i class="fa-solid fa-wand-magic-sparkles"></i> Cadastrar Minha Marca
+        </a>
+        <a href="#simulador" class="btn btn-outline">
+          Simular Ganhos <i class="fa-solid fa-chart-line"></i>
+        </a>
+      </div>
+    </div>
+    <div class="hero-visual reveal delay-2">
+      <!-- Mockup do Celular da Consultora/Vendedora -->
+      <div class="phone-mockup">
+        <div class="phone-notch"></div>
+        <div class="phone-screen">
+          <div class="phone-header">
+            <div class="phone-user">
+              <div class="phone-avatar">BJ</div>
+              <div>
+                <div class="phone-brand-title">Bella Joias</div>
+                <div style="font-size:0.55rem; color:var(--text-muted)">Consultora Gold</div>
+              </div>
+            </div>
+            <i class="fa-solid fa-bell" style="color: var(--gold-primary)"></i>
+          </div>
+
+          <!-- Card de Saldo e Comissão -->
+          <div class="phone-card">
+            <div class="phone-card-title">Minha Comissão Estimada</div>
+            <div class="phone-card-value" id="phone-commission-val">R$ 1.840,00</div>
+            <div style="font-size: 0.55rem; color: #4caf50; margin-top: 0.2rem;">
+              <i class="fa-solid fa-circle-up"></i> Faturamento: R$ 5.250,00 (35%)
+            </div>
+            <div class="phone-commission-bar">
+              <div class="phone-commission-progress"></div>
+            </div>
+          </div>
+
+          <div class="phone-list-title">
+            <span>Minha Maleta Ativa</span>
+            <span style="color: var(--gold-primary)">18 Peças</span>
+          </div>
+
+          <!-- Peças Consignadas com a Vendedora -->
+          <div class="phone-items">
+            <div class="phone-item">
+              <div class="phone-item-info">
+                <span class="phone-item-name">Anel Cravejado Ouro</span>
+                <span class="phone-item-qty">Qtd: 2 restantes</span>
+              </div>
+              <span class="phone-item-price">R$ 189,00</span>
+            </div>
+            <div class="phone-item">
+              <div class="phone-item-info">
+                <span class="phone-item-name">Colar Veneziana Luxo</span>
+                <span class="phone-item-qty">Qtd: 1 restante</span>
+              </div>
+              <span class="phone-item-price">R$ 349,00</span>
+            </div>
+            <div class="phone-item">
+              <div class="phone-item-info">
+                <span class="phone-item-name">Brinco Pérola Natural</span>
+                <span class="phone-item-qty">Qtd: 3 restantes</span>
+              </div>
+              <span class="phone-item-price">R$ 120,00</span>
+            </div>
+            
+            <div class="phone-item" style="border-left-color: #4caf50; background: rgba(76, 175, 80, 0.02);">
+              <div class="phone-item-info">
+                <span class="phone-item-name">Última Venda Realizada</span>
+                <span class="phone-item-qty">Para: Mariana Costa</span>
+              </div>
+              <span class="phone-badge-status">Concluída</span>
+            </div>
+          </div>
+
+          <!-- Botões Principais no App -->
+          <div class="phone-actions">
+            <button class="phone-btn phone-btn-gold" id="phone-btn-sell">
+              <i class="fa-solid fa-cart-shopping"></i> Vender Peça
+            </button>
+            <button class="phone-btn phone-btn-outline">
+              <i class="fa-solid fa-file-invoice"></i> Ver Recibos
+            </button>
+          </div>
+
+          <!-- Simulação Interativa de Recibo que Sobe no Click -->
+          <div class="receipt-modal-sim" id="receipt-modal">
+            <div class="receipt-success-icon">
+              <i class="fa-solid fa-check"></i>
+            </div>
+            <div style="text-align: center; font-weight: 700; margin-bottom: 0.2rem; font-size: 0.8rem;">Venda Registrada!</div>
+            <div style="text-align: center; color: var(--text-muted); font-size: 0.6rem; margin-bottom: 0.8rem;">Recibo enviado para cliente</div>
+            
+            <div style="font-size: 0.6rem; display: flex; justify-content: space-between; margin-bottom: 0.3rem;">
+              <span style="color: var(--text-muted);">Peça:</span>
+              <span style="font-weight: 600; color: #fff;">Colar Veneziana Luxo</span>
+            </div>
+            <div style="font-size: 0.6rem; display: flex; justify-content: space-between; margin-bottom: 0.3rem;">
+              <span style="color: var(--text-muted);">Cliente:</span>
+              <span style="font-weight: 600; color: #fff;">Mariana Costa</span>
+            </div>
+            <div style="font-size: 0.6rem; display: flex; justify-content: space-between; margin-bottom: 0.3rem;">
+              <span style="color: var(--text-muted);">Forma:</span>
+              <span style="font-weight: 600; color: #fff;">Cartão (2x)</span>
+            </div>
+            
+            <div class="receipt-dashed-line"></div>
+            
+            <div style="font-size: 0.75rem; display: flex; justify-content: space-between; font-weight: 700;">
+              <span>Total da Venda:</span>
+              <span style="color: var(--gold-primary);">R$ 349,00</span>
+            </div>
+          </div>
+
+        </div>
+      </div>
     </div>
   </section>
 
-  <!-- Features -->
-  <section class="features" id="features">
-    <div class="section-title-wrap">
-      <h2>Controle do Centro à Maleta</h2>
-      <p>Gerencie sua rede com inteligência de ponta a ponta, reduzindo perdas e impulsionando vendas</p>
+  <!-- Dores vs Soluções -->
+  <section class="contrast-section" id="solucoes">
+    <div class="section-header reveal">
+      <div class="badge-premium"><i class="fa-solid fa-arrows-spin"></i> A Grande Mudança</div>
+      <h2>Chegou a Hora de Mudar o <span>Seu Negócio</span></h2>
+      <p>Gerenciar vendas consignadas não precisa ser um pesadelo logístico. Compare a rotina tradicional com a agilidade do ecossistema Conecta Joias.</p>
     </div>
-    
+
+    <!-- Alternador Interativo Exclusivo para Mobile -->
+    <div class="contrast-toggle-wrapper">
+      <button class="contrast-toggle-btn" id="toggle-caos-btn" onclick="switchContrast('caos')">
+        <i class="fa-solid fa-circle-xmark"></i> O Caos Manual
+      </button>
+      <button class="contrast-toggle-btn active" id="toggle-sucesso-btn" onclick="switchContrast('sucesso')">
+        <i class="fa-solid fa-circle-check"></i> O Efeito Conecta
+      </button>
+    </div>
+
+    <div class="contrast-grid">
+      <!-- Lado Ruim -->
+      <div class="contrast-card caos reveal" id="card-caos">
+        <h3><i class="fa-solid fa-circle-xmark"></i> O Processo Manual</h3>
+        <p style="color: var(--text-muted); font-size: 0.95rem; font-weight: 300;">Como funciona a maioria das marcas antes de nos conhecer:</p>
+        <ul class="contrast-list">
+          <li>
+            <i class="fa-solid fa-minus"></i>
+            <span><strong>O Caderninho de Vendas:</strong> Consultoras anotam as vendas no papel. Perdem anotações de valores, clientes e parcelas.</span>
+          </li>
+          <li>
+            <i class="fa-solid fa-minus"></i>
+            <span><strong>A Auditoria Demorada:</strong> No dia do acerto, a distribuidora passa horas contando peça por peça para bater com o estoque inicial.</span>
+          </li>
+          <li>
+            <i class="fa-solid fa-minus"></i>
+            <span><strong>Calculadora na Mão:</strong> Calcular comissões progressivas e descontos de devolução manualmente gera erros e desconfiança.</span>
+          </li>
+          <li>
+            <i class="fa-solid fa-minus"></i>
+            <span><strong>Termos de Papel:</strong> Termos de responsabilidade física impressos que rasgam, são perdidos ou não possuem validade ágil.</span>
+          </li>
+        </ul>
+        <div class="contrast-footer-tag">PROCESSO LENTO, PERDA DE PEÇAS E PREJUÍZOS</div>
+      </div>
+
+      <!-- Lado Bom -->
+      <div class="contrast-card sucesso reveal delay-2 active-card" id="card-sucesso">
+        <h3><i class="fa-solid fa-circle-check"></i> Com o Conecta Joias</h3>
+        <p style="color: var(--text-muted); font-size: 0.95rem; font-weight: 300;">A nova experiência luxuosa e automatizada para a sua marca:</p>
+        <ul class="contrast-list">
+          <li>
+            <i class="fa-solid fa-check"></i>
+            <span><strong>Maleta no Celular:</strong> A consultora abre o celular e vê exatamente o catálogo das peças com ela e quanto já vendeu.</span>
+          </li>
+          <li>
+            <i class="fa-solid fa-check"></i>
+            <span><strong>Conferência Digital Segura:</strong> Ao devolver o estoque físico, o sistema indica quais peças devem constar. A conferência leva menos de 5 minutos.</span>
+          </li>
+          <li>
+            <i class="fa-solid fa-check"></i>
+            <span><strong>Comissão Exibida na Hora:</strong> A vendedora acompanha sua comissão subindo em tempo real a cada venda registrada. Foco total em bater metas!</span>
+          </li>
+          <li>
+            <i class="fa-solid fa-check"></i>
+            <span><strong>Termo Digital Assinado na Tela:</strong> A consultora assina o termo de consignação de mercadorias na tela do celular antes de levar a maleta.</span>
+          </li>
+        </ul>
+        <div class="contrast-footer-tag">GESTÃO DE LUXO, 100% TRANSPARENTE E LUCRATIVA</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Showcase Interativo (Abas) -->
+  <section class="showcase-section" id="tour">
+    <div class="section-header reveal">
+      <div class="badge-premium"><i class="fa-solid fa-desktop"></i> Interface em Detalhes</div>
+      <h2>Um Sistema, <span>Duas Experiências</span></h2>
+      <p>Um painel administrativo potente para a dona da marca e um aplicativo simples e intuitivo para a vendedora externa.</p>
+    </div>
+
+    <!-- Navegação de Abas -->
+    <div class="tabs-nav reveal">
+      <button class="tab-btn active" onclick="switchTab('tab-distribuidora', this)">
+        <i class="fa-solid fa-building-columns"></i> Painel da Distribuidora
+      </button>
+      <button class="tab-btn" onclick="switchTab('tab-vendedora', this)">
+        <i class="fa-solid fa-mobile-screen-button"></i> Aplicativo da Vendedora
+      </button>
+    </div>
+
+    <!-- Conteúdo da Aba 1 (Distribuidora) -->
+    <div class="tab-content active" id="tab-distribuidora">
+      <div class="showcase-info">
+        <h3>Controle absoluto do estoque central às bolsas externas</h3>
+        <p>A dona da marca gerencia todo o ciclo do consignado. Libere maletas personalizadas para cada revendedora, defina regras de comissões por metas ou categorias de peças, e audite devoluções com inteligência antifraude.</p>
+        <ul class="showcase-features">
+          <li><i class="fa-solid fa-circle-check"></i> Criação rápida de Maletas</li>
+          <li><i class="fa-solid fa-circle-check"></i> Termos de Responsabilidade</li>
+          <li><i class="fa-solid fa-circle-check"></i> Configuração de Comissões</li>
+          <li><i class="fa-solid fa-circle-check"></i> Relatórios Financeiros</li>
+          <li><i class="fa-solid fa-circle-check"></i> White-Label Completo</li>
+          <li><i class="fa-solid fa-circle-check"></i> Gestão de Contatos</li>
+        </ul>
+      </div>
+      <div class="showcase-visual">
+        <!-- Container de scroll para manter o painel administrativo legível no mobile -->
+        <div class="mockup-scroll-container">
+          <!-- Dashboard Admin Simulado em CSS -->
+          <div class="admin-mockup">
+            <div class="admin-bar">
+              <div class="admin-dots">
+                <span class="admin-dot"></span>
+                <span class="admin-dot"></span>
+                <span class="admin-dot"></span>
+              </div>
+              <span class="admin-title">painel.conectajoias.com/bella-joias</span>
+              <i class="fa-solid fa-arrows-rotate" style="font-size:0.7rem; color:var(--text-muted)"></i>
+            </div>
+            <div class="admin-content">
+              <div class="admin-sidebar">
+                <i class="fa-solid fa-chart-line admin-icon active"></i>
+                <i class="fa-solid fa-briefcase admin-icon"></i>
+                <i class="fa-solid fa-users admin-icon"></i>
+                <i class="fa-solid fa-gears admin-icon"></i>
+              </div>
+              <div class="admin-body">
+                <div class="admin-grid-stats">
+                  <div class="admin-stat">
+                    <div class="admin-stat-lbl">Faturamento Total</div>
+                    <div class="admin-stat-val gold">R$ 48.950</div>
+                  </div>
+                  <div class="admin-stat">
+                    <div class="admin-stat-lbl">Vendedoras Ativas</div>
+                    <div class="admin-stat-val">12 Ativas</div>
+                  </div>
+                </div>
+                
+                <div style="font-size:0.75rem; font-weight:600; color:#fff; margin-top:1.2rem; margin-bottom:0.6rem; letter-spacing: 0.5px;">Atividade Recente</div>
+                
+                <!-- Lista de Atividades Simplificada e Limpa (Substituindo a tabela poluída) -->
+                <div style="display: flex; flex-direction: column; gap: 0.6rem;">
+                  <div style="display: flex; align-items: center; justify-content: space-between; background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.04); padding: 0.6rem 0.8rem; border-radius: 8px;">
+                    <div style="display: flex; align-items: center; gap: 0.6rem;">
+                      <span style="display: flex; align-items: center; justify-content: center; width: 22px; height: 22px; background: rgba(76, 175, 80, 0.1); color: #4caf50; border-radius: 50%; font-size: 0.6rem;"><i class="fa-solid fa-circle-check"></i></span>
+                      <div style="display: flex; flex-direction: column;">
+                        <span style="font-size: 0.7rem; font-weight: 600; color: #fff;">Julia Silva</span>
+                        <span style="font-size: 0.55rem; color: var(--text-muted);">Acertou a Maleta #104</span>
+                      </div>
+                    </div>
+                    <span style="font-size: 0.65rem; color: #4caf50; font-weight: 600;">+ R$ 2.000</span>
+                  </div>
+                  <div style="display: flex; align-items: center; justify-content: space-between; background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.04); padding: 0.6rem 0.8rem; border-radius: 8px;">
+                    <div style="display: flex; align-items: center; gap: 0.6rem;">
+                      <span style="display: flex; align-items: center; justify-content: center; width: 22px; height: 22px; background: rgba(212, 175, 55, 0.1); color: var(--gold-primary); border-radius: 50%; font-size: 0.6rem;"><i class="fa-solid fa-briefcase"></i></span>
+                      <div style="display: flex; flex-direction: column;">
+                        <span style="font-size: 0.7rem; font-weight: 600; color: #fff;">Ana Carolina</span>
+                        <span style="font-size: 0.55rem; color: var(--text-muted);">Retirou Maleta Consignada</span>
+                      </div>
+                    </div>
+                    <span style="font-size: 0.65rem; color: var(--gold-primary); font-weight: 600;">R$ 4.500</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Conteúdo da Aba 2 (Vendedora) -->
+    <div class="tab-content" id="tab-vendedora">
+      <div class="showcase-info">
+        <h3>Tudo o que a vendedora precisa na ponta dos dedos</h3>
+        <p>Desenvolvido para ser ultra amigável no celular. A consultora não precisa entender de planilhas. Ela clica na peça vendida, seleciona a cliente e a venda é registrada. Ela tem a certeza de quanto está ganhando e a distribuidora acompanha tudo online.</p>
+        <ul class="showcase-features">
+          <li><i class="fa-solid fa-circle-check"></i> Catálogo de Peças</li>
+          <li><i class="fa-solid fa-circle-check"></i> Registro de Vendas</li>
+          <li><i class="fa-solid fa-circle-check"></i> Envio de Recibos Profissionais</li>
+          <li><i class="fa-solid fa-circle-check"></i> Termômetro de Ganhos</li>
+          <li><i class="fa-solid fa-circle-check"></i> Lista de Clientes Cobrança</li>
+          <li><i class="fa-solid fa-circle-check"></i> Relatório de Devolução Fácil</li>
+        </ul>
+      </div>
+      <div class="showcase-visual">
+        <!-- Celular Simulado do App da Vendedora (Foco em Acerto Digital) -->
+        <div class="phone-mockup" style="width: 280px; height: 530px; box-shadow: 0 15px 40px rgba(0, 0, 0, 0.6); margin: 0 auto;">
+          <div class="phone-notch"></div>
+          <div class="phone-screen" style="padding: 30px 12px 12px; display: flex; flex-direction: column;">
+            <div class="phone-header" style="margin-bottom: 0.8rem;">
+              <div class="phone-brand-title" style="font-size: 0.75rem; color: #fff;"><i class="fa-solid fa-chevron-left" style="color:var(--gold-primary); margin-right: 0.3rem;"></i> Resumo do Acerto</div>
+              <span class="phone-badge-status" id="acerto-status-badge" style="background: rgba(212, 175, 55, 0.15); color: var(--gold-primary); padding: 2px 6px; border-radius: 4px; font-size: 0.55rem; font-weight: 600;">Pendente</span>
+            </div>
+
+            <!-- Card Financeiro Único e Limpo -->
+            <div class="phone-card" style="padding: 1rem; margin-bottom: 1rem; border: 1px solid var(--border-gold); background: rgba(212, 175, 55, 0.03); border-radius: 12px; display: flex; justify-content: space-around; text-align: center;">
+              <div>
+                <div style="font-size: 0.55rem; color: var(--text-muted); text-transform: uppercase;">Minha Comissão</div>
+                <strong style="font-size: 1rem; color: #4caf50; display: block; margin-top: 0.2rem;">R$ 700</strong>
+              </div>
+              <div style="width: 1px; background: rgba(255,255,255,0.08);"></div>
+              <div>
+                <div style="font-size: 0.55rem; color: var(--text-muted); text-transform: uppercase;">A Pagar à Marca</div>
+                <strong style="font-size: 1rem; color: var(--gold-primary); display: block; margin-top: 0.2rem;">R$ 1.300</strong>
+              </div>
+            </div>
+
+            <div class="phone-list-title" style="font-size: 0.65rem; margin-bottom: 0.5rem; display: flex; justify-content: space-between; color: var(--text-muted);">
+              <span>Conferência de Peças</span>
+              <span style="color: #4caf50; font-weight:600;"><i class="fa-solid fa-circle-check"></i> 100% Ok</span>
+            </div>
+
+            <!-- Lista de Conferência Simplificada (No lugar de 3 itens cheios de textos e preços) -->
+            <div class="phone-items" style="gap: 0.4rem; display: flex; flex-direction: column; margin-bottom: 1rem;">
+              <div class="phone-item" style="padding: 0.5rem 0.6rem; border-left-color: #ffb74d; display: flex; justify-content: space-between; align-items: center; border-radius: 6px;">
+                <span class="phone-item-name" style="font-size: 0.65rem; font-weight: 500;">Colar Coração Ouro</span>
+                <span style="font-size: 0.55rem; color: #ffb74d; background: rgba(255, 183, 77, 0.08); padding: 2px 6px; border-radius: 20px;">Devolvido</span>
+              </div>
+              <div class="phone-item" style="padding: 0.5rem 0.6rem; border-left-color: #4caf50; display: flex; justify-content: space-between; align-items: center; border-radius: 6px;">
+                <span class="phone-item-name" style="font-size: 0.65rem; font-weight: 500;">Brinco Gota Prata</span>
+                <span style="font-size: 0.55rem; color: #4caf50; background: rgba(76, 175, 80, 0.08); padding: 2px 6px; border-radius: 20px;">Vendido</span>
+              </div>
+            </div>
+
+            <!-- Botão de Finalizar Acerto -->
+            <button class="phone-btn phone-btn-gold" id="phone-btn-acerto" style="width: 100%; margin-top: auto; font-size: 0.65rem; padding: 0.65rem; border-radius: 8px;">
+              <i class="fa-solid fa-signature"></i> Finalizar e Assinar
+            </button>
+          </div>
+          
+          <!-- Modal de Assinatura Simulado no Celular -->
+          <div class="receipt-modal-sim" id="acerto-signature-modal" style="height: 75%; background: #0c0c0e; border-top: 1px solid var(--gold-primary); border-top-left-radius: 20px; border-top-right-radius: 20px; padding: 1.5rem; position: absolute; bottom: -100%; left: 0; width: 100%; z-index: 5; box-shadow: 0 -10px 30px rgba(0,0,0,0.8); transition: var(--transition-smooth);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 0.8rem;">
+              <span style="font-weight:700; font-size: 0.75rem; color: #fff;">Assinatura Digital</span>
+              <span id="close-signature-btn" style="color: var(--text-muted); cursor:pointer; font-size:0.6rem;"><i class="fa-solid fa-xmark"></i> Fechar</span>
+            </div>
+            <p style="font-size:0.55rem; color: var(--text-muted); line-height: 1.4; margin-bottom: 0.8rem;">Desenhe sua assinatura na tela para validar os termos de devolução e encerramento da Maleta #104.</p>
+            
+            <!-- Quadro de Assinatura Simulado -->
+            <div style="width:100%; height: 110px; border:1px dashed var(--border-gold); background: #050505; border-radius: 8px; position:relative; overflow:hidden; display:flex; align-items:center; justify-content:center;">
+              <!-- Linha de guia -->
+              <div style="position:absolute; bottom: 25px; left: 10px; right: 10px; height:1px; background: rgba(255,255,255,0.05);"></div>
+              <!-- Desenho animado da assinatura -->
+              <svg id="signature-svg" style="width:150px; height:60px; fill:none; stroke:var(--gold-primary); stroke-width:2.5; stroke-linecap:round; stroke-linejoin:round; opacity: 0; position:relative; z-index:2; transition: opacity 0.5s ease;">
+                <path d="M 10 30 Q 30 10 50 35 T 90 20 T 130 30 Q 140 40 120 45 Q 100 48 115 25" />
+              </svg>
+              <span id="signature-placeholder" style="font-size: 0.6rem; color: rgba(255,255,255,0.15); pointer-events:none;"><i class="fa-solid fa-signature"></i> Assine aqui</span>
+            </div>
+
+            <!-- Botões do Modal de Assinatura -->
+            <div style="display:grid; grid-template-columns: 80px 1fr; gap:0.5rem; margin-top: 1rem;">
+              <button class="phone-btn phone-btn-outline" id="clear-signature-btn" style="padding:0.5rem; font-size:0.6rem; border-radius: 8px;">Limpar</button>
+              <button class="phone-btn phone-btn-gold" id="confirm-acerto-btn" style="padding:0.5rem; font-size:0.6rem; border-radius: 8px;"><i class="fa-solid fa-circle-check"></i> Confirmar</button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Recursos Vendedora -->
+  <section id="vendedora">
+    <div class="section-header reveal">
+      <div class="badge-premium"><i class="fa-solid fa-sparkles"></i> Simplicidade Extrema</div>
+      <h2>O que Muda na Vida da <span>Vendedora?</span></h2>
+      <p>Desenvolvemos a plataforma focada na usabilidade da vendedora de rua. Quando o sistema é fácil para ela usar, a sua marca vende mais e não perde estoque.</p>
+    </div>
+
     <div class="features-grid">
       <!-- Card 1 -->
-      <div class="feature-card">
-        <i class="fa-solid fa-briefcase"></i>
-        <h3>Gestão de Maletas</h3>
-        <p>Acompanhe em tempo real quais peças estão consignadas com cada revendedora, preços de venda aplicados e quantidade restante nas bolsas.</p>
+      <div class="feature-card reveal">
+        <div class="feature-icon-wrapper">
+          <i class="fa-solid fa-briefcase"></i>
+        </div>
+        <h3>Estoque Digital no Bolso</h3>
+        <p>A vendedora visualiza todas as peças que possui na maleta separadas por categoria, com preço e fotos. Sem necessidade de conferência manual no papel.</p>
       </div>
+
       <!-- Card 2 -->
-      <div class="feature-card">
-        <i class="fa-solid fa-signature"></i>
-        <h3>Termo de Responsabilidade</h3>
-        <p>Gere e envie termos digitais de consignação de mercadorias. Suas consultoras assinam diretamente na tela do celular de forma jurídica e segura.</p>
+      <div class="feature-card reveal delay-1">
+        <div class="feature-icon-wrapper">
+          <i class="fa-solid fa-receipt"></i>
+        </div>
+        <h3>Recibo em 10 Segundos</h3>
+        <p>Após vender, a vendedora clica em gerar recibo e envia uma fatura premium em PDF com a marca da sua empresa direto no WhatsApp da cliente.</p>
       </div>
+
       <!-- Card 3 -->
-      <div class="feature-card">
-        <i class="fa-solid fa-chart-pie"></i>
-        <h3>Comissões Reativas</h3>
-        <p>Configure regras flexíveis: comissão fixa, progressiva conforme o faturamento ou baseada em metas. O sistema calcula a remuneração de forma instantânea.</p>
+      <div class="feature-card reveal delay-2">
+        <div class="feature-icon-wrapper">
+          <i class="fa-solid fa-chart-line-up"></i>
+        </div>
+        <h3>Termômetro de Comissão</h3>
+        <p>Acompanhamento diário dos ganhos acumulados. Ver o saldo de comissão crescer motiva as revendedoras a buscarem novas vendas constantemente.</p>
       </div>
+
       <!-- Card 4 -->
-      <div class="feature-card">
-        <i class="fa-solid fa-shield-halved"></i>
-        <h3>Segurança Multitenant</h3>
-        <p>Sua marca tem um ambiente totalmente isolado, seguro e customizável com suas próprias cores e logo (White-Label) para suas consultoras acessarem.</p>
+      <div class="feature-card reveal">
+        <div class="feature-icon-wrapper">
+          <i class="fa-solid fa-arrows-left-right"></i>
+        </div>
+        <h3>Acerto Financeiro Perfeito</h3>
+        <p>No acerto das peças, a vendedora devolve o restante e o sistema calcula instantaneamente quanto ela vendeu, o saldo a pagar e a comissão líquida.</p>
+      </div>
+
+      <!-- Card 5 -->
+      <div class="feature-card reveal delay-1">
+        <div class="feature-icon-wrapper">
+          <i class="fa-solid fa-signature"></i>
+        </div>
+        <h3>Assinatura Rápida</h3>
+        <p>Receba maletas assinando termos de responsabilidade digital na tela do smartphone. Acordo juridicamente seguro e sem desperdício de papel.</p>
+      </div>
+
+      <!-- Card 6 -->
+      <div class="feature-card reveal delay-2">
+        <div class="feature-icon-wrapper">
+          <i class="fa-solid fa-bell"></i>
+        </div>
+        <h3>Notificações de Lançamento</h3>
+        <p>A vendedora recebe alertas em tempo real no portal quando uma nova maleta é liberada para ela, com todas as orientações da distribuidora.</p>
       </div>
     </div>
   </section>
 
-  <!-- Simulador Interativo -->
+  <!-- Simulador de Comissão Premium -->
   <section class="simulator-section" id="simulador">
-    <div class="simulator-container">
-      <h2>Simulador de Comissões</h2>
-      <p style="color: var(--text-gray); font-size: 0.88rem; margin-bottom: 2rem;">Arraste os controles abaixo para simular o faturamento de vendas de uma consultora e ver o cálculo da comissão.</p>
-      
-      <div class="slider-group">
-        <label>
-          <span>Faturamento de Vendas Acumulado</span>
-          <span class="val-label" id="lbl-faturamento">R$ 5.000,00</span>
-        </label>
-        <input type="range" class="range-input" id="range-faturamento" min="500" max="25000" step="500" value="5000" oninput="atualizarSimulador()">
+    <div class="section-header reveal">
+      <div class="badge-premium"><i class="fa-solid fa-calculator"></i> Projeção de Resultados</div>
+      <h2>Simulador Financeiro de <span>Consignados</span></h2>
+      <p>Arraste os seletores para projetar o faturamento mensal da sua marca de semijoias com base na sua força de vendas externa.</p>
+    </div>
+
+    <div class="simulator-container reveal">
+      <!-- Seletores Sliders -->
+      <div class="simulator-controls">
+        <div class="slider-group">
+          <div class="slider-header">
+            <span class="slider-label">Quantidade de Revendedoras</span>
+            <span class="slider-value" id="lbl-revendedoras">15 Vendedoras</span>
+          </div>
+          <input type="range" class="range-slider" id="range-revendedoras" min="3" max="150" value="15" step="1">
+        </div>
+
+        <div class="slider-group">
+          <div class="slider-header">
+            <span class="slider-label">Faturamento Médio por Vendedora</span>
+            <span class="slider-value" id="lbl-fat-medio">R$ 3.500,00</span>
+          </div>
+          <input type="range" class="range-slider" id="range-fat-medio" min="1000" max="15000" value="3500" step="500">
+        </div>
+
+        <div class="slider-group">
+          <div class="slider-header">
+            <span class="slider-label">Comissão da Vendedora (Média)</span>
+            <span class="slider-value" id="lbl-comissao-pct">35%</span>
+          </div>
+          <input type="range" class="range-slider" id="range-comissao-pct" min="15" max="50" value="35" step="5">
+        </div>
       </div>
 
-      <div class="slider-group">
-        <label>
-          <span>Percentual de Comissão Progressiva</span>
-          <span class="val-label" id="lbl-comissao-pct">35%</span>
-        </label>
-        <input type="range" class="range-input" id="range-comissao-pct" min="10" max="50" step="5" value="35" oninput="atualizarSimulador()">
-      </div>
+      <!-- Gráfico e Valores Consolidados -->
+      <div class="simulator-display">
+        <!-- Gráfico em CSS -->
+        <div class="pie-chart-wrapper">
+          <div class="pie-chart-sim" id="pie-chart"></div>
+          <div class="pie-center-hole">
+            <span class="pie-lbl">Seu Lucro Líquido</span>
+            <span class="pie-val" id="res-lucro-liquido">R$ 34.125,00</span>
+          </div>
+        </div>
 
-      <div class="results-row">
-        <div class="result-box">
-          <span>Faturamento da Consultora</span>
-          <strong id="res-faturamento">R$ 5.000,00</strong>
-        </div>
-        <div class="result-box">
-          <span>Comissão da Revendedora</span>
-          <strong class="gold" id="res-comissao">R$ 1.750,00</strong>
-        </div>
-        <div class="result-box">
-          <span>Líquido para Sua Marca</span>
-          <strong id="res-liquido">R$ 3.250,00</strong>
+        <!-- Legenda e Valores detalhados -->
+        <div class="results-legend">
+          <div class="legend-item">
+            <div class="legend-label-col">
+              <span class="legend-color-dot total"></span>
+              <span class="legend-lbl">Faturamento Bruto Total</span>
+            </div>
+            <span class="legend-val" id="res-fat-bruto">R$ 52.500,00</span>
+          </div>
+          
+          <div class="legend-item">
+            <div class="legend-label-col">
+              <span class="legend-color-dot gold"></span>
+              <span class="legend-lbl">Pago em Comissões (35%)</span>
+            </div>
+            <span class="legend-val gold" id="res-comissoes-total">R$ 18.375,00</span>
+          </div>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- CTA Banner -->
-  <section class="cta-banner" id="planos">
-    <h2>Eleve o Nível da Sua Marca</h2>
-    <p>Cadastre sua empresa hoje e tenha acesso à demonstração completa e gratuita de todos os painéis locais do Conecta Joias.</p>
-    <button class="btn-gold" style="padding: 1.2rem 3rem; font-size: 1rem;" onclick="window.location.href='index.html'">
-      <i class="fa-solid fa-right-to-bracket"></i> Acessar Portal de Luxo
-    </button>
+  <!-- Métricas e Impacto Comercial (Benefícios em Números) -->
+  <section id="depoimentos">
+    <div class="section-header reveal">
+      <div class="badge-premium"><i class="fa-solid fa-chart-pie"></i> Eficiência Comprovada</div>
+      <h2>O Impacto do Conecta Joias <span>em Números</span></h2>
+      <p>Projete a redução de custos, otimização de tempo e segurança operacional que a automação digital do consignado traz para a sua marca.</p>
+    </div>
+
+    <div class="metrics-grid">
+      <!-- Card 1 -->
+      <div class="metric-card reveal">
+        <div class="metric-number">-90%</div>
+        <div class="metric-title">Tempo no Acerto</div>
+        <p class="metric-text">Elimine contagens manuais demoradas e planilhas confusas. A auditoria de peças devolvidas e o cálculo financeiro ocorrem em minutos.</p>
+      </div>
+
+      <!-- Card 2 -->
+      <div class="metric-card reveal delay-1">
+        <div class="metric-number">0%</div>
+        <div class="metric-title">Perda de Estoque</div>
+        <p class="metric-text">Rastreabilidade completa de todas as peças consignadas. Saiba exatamente qual consultora está com cada item em tempo real.</p>
+      </div>
+
+      <!-- Card 3 -->
+      <div class="metric-card reveal delay-2">
+        <div class="metric-number">+30%</div>
+        <div class="metric-title">Vendas da Rede</div>
+        <p class="metric-text">Vendedoras focam em vender em vez de administrar. A clareza da comissão na tela motiva o cumprimento de metas.</p>
+      </div>
+
+      <!-- Card 4 -->
+      <div class="metric-card reveal delay-3">
+        <div class="metric-number">100%</div>
+        <div class="metric-title">Processo Digital</div>
+        <p class="metric-text">Contratos assinados na tela e recibos de vendas compartilhados via WhatsApp, eliminando totalmente blocos de papel.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- FAQ (Acordeão) -->
+  <section id="faq">
+    <div class="section-header reveal">
+      <div class="badge-premium"><i class="fa-solid fa-circle-question"></i> Dúvidas Frequentes</div>
+      <h2>Respostas para as <span>Suas Dúvidas</span></h2>
+      <p>Entenda melhor como o Conecta Joias pode se integrar ao seu negócio de joias e semijoias.</p>
+    </div>
+
+    <div class="faq-container reveal">
+      <div class="faq-item">
+        <div class="faq-question">
+          <span>O que é um sistema White-Label?</span>
+          <i class="fa-solid fa-chevron-down"></i>
+        </div>
+        <div class="faq-answer">
+          <p>White-Label significa que você pode utilizar toda a nossa plataforma de gestão, porém customizada com a identidade visual da sua marca. Suas revendedoras acessarão o portal com o seu logotipo e as cores da sua empresa, gerando muito mais autoridade e profissionalismo para o seu negócio.</p>
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-question">
+          <span>As vendedoras menos acostumadas com tecnologia conseguem usar?</span>
+          <i class="fa-solid fa-chevron-down"></i>
+        </div>
+        <div class="faq-answer">
+          <p>Sim! O aplicativo da vendedora foi desenvolvido do zero focado na simplicidade extrema. Não há menus complexos ou planilhas. A consultora apenas clica nas peças que já estão na sua maleta e clica em registrar a venda. Todo o cálculo financeiro complexo é feito nos bastidores pelo sistema.</p>
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-question">
+          <span>Como funciona a assinatura do Termo de Responsabilidade?</span>
+          <i class="fa-solid fa-chevron-down"></i>
+        </div>
+        <div class="faq-answer">
+          <p>Quando a distribuidora monta e libera uma maleta física, o sistema gera automaticamente um termo de recebimento com o valor consignado e a listagem de peças. A vendedora recebe um aviso no celular e assina o termo desenhando a rubrica diretamente na tela. O documento é salvo digitalmente com validade jurídica.</p>
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-question">
+          <span>O sistema funciona offline para a vendedora na rua?</span>
+          <i class="fa-solid fa-chevron-down"></i>
+        </div>
+        <div class="faq-answer">
+          <p>O portal de vendas foi estruturado como um aplicativo web responsivo que funciona offline para consultas simples de estoque local pré-carregados. O registro de vendas sincroniza os dados assim que o celular se conectar à internet.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA Banner Final -->
+  <section class="cta-section">
+    <div class="cta-box reveal">
+      <h2>Chegou a Hora de Modernizar</h2>
+      <p>Cadastre sua marca de joias ou semijoias hoje mesmo e tenha controle absoluto sobre suas consultoras e faturamento.</p>
+      <a href="index.html?cadastro=true" class="btn btn-gold">
+        <i class="fa-solid fa-right-to-bracket"></i> Começar Agora Grátis
+      </a>
+    </div>
   </section>
 
   <!-- Footer -->
   <footer>
-    <p>Conecta Joias &copy; 2026 - Tecnologia Premium para Gestão de Semijoias White-Label.</p>
+    <div class="footer-content">
+      <a href="#" class="logo-container">
+        <img src="assets/logo.svg" alt="Conecta Joias Logo">
+        <span class="logo-text">Conecta Joias</span>
+      </a>
+      <div class="footer-links">
+        <a href="#solucoes">Diferencial</a>
+        <a href="#tour">Recursos</a>
+        <a href="#vendedora">A Vendedora</a>
+        <a href="#simulador">Simulador</a>
+        <a href="termos_uso.html" target="_blank">Termos de Uso</a>
+        <a href="politica_privacidade.html" target="_blank">Política de Privacidade</a>
+      </div>
+      <div class="footer-copy">
+        <p>&copy; 2026 Conecta Joias. Todos os direitos reservados. Gestão Premium de Consignados.</p>
+      </div>
+    </div>
   </footer>
 
+  <!-- Lógicas do Site e Animações (Sênior) -->
   <script>
-    function atualizarSimulador() {
-      const fatVal = parseFloat(document.getElementById("range-faturamento").value);
-      const pctVal = parseFloat(document.getElementById("range-comissao-pct").value);
+    /* ── Lógica do Menu Hambúrguer Mobile ── */
+    const menuToggle = document.getElementById('menu-toggle');
+    const mobileNav = document.getElementById('mobile-nav');
 
-      const comissao = fatVal * (pctVal / 100);
-      const liquido = fatVal - comissao;
-
-      // Atualiza labels
-      document.getElementById("lbl-faturamento").innerText = `R$ ${fatVal.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`;
-      document.getElementById("lbl-comissao-pct").innerText = `${pctVal}%`;
-
-      // Atualiza resultados
-      document.getElementById("res-faturamento").innerText = `R$ ${fatVal.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`;
-      document.getElementById("res-comissao").innerText = `R$ ${comissao.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`;
-      document.getElementById("res-liquido").innerText = `R$ ${liquido.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`;
+    function toggleMobileNav() {
+      menuToggle.classList.toggle('active');
+      mobileNav.classList.toggle('active');
+      // Impede scroll de fundo com menu aberto
+      document.body.style.overflow = mobileNav.classList.contains('active') ? 'hidden' : '';
     }
 
-    // Inicialização da tela de cadastro de marca se vier com query param
-    const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('cadastro') === 'true') {
-      window.location.href = 'index.html?cadastro=true';
+    menuToggle.addEventListener('click', toggleMobileNav);
+
+    /* ── Lógica de Alternância Dores vs Soluções (Mobile) ── */
+    function switchContrast(type) {
+      const cardCaos = document.getElementById('card-caos');
+      const cardSucesso = document.getElementById('card-sucesso');
+      const btnCaos = document.getElementById('toggle-caos-btn');
+      const btnSucesso = document.getElementById('toggle-sucesso-btn');
+
+      if (type === 'caos') {
+        cardSucesso.classList.remove('active-card');
+        btnSucesso.classList.remove('active');
+        
+        cardCaos.classList.add('active-card');
+        btnCaos.classList.add('active');
+      } else {
+        cardCaos.classList.remove('active-card');
+        btnCaos.classList.remove('active');
+        
+        cardSucesso.classList.add('active-card');
+        btnSucesso.classList.add('active');
+      }
     }
+
+    /* ── Efeito de Cursor Glow Dinâmico ── */
+    const cursorGlow = document.getElementById('cursor-glow');
+    document.addEventListener('mousemove', (e) => {
+      cursorGlow.style.setProperty('--mouse-x', `${e.clientX}px`);
+      cursorGlow.style.setProperty('--mouse-y', `${e.clientY}px`);
+    });
+
+    /* ── Scroll Navbar Mudança de Cor ── */
+    const header = document.querySelector('header');
+    window.addEventListener('scroll', () => {
+      if (window.scrollY > 50) {
+        header.classList.add('scrolled');
+      } else {
+        header.classList.remove('scrolled');
+      }
+    });
+
+    /* ── Revelar elementos no Scroll (Intersection Observer) ── */
+    const revealElements = document.querySelectorAll('.reveal');
+    const revealObserver = new IntersectionObserver((entries, observer) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('active');
+          observer.unobserve(entry.target); // Deixa de observar depois de animar uma vez
+        }
+      });
+    }, {
+      threshold: 0.1,
+      rootMargin: "0px 0px -50px 0px"
+    });
+
+    revealElements.forEach(el => revealObserver.observe(el));
+
+    /* ── Alternador de Abas do Tour do Produto ── */
+    function switchTab(tabId, btn) {
+      // Remove classes active de todas as abas e botões
+      document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+      document.querySelectorAll('.tab-btn').forEach(button => button.classList.remove('active'));
+      
+      // Adiciona classes active
+      document.getElementById(tabId).classList.add('active');
+      btn.classList.add('active');
+    }
+
+    /* ── Efeito Dinâmico de Luz nos Cards ── */
+    document.querySelectorAll('.feature-card, .metric-card').forEach(card => {
+      card.addEventListener('mousemove', (e) => {
+        const rect = card.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        card.style.setProperty('--card-x', `${x}px`);
+        card.style.setProperty('--card-y', `${y}px`);
+      });
+    });
+
+    /* ── Acordeão do FAQ ── */
+    document.querySelectorAll('.faq-question').forEach(question => {
+      question.addEventListener('click', () => {
+        const item = question.parentNode;
+        const isActive = item.classList.contains('active');
+        
+        // Fecha todos os FAQs ativos antes de abrir o novo
+        document.querySelectorAll('.faq-item').forEach(faq => {
+          faq.classList.remove('active');
+        });
+        
+        if (!isActive) {
+          item.classList.add('active');
+        }
+      });
+    });
+
+    /* ── Simulação Interativa de Registro de Venda no Smartphone do Topo ── */
+    const phoneBtnSell = document.getElementById('phone-btn-sell');
+    const receiptModal = document.getElementById('receipt-modal');
+    const phoneCommissionVal = document.getElementById('phone-commission-val');
+    let saleSimulated = false;
+
+    phoneBtnSell.addEventListener('click', () => {
+      if (!saleSimulated) {
+        receiptModal.classList.add('active');
+        phoneBtnSell.innerHTML = '<i class="fa-solid fa-rotate-left"></i> Resetar Sim.';
+        phoneBtnSell.classList.remove('phone-btn-gold');
+        phoneBtnSell.classList.add('phone-btn-outline');
+        
+        // Animação numérica da comissão subindo
+        let currentCommission = 1840;
+        const targetCommission = 1962; // R$ 1840 + R$ 122,15 (35% de R$ 349,00)
+        const step = 2;
+        const interval = setInterval(() => {
+          if (currentCommission < targetCommission) {
+            currentCommission += step;
+            phoneCommissionVal.innerText = `R$ ${currentCommission.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`;
+          } else {
+            phoneCommissionVal.innerText = `R$ R$ 1.962,15`;
+            clearInterval(interval);
+          }
+        }, 15);
+
+        saleSimulated = true;
+      } else {
+        receiptModal.classList.remove('active');
+        phoneBtnSell.innerHTML = '<i class="fa-solid fa-cart-shopping"></i> Vender Peça';
+        phoneBtnSell.classList.remove('phone-btn-outline');
+        phoneBtnSell.classList.add('phone-btn-gold');
+        phoneCommissionVal.innerText = 'R$ 1.840,00';
+        saleSimulated = false;
+      }
+    });
+
+    /* ── Lógica do Simulador Financeiro ── */
+    const rangeRevendedoras = document.getElementById('range-revendedoras');
+    const rangeFatMedio = document.getElementById('range-fat-medio');
+    const rangeComissaoPct = document.getElementById('range-comissao-pct');
+
+    const lblRevendedoras = document.getElementById('lbl-revendedoras');
+    const lblFatMedio = document.getElementById('lbl-fat-medio');
+    const lblComissaoPct = document.getElementById('lbl-comissao-pct');
+
+    const resFatBruto = document.getElementById('res-fat-bruto');
+    const resComissoesTotal = document.getElementById('res-comissoes-total');
+    const resLucroLiquido = document.getElementById('res-lucro-liquido');
+    const pieChart = document.getElementById('pie-chart');
+
+    function updateSimulator() {
+      const revendedoras = parseInt(rangeRevendedoras.value);
+      const fatMedio = parseFloat(rangeFatMedio.value);
+      const comissaoPct = parseFloat(rangeComissaoPct.value);
+
+      // Cálculos
+      const fatBruto = revendedoras * fatMedio;
+      const comissoesTotal = fatBruto * (comissaoPct / 100);
+      const lucroLiquido = fatBruto - comissoesTotal;
+
+      // Atualiza Labels dos seletores
+      lblRevendedoras.innerText = `${revendedoras} Vendedoras`;
+      lblFatMedio.innerText = `R$ ${fatMedio.toLocaleString("pt-BR", { minimumFractionDigits: 0 })}`;
+      lblComissaoPct.innerText = `${comissaoPct}%`;
+
+      // Atualiza painel de resultados com animação suave de contagem
+      animateNumberValue(resFatBruto, fatBruto);
+      animateNumberValue(resComissoesTotal, comissoesTotal);
+      animateNumberValue(resLucroLiquido, lucroLiquido);
+
+      // Atualiza gráfico pizza CSS (conic-gradient)
+      // A fatia da comissão ocupa a comissaoPct%
+      const restPct = 100 - comissaoPct;
+      pieChart.style.background = `conic-gradient(var(--gold-primary) 0% ${comissaoPct}%, rgba(255, 255, 255, 0.05) ${comissaoPct}% 100%)`;
+    }
+
+    // Função auxiliar de animação de números
+    function animateNumberValue(element, targetValue) {
+      const duration = 400; // ms
+      const start = parseFloat(element.innerText.replace(/[R$\s.]/g, '').replace(',', '.')) || 0;
+      const end = targetValue;
+      const startTime = performance.now();
+
+      function update(currentTime) {
+        const elapsed = currentTime - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        
+        // Easing cubic-bezier
+        const easeProgress = progress === 1 ? 1 : 1 - Math.pow(2, -10 * progress);
+        
+        const currentValue = start + (end - start) * easeProgress;
+        element.innerText = `R$ ${currentValue.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+        if (progress < 1) {
+          requestAnimationFrame(update);
+        }
+      }
+
+      requestAnimationFrame(update);
+    }
+
+    // Registra Event Listeners para atualizar o simulador em tempo real
+    rangeRevendedoras.addEventListener('input', updateSimulator);
+    rangeFatMedio.addEventListener('input', updateSimulator);
+    rangeComissaoPct.addEventListener('input', updateSimulator);
+
+    // Roda simulador uma vez no início
+    updateSimulator();
+
+    /* ── Lógica de Assinatura e Acerto no Mockup da Vendedora ── */
+    const phoneBtnAcerto = document.getElementById('phone-btn-acerto');
+    const acertoSignatureModal = document.getElementById('acerto-signature-modal');
+    const closeSignatureBtn = document.getElementById('close-signature-btn');
+    const clearSignatureBtn = document.getElementById('clear-signature-btn');
+    const confirmAcertoBtn = document.getElementById('confirm-acerto-btn');
+    const signatureSvg = document.getElementById('signature-svg');
+    const signaturePlaceholder = document.getElementById('signature-placeholder');
+    const acertoStatusBadge = document.getElementById('acerto-status-badge');
+
+    let acertoSimulated = false;
+
+    phoneBtnAcerto.addEventListener('click', () => {
+      if (!acertoSimulated) {
+        // Abre o modal de assinatura
+        acertoSignatureModal.style.bottom = '0';
+        
+        // Simula o desenho da assinatura após 800ms de forma sênior
+        setTimeout(() => {
+          signaturePlaceholder.style.opacity = '0';
+          signatureSvg.style.opacity = '1';
+          
+          // Animação CSS do traçado do path SVG
+          const path = signatureSvg.querySelector('path');
+          const length = path.getTotalLength();
+          path.style.transition = path.style.WebkitTransition = 'none';
+          path.style.strokeDasharray = length + ' ' + length;
+          path.style.strokeDashoffset = length;
+          path.getBoundingClientRect();
+          path.style.transition = path.style.WebkitTransition = 'stroke-dashoffset 2.5s ease-in-out';
+          path.style.strokeDashoffset = '0';
+        }, 800);
+      } else {
+        // Reset da simulação
+        acertoSimulated = false;
+        acertoStatusBadge.innerText = 'Pendente';
+        acertoStatusBadge.style.background = 'rgba(212, 175, 55, 0.15)';
+        acertoStatusBadge.style.color = 'var(--gold-primary)';
+        phoneBtnAcerto.innerHTML = '<i class="fa-solid fa-signature"></i> Finalizar e Assinar';
+        phoneBtnAcerto.classList.remove('phone-btn-outline');
+        phoneBtnAcerto.classList.add('phone-btn-gold');
+        
+        // Limpa assinatura
+        signatureSvg.style.opacity = '0';
+        signaturePlaceholder.style.opacity = '1';
+        const path = signatureSvg.querySelector('path');
+        path.style.strokeDashoffset = path.getTotalLength();
+      }
+    });
+
+    closeSignatureBtn.addEventListener('click', () => {
+      acertoSignatureModal.style.bottom = '-100%';
+    });
+
+    clearSignatureBtn.addEventListener('click', () => {
+      signatureSvg.style.opacity = '0';
+      signaturePlaceholder.style.opacity = '1';
+      const path = signatureSvg.querySelector('path');
+      path.style.strokeDashoffset = path.getTotalLength();
+      
+      // Reinicia animação após limpar
+      setTimeout(() => {
+        signaturePlaceholder.style.opacity = '0';
+        signatureSvg.style.opacity = '1';
+        path.style.transition = 'stroke-dashoffset 2s ease-in-out';
+        path.style.strokeDashoffset = '0';
+      }, 500);
+    });
+
+    confirmAcertoBtn.addEventListener('click', () => {
+      // Fecha modal de assinatura
+      acertoSignatureModal.style.bottom = '-100%';
+      
+      // Atualiza status do acerto para concluído
+      acertoSimulated = true;
+      acertoStatusBadge.innerText = 'Concluído';
+      acertoStatusBadge.style.background = 'rgba(76, 175, 80, 0.15)';
+      acertoStatusBadge.style.color = '#4caf50';
+      
+      // Altera o botão do acerto para resetar
+      phoneBtnAcerto.innerHTML = '<i class="fa-solid fa-rotate-left"></i> Resetar Acerto';
+      phoneBtnAcerto.classList.remove('phone-btn-gold');
+      phoneBtnAcerto.classList.add('phone-btn-outline');
+    });
   </script>
 </body>
 </html>

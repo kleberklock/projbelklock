@@ -168,7 +168,7 @@ const app = {
     const usuarioJson = localStorage.getItem("conectajoias_usuario");
     
     if (!token || !usuarioJson) {
-      this.fazerLogout();
+      this.fazerLogout("Sessão inválida ou não encontrada. Por favor, realize o login.");
       return;
     }
     
@@ -176,21 +176,21 @@ const app = {
       const usuario = JSON.parse(usuarioJson);
       const roleUpper = (usuario.role || "").toUpperCase();
       
-      // Permitir Consultant na página manager.html
-      if (roleUpper === 'CONSULTANT') {
+      // Permitir Consultant/Vendedora na página manager.html
+      if (roleUpper === 'CONSULTANT' || roleUpper === 'VENDEDORA' || roleUpper === 'REVENDEDORA') {
         this.state.token = token;
         this.state.usuarioLogado = usuario;
         this.exibirInterfacePosLogin();
         this.carregarDadosIniciais();
-      } else if (roleUpper === 'MANAGER' || roleUpper === 'SUPERADMIN') {
+      } else if (roleUpper === 'MANAGER' || roleUpper === 'SUPERADMIN' || roleUpper === 'ADMIN_LOJA' || roleUpper === 'SUPER_ADMIN') {
         window.location.href = "superadmin.html";
       } else {
         console.warn("Role desconhecida ou inválida:", usuario.role);
-        this.fazerLogout();
+        this.fazerLogout(`Perfil de acesso incorreto para esta página: ${usuario.role}`);
       }
     } catch (e) {
       console.error("Erro na inicialização da Consultora:", e);
-      this.fazerLogout();
+      this.fazerLogout("Erro crítico na inicialização do painel: " + e.message);
     }
   },
 
@@ -317,12 +317,17 @@ const app = {
     }
   },
 
-  fazerLogout: function() {
+  fazerLogout: function(motivo = "") {
     this.state.token = null;
     this.state.usuarioLogado = null;
     localStorage.removeItem("conectajoias_token");
     localStorage.removeItem("conectajoias_usuario");
-    window.location.href = "index.html";
+    
+    let url = "index.html";
+    if (motivo) {
+      url += "?error=" + encodeURIComponent(motivo);
+    }
+    window.location.href = url;
   },
 
   exibirInterfaceLogin: function() {
@@ -341,9 +346,15 @@ const app = {
   carregarConfiguracaoAPI: async function() {
     try {
       const lojaId = localStorage.getItem("conectajoias_loja_id") || "default-loja";
-      const response = await fetch(`${this.state.apiUrl}/config`, {
-        headers: { "x-loja-id": lojaId }
-      });
+      const token = this.state.token || localStorage.getItem("conectajoias_token") || "";
+      
+      // Monta o header com o token JWT (para que o backend leia o lojaId correto do token)
+      const headers = { "x-loja-id": lojaId };
+      if (token && !token.startsWith("mock_")) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+      
+      const response = await fetch(`${this.state.apiUrl}/config`, { headers });
       if (response.ok) {
         const config = await response.json();
         this.aplicarConfiguracoes(config);
@@ -352,14 +363,14 @@ const app = {
     } catch (error) {
       console.warn("Não foi possível buscar as configurações do servidor. Usando fallback local.", error);
     }
-    // Fallback local do state / localStorage
+    // Fallback: lê do localStorage (que pode ter sido pré-populado pelo carregarTemaPreLogin)
     const configLocal = {
-      nomeEmpresa: this.state.nomeEmpresa || "Conecta Joias",
-      logoUrl: this.state.logoUrl || "",
-      corPrimaria: this.state.corPrimaria || "#d4af37",
-      corSecundaria: this.state.corSecundaria || "#111111",
-      bgPrimary: this.state.bgPrimary || "#0a0a0a",
-      bgCard: this.state.bgCard || "#121212"
+      nomeEmpresa: localStorage.getItem("conectajoias_nome_empresa") || this.state.nomeEmpresa || "Conecta Joias",
+      logoUrl: localStorage.getItem("conectajoias_logo_url") || this.state.logoUrl || "",
+      corPrimaria: localStorage.getItem("conectajoias_cor_primaria") || this.state.corPrimaria || "#d4af37",
+      corSecundaria: localStorage.getItem("conectajoias_cor_secundaria") || this.state.corSecundaria || "#111111",
+      bgPrimary: localStorage.getItem("conectajoias_bg_primary") || this.state.bgPrimary || "#0a0a0a",
+      bgCard: localStorage.getItem("conectajoias_bg_card") || this.state.bgCard || "#121212"
     };
     this.aplicarConfiguracoes(configLocal);
   },
@@ -560,6 +571,52 @@ const app = {
   // ==========================================
 
   requisitarAPI: async function(endpoint, metodo = "GET", body = null) {
+    // Interceptador para o Modo de Demonstração (Mocks / Offline)
+    if (this.state.token && this.state.token.startsWith("mock_")) {
+      console.warn(`[requisitarAPI] Modo de Demonstração Interceptado no Consultor: ${metodo} ${endpoint}`);
+      
+      // Simulação das respostas de endpoints para o modo demo
+      if (endpoint.startsWith("/produtos/defeitos")) {
+        return this.state.produtosComDefeito || [];
+      }
+      if (endpoint.startsWith("/produtos")) {
+        return this.state.produtos || [];
+      }
+      if (endpoint.startsWith("/revendedoras/minha-maleta")) {
+        const rev = this.state.revendedoras.find(r => r.id === this.state.usuarioLogado.id) || this.state.revendedoras[0];
+        return {
+          consignado: (rev && rev.consignado) || [],
+          faixasComissao: (rev && rev.faixasComissao) || [],
+          config: {
+            tipoComissao: (rev && rev.tipoComissao) || "FIXA",
+            metaUnicaValor: (rev && rev.metaUnicaValor) || 0,
+            metaUnicaBonus: (rev && rev.metaUnicaBonus) || 0,
+            metaUnicaTipoBonus: (rev && rev.metaUnicaTipoBonus) || "PERCENTUAL",
+            baseCalculo: (rev && rev.baseCalculo) || "BRUTO",
+            regraPerda: (rev && rev.regraPerda) || "VALOR_VENDA",
+            limiteIsencaoPerda: (rev && rev.limiteIsencaoPerda) || 0,
+            periodoAcumulo: (rev && rev.periodoAcumulo) || "MANUAL"
+          }
+        };
+      }
+      if (endpoint.startsWith("/vendas-revendedora")) {
+        return this.state.vendasSessao || [];
+      }
+      if (endpoint.startsWith("/clientes")) {
+        return this.state.clientes || [];
+      }
+      if (endpoint.startsWith("/termos")) {
+        return [];
+      }
+      if (endpoint.startsWith("/pagamentos/links")) {
+        return [];
+      }
+      if (endpoint.startsWith("/notificacoes")) {
+        return [];
+      }
+      return {};
+    }
+
     const lojaId = localStorage.getItem("conectajoias_loja_id") || "default-loja";
     const headers = {
       "Authorization": `Bearer ${this.state.token}`,
@@ -581,9 +638,13 @@ const app = {
 
     const response = await fetch(`${this.state.apiUrl}${endpoint}`, config);
     
-    if (response.status === 401 || response.status === 403) {
-      this.fazerLogout();
+    if (response.status === 401) {
+      this.fazerLogout("Sua sessão expirou. Por favor, realize login novamente.");
       throw new Error("Sua sessão expirou. Por favor, realize login novamente.");
+    }
+
+    if (response.status === 403) {
+      throw new Error(`Acesso negado (Erro 403) ao recurso: ${endpoint}`);
     }
 
     const data = await response.json();
@@ -1553,7 +1614,8 @@ const app = {
     addListenerSafe("btn-enviar-venda-rapida", "click", () => this.processarVendaRapidaWhats());
 
     // Modal de Clientes
-    this.configurarModal("modal-cliente", "btn-open-modal-cliente", "btn-close-modal-cliente", "btn-cancelar-cliente");
+    this.configurarModal("modal-cliente", null, "btn-close-modal-cliente", "btn-cancelar-cliente");
+    addListenerSafe("btn-open-modal-cliente", "click", () => this.abrirModalCliente());
     addListenerSafe("btn-salvar-cliente", "click", () => this.salvarCliente());
     addListenerSafe("cliente-whatsapp", "input", (e) => this.aplicarMascaraWhatsApp(e.target));
 
@@ -5011,6 +5073,7 @@ ${dinheiroAReceberDaRev >= comissaoApagarParaRev
       }
 
       document.getElementById("modal-cliente").classList.remove("active");
+      this.salvarDadosNoLocalStorage();
       this.renderizarClientes();
     } catch (err) {
       console.error(err);
