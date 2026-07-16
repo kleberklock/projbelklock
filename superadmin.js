@@ -345,12 +345,11 @@ const app = {
   fazerLogout: function() {
     if (this.state.pollingNotificacoesInterval) {
       clearInterval(this.state.pollingNotificacoesInterval);
-      this.state.pollingNotificacoesInterval = null;
     }
-    this.state.token = null;
-    this.state.usuarioLogado = null;
-    localStorage.removeItem("conectajoias_token");
-    localStorage.removeItem("conectajoias_usuario");
+    this.state = {};
+    localStorage.clear();
+    sessionStorage.clear();
+    document.documentElement.removeAttribute('style');
     window.location.href = "index.html";
   },
 
@@ -6566,9 +6565,7 @@ function aplicarTemaLoja(tema) {
   if (!tema) return;
 
   const temaPrefUpper = (tema.temaPref || '').toUpperCase();
-  const isLight = (temaPrefUpper === 'CLARO' || temaPrefUpper === 'LIGHT') || 
-                  ((temaPrefUpper === 'SISTEMA' || temaPrefUpper === 'SYSTEM' || !temaPrefUpper) && 
-                   window.matchMedia && !window.matchMedia('(prefers-color-scheme: dark)').matches);
+  const isLight = (temaPrefUpper === 'CLARO' || temaPrefUpper === 'LIGHT');
 
   if (tema.corPrimaria) {
     document.documentElement.style.setProperty('--gold-primary', tema.corPrimaria);

@@ -219,7 +219,7 @@ model Configuracao {
   updatedAt     DateTime @updatedAt
 
   whatsappAtendimento String?
-  temaPref            String   @default("SISTEMA") // "CLARO" | "ESCURO" | "SISTEMA"
+  temaPref            String   @default("ESCURO") // "CLARO" | "ESCURO" | "SISTEMA"
   segmento            String?
   estiloLoja          String?
   onboardingCompleto  Boolean  @default(false)

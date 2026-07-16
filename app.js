@@ -301,12 +301,11 @@ const app = {
   },
 
   fazerLogout: function() {
-    this.state.token = null;
-    this.state.usuarioLogado = null;
-    localStorage.removeItem("conectajoias_token");
-    localStorage.removeItem("conectajoias_usuario");
+    this.state = {};
+    localStorage.clear();
+    sessionStorage.clear();
+    document.documentElement.removeAttribute('style');
     this.atualizarInfoUsuarioSidebar();
-    
     this.exibirInterfaceLogin();
   },
 

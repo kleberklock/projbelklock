@@ -318,10 +318,10 @@ const app = {
   },
 
   fazerLogout: function(motivo = "") {
-    this.state.token = null;
-    this.state.usuarioLogado = null;
-    localStorage.removeItem("conectajoias_token");
-    localStorage.removeItem("conectajoias_usuario");
+    this.state = {};
+    localStorage.clear();
+    sessionStorage.clear();
+    document.documentElement.removeAttribute('style');
     
     let url = "index.html";
     if (motivo) {
@@ -5786,9 +5786,7 @@ function aplicarTemaLoja(tema) {
   if (!tema) return;
 
   const temaPrefUpper = (tema.temaPref || '').toUpperCase();
-  const isLight = (temaPrefUpper === 'CLARO' || temaPrefUpper === 'LIGHT') || 
-                  ((temaPrefUpper === 'SISTEMA' || temaPrefUpper === 'SYSTEM' || !temaPrefUpper) && 
-                   window.matchMedia && !window.matchMedia('(prefers-color-scheme: dark)').matches);
+  const isLight = (temaPrefUpper === 'CLARO' || temaPrefUpper === 'LIGHT');
 
   if (tema.corPrimaria) {
     document.documentElement.style.setProperty('--gold-primary', tema.corPrimaria);

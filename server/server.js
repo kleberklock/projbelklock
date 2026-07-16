@@ -59,8 +59,90 @@ function garantirChaveJwtSegura() {
 
 garantirChaveJwtSegura();
 
+const { AsyncLocalStorage } = require('async_hooks');
+const context = new AsyncLocalStorage();
+
 const app = express();
-const prisma = new PrismaClient();
+const basePrisma = new PrismaClient();
+const prisma = basePrisma.$extends({
+  query: {
+    $allModels: {
+      async $allOperations({ model, operation, args, query }) {
+        const store = context.getStore();
+        const lojaId = store ? store.lojaId : null;
+        const user = store ? store.user : null;
+        const isSuperAdmin = user && user.role === 'SuperAdmin';
+
+        // Modelos que contêm o campo 'lojaId' no schema
+        const modelsWithLojaId = [
+          'Usuario',
+          'Produto',
+          'Consignado',
+          'HistoricoAcerto',
+          'VendaDireta',
+          'VendaRevendedora',
+          'Cliente',
+          'Notificacao',
+          'Configuracao',
+          'FaixaComissao',
+          'MensagemWhatsapp',
+          'Treinamento'
+        ];
+
+        // Se o modelo contiver o campo lojaId, aplicamos as regras de RLS lógico
+        if (modelsWithLojaId.includes(model)) {
+          // Se o usuário estiver autenticado e não for SuperAdmin, mas não houver lojaId, bloqueia por segurança
+          if (user && !isSuperAdmin && !lojaId) {
+            throw new Error(`Erro de Contexto Tenant: O identificador de loja está ausente para a operação ${operation} no modelo ${model}.`);
+          }
+
+          // Se tivermos um lojaId ativo no contexto, forçamos o isolamento de dados
+          if (lojaId) {
+            // 1. Validação de Inserção (create / createMany)
+            if (operation === 'create') {
+              args.data = args.data || {};
+              args.data.lojaId = lojaId;
+            } else if (operation === 'createMany') {
+              if (args.data) {
+                if (Array.isArray(args.data)) {
+                  args.data.forEach(item => {
+                    item.lojaId = lojaId;
+                  });
+                } else {
+                  args.data.lojaId = lojaId;
+                }
+              }
+            }
+            // 2. Operação findUnique: convertemos para findFirst para aceitar filtro customizado por lojaId
+            else if (operation === 'findUnique') {
+              args.where = args.where || {};
+              args.where.lojaId = lojaId;
+              return basePrisma[model].findFirst(args);
+            }
+            // 3. Operações de alteração/deleção individual (update / delete)
+            // Realizamos uma verificação de tenant prévia para evitar violações
+            else if (['update', 'delete'].includes(operation)) {
+              args.where = args.where || {};
+              const record = await basePrisma[model].findFirst({
+                where: { ...args.where, lojaId }
+              });
+              if (!record) {
+                throw new Error(`Acesso negado. O registro solicitado não foi encontrado ou não pertence a esta loja.`);
+              }
+            }
+            // 4. Outras queries de busca (findMany, findFirst, updateMany, deleteMany, count, aggregate, groupBy)
+            else if (['findMany', 'findFirst', 'updateMany', 'deleteMany', 'count', 'aggregate', 'groupBy'].includes(operation)) {
+              args.where = args.where || {};
+              args.where.lojaId = lojaId;
+            }
+          }
+        }
+
+        return query(args);
+      }
+    }
+  }
+});
 const lojasSuspensas = new Set();
 const PORT = process.env.PORT || 5000;
 
@@ -102,6 +184,15 @@ app.use(cors({
 
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
+
+// Inicializa o contexto assíncrono para cada requisição HTTP
+app.use((req, res, next) => {
+  const store = { lojaId: null, user: null };
+  context.run(store, () => {
+    req.contextStore = store;
+    next();
+  });
+});
 
 // Criação automática das pastas de uploads locais
 const UPLOADS_DIR = path.join(__dirname, 'uploads');
@@ -164,6 +255,12 @@ const autenticarJWT = (req, res, next) => {
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
     req.user = decoded;
+    if (req.contextStore) {
+      req.contextStore.user = decoded;
+      if (decoded.lojaId) {
+        req.contextStore.lojaId = decoded.lojaId;
+      }
+    }
     next();
   } catch (error) {
     return res.status(403).json({ error: 'Token inválido ou expirado.' });
@@ -177,7 +274,14 @@ const autenticarJWTOpcional = (req, res, next) => {
   if (authHeader && authHeader.startsWith('Bearer ')) {
     const token = authHeader.split(' ')[1];
     try {
-      req.user = jwt.verify(token, JWT_SECRET);
+      const decoded = jwt.verify(token, JWT_SECRET);
+      req.user = decoded;
+      if (req.contextStore) {
+        req.contextStore.user = decoded;
+        if (decoded.lojaId) {
+          req.contextStore.lojaId = decoded.lojaId;
+        }
+      }
     } catch (_) {
       // Token inválido: ignora silenciosamente e continua como anônimo
       req.user = null;
@@ -200,6 +304,9 @@ const identificarLoja = (req, res, next) => {
   if (req.user && req.user.role === 'SuperAdmin') {
     // Aceita o lojaId do token (se tiver) ou do header (para operar como uma loja específica)
     req.lojaId = req.user.lojaId || req.headers['x-loja-id'] || null;
+    if (req.contextStore) {
+      req.contextStore.lojaId = req.lojaId;
+    }
     return next();
   }
 
@@ -220,6 +327,9 @@ const identificarLoja = (req, res, next) => {
   }
 
   req.lojaId = lojaId;
+  if (req.contextStore) {
+    req.contextStore.lojaId = lojaId;
+  }
   next();
 };
 
@@ -416,7 +526,8 @@ app.post('/api/auth/signup', signupLimiter, async (req, res) => {
         corPrimaria: "#d4af37",
         corSecundaria: "#111111",
         bgPrimary: "#0a0a0a",
-        bgCard: "#121212"
+        bgCard: "#121212",
+        temaPref: "ESCURO"
       }
     });
 
@@ -2349,6 +2460,7 @@ app.post('/api/admin/lojas', autenticarJWT, autorizarRole(['SuperAdmin']), async
         corSecundaria: '#111111',
         bgPrimary: '#0a0a0a',
         bgCard: '#121212',
+        temaPref: 'ESCURO'
       }
     });
     await registrarLog(req, 'CRIAR_LOJA', `SuperAdmin criou a loja: ${nome} (ID: ${novaLoja.id})`);
@@ -2519,10 +2631,19 @@ app.post('/api/public/onboarding', signupLimiter, uploadDocs.fields([
   }
 });
 
-// 2. Listar documentos do Cofre Virtual de uma revendedora específica (Admin)
-app.get('/api/usuarios/:id/documentos', autenticarJWT, autorizarRole(['Manager', 'SuperAdmin']), async (req, res) => {
+app.get('/api/usuarios/:id/documentos', autenticarJWT, autorizarRole(['Manager', 'SuperAdmin']), identificarLoja, async (req, res) => {
   const { id } = req.params;
   try {
+    // Se não for SuperAdmin, valida se o usuário alvo pertence à mesma loja
+    if (req.user.role !== 'SuperAdmin') {
+      const usuarioDestino = await prisma.usuario.findFirst({
+        where: { id: id, lojaId: req.lojaId }
+      });
+      if (!usuarioDestino) {
+        return res.status(403).json({ error: 'Acesso negado. Este usuário não pertence à sua loja.' });
+      }
+    }
+
     const documentos = await prisma.documentoUsuario.findMany({
       where: { usuarioId: id }
     });
@@ -2964,6 +3085,8 @@ app.get('/api/termos', autenticarJWT, identificarLoja, async (req, res) => {
     let where = {};
     if (req.user.role === 'Consultant') {
       where.usuarioId = req.user.id;
+    } else if (req.user.role === 'Manager') {
+      where.usuario = { lojaId: req.lojaId };
     }
     const termos = await prisma.termoConsignacao.findMany({
       where,
@@ -3053,7 +3176,7 @@ app.post('/api/whatsapp/enviar/:id', autenticarJWT, autorizarRole(['Manager', 'S
 });
 
 // 6. Listar treinamentos cadastrados
-app.get('/api/treinamentos', autenticarJWT, async (req, res) => {
+app.get('/api/treinamentos', autenticarJWT, identificarLoja, async (req, res) => {
   try {
     const treinamentos = await prisma.treinamento.findMany({
       orderBy: { createdAt: 'desc' }
@@ -3088,7 +3211,7 @@ app.post('/api/treinamentos', autenticarJWT, autorizarRole(['Manager', 'SuperAdm
 });
 
 // Excluir treinamento (Admin)
-app.delete('/api/treinamentos/:id', autenticarJWT, autorizarRole(['Manager', 'SuperAdmin']), async (req, res) => {
+app.delete('/api/treinamentos/:id', autenticarJWT, autorizarRole(['Manager', 'SuperAdmin']), identificarLoja, async (req, res) => {
   const { id } = req.params;
   try {
     await prisma.treinamento.delete({ where: { id } });
@@ -3396,6 +3519,7 @@ async function inicializarLojaPadrao() {
           corSecundaria: '#111111',
           bgPrimary: '#0a0a0a',
           bgCard: '#121212',
+          temaPref: 'ESCURO'
         }
       });
       console.log('Configuração da loja padrão criada com sucesso!');
@@ -3619,14 +3743,21 @@ async function verificarCiclosENotificarRevendedoras() {
 // ==========================================
 // INICIALIZAÇÃO
 // ==========================================
-app.listen(PORT, () => {
-  console.log(`Servidor rodando com sucesso na porta ${PORT}`);
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`Servidor rodando com sucesso na porta ${PORT}`);
+    inicializarLojaPadrao();
+    // Iniciar worker de processamento do WhatsApp a cada 10 segundos
+    setInterval(processarFilaWhatsApp, 10000);
+    
+    // Rodar a verificação de ciclos 5 segundos após a inicialização e depois a cada 24 horas
+    setTimeout(verificarCiclosENotificarRevendedoras, 5000);
+    setInterval(verificarCiclosENotificarRevendedoras, 24 * 60 * 60 * 1000);
+  });
+} else {
+  // Inicialização mínima para quando o módulo é requerido por testes
   inicializarLojaPadrao();
-  // Iniciar worker de processamento do WhatsApp a cada 10 segundos
-  setInterval(processarFilaWhatsApp, 10000);
-  
-  // Rodar a verificação de ciclos 5 segundos após a inicialização e depois a cada 24 horas
-  setTimeout(verificarCiclosENotificarRevendedoras, 5000);
-  setInterval(verificarCiclosENotificarRevendedoras, 24 * 60 * 60 * 1000);
-});
+}
+
+module.exports = { prisma, context, app };
 

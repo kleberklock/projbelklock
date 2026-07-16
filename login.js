@@ -42,6 +42,8 @@ const loginApp = {
           return;
         } catch (e) {
           localStorage.clear();
+          sessionStorage.clear();
+          document.documentElement.removeAttribute('style');
         }
       }
     }
@@ -655,9 +657,7 @@ function aplicarTemaLoja(tema) {
   if (!tema) return;
 
   const temaPrefUpper = (tema.temaPref || '').toUpperCase();
-  const isLight = (temaPrefUpper === 'CLARO' || temaPrefUpper === 'LIGHT') || 
-                  ((temaPrefUpper === 'SISTEMA' || temaPrefUpper === 'SYSTEM' || !temaPrefUpper) && 
-                   window.matchMedia && !window.matchMedia('(prefers-color-scheme: dark)').matches);
+  const isLight = (temaPrefUpper === 'CLARO' || temaPrefUpper === 'LIGHT');
 
   if (tema.corPrimaria) {
     document.documentElement.style.setProperty('--gold-primary', tema.corPrimaria);

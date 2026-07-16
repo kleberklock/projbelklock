@@ -769,9 +769,10 @@ const saasApp = {
   },
 
   efetuarLogout: function() {
-    localStorage.removeItem("conectajoias_token");
-    localStorage.removeItem("conectajoias_usuario");
-    sessionStorage.removeItem("saas_super_admin");
+    this.state = {};
+    localStorage.clear();
+    sessionStorage.clear();
+    document.documentElement.removeAttribute('style');
     this.mostrarToast("Sessão de segurança encerrada.", "info");
     setTimeout(() => {
       window.location.href = "index.html";
