@@ -759,8 +759,25 @@ const saasApp = {
     });
   },
 
+  toggleSidebarMobile: function() {
+    const sidebar = document.querySelector('.sidebar');
+    const overlay = document.getElementById('sidebar-overlay');
+    if (sidebar) sidebar.classList.toggle('active');
+    if (overlay) overlay.classList.toggle('active');
+    document.body.classList.toggle('sidebar-open');
+  },
+
+  fecharSidebarMobile: function() {
+    const sidebar = document.querySelector('.sidebar');
+    const overlay = document.getElementById('sidebar-overlay');
+    if (sidebar) sidebar.classList.remove('active');
+    if (overlay) overlay.classList.remove('active');
+    document.body.classList.remove('sidebar-open');
+  },
+
   mudarAba: function(targetId) {
     this.abaAtiva = targetId;
+    this.fecharSidebarMobile();
     const sections = document.querySelectorAll(".app-section");
     sections.forEach(sec => {
       sec.classList.remove("active");
@@ -775,7 +792,7 @@ const saasApp = {
     document.documentElement.removeAttribute('style');
     this.mostrarToast("Sessão de segurança encerrada.", "info");
     setTimeout(() => {
-      window.location.href = "index.html";
+      window.location.href = "login.html";
     }, 800);
   },
 

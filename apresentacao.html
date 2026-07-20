@@ -213,6 +213,7 @@
       background: var(--gold-gradient);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
+      font-weight: 700;
     }
 
     .section-header p {
@@ -1959,6 +1960,188 @@
         border-radius: 8px;
       }
     }
+
+    /* ─────────────────────────────────────────────────────────────────────────
+       SEÇÃO DE PLANOS (PRICING) PREMIUM
+       ───────────────────────────────────────────────────────────────────────── */
+    .pricing-section {
+      background: var(--bg-deep);
+      border-top: 1px solid var(--border-color);
+      padding: 8rem 5% 6rem;
+    }
+
+    .pricing-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 2.5rem;
+      align-items: stretch;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .pricing-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      padding: 3rem 2.5rem;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      overflow: hidden;
+      transition: var(--transition-smooth);
+    }
+
+    .pricing-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: radial-gradient(circle at top center, rgba(212, 175, 55, 0.03), transparent 60%);
+      pointer-events: none;
+    }
+
+    .pricing-card.popular {
+      border: 1px solid var(--gold-primary);
+      box-shadow: 0 10px 40px rgba(212, 175, 55, 0.08);
+      transform: translateY(-8px);
+    }
+
+    .pricing-card.popular::before {
+      background: radial-gradient(circle at top center, rgba(212, 175, 55, 0.08), transparent 70%);
+    }
+
+    .pricing-card:hover {
+      border-color: rgba(212, 175, 55, 0.3);
+      transform: translateY(-8px);
+      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4), 0 0 20px rgba(212, 175, 55, 0.05);
+    }
+
+    .pricing-card.popular:hover {
+      border-color: var(--gold-primary);
+      box-shadow: 0 20px 40px rgba(212, 175, 55, 0.15);
+    }
+
+    .badge-popular {
+      position: absolute;
+      top: 1.5rem;
+      right: 1.5rem;
+      background: var(--gold-gradient);
+      color: var(--bg-deep);
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 0.4rem 1rem;
+      border-radius: 50px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .pricing-header h3 {
+      font-size: 2rem;
+      color: #fff;
+      margin-bottom: 0.5rem;
+    }
+
+    .pricing-card.popular .pricing-header h3 {
+      color: var(--gold-primary);
+    }
+
+    .pricing-desc {
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      line-height: 1.5;
+      margin-bottom: 2rem;
+      font-weight: 300;
+      min-height: 40px;
+    }
+
+    .pricing-price {
+      margin-bottom: 2.5rem;
+      display: flex;
+      align-items: baseline;
+    }
+
+    .pricing-price .currency {
+      font-size: 1.2rem;
+      font-weight: 500;
+      color: var(--text-muted);
+      margin-right: 0.3rem;
+    }
+
+    .pricing-price .value {
+      font-size: 3.5rem;
+      font-weight: 700;
+      color: #fff;
+      font-family: 'Cormorant Garamond', serif;
+    }
+
+    .pricing-card.popular .pricing-price .value {
+      background: var(--gold-gradient);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .pricing-price .period {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-left: 0.5rem;
+      font-weight: 400;
+    }
+
+    .pricing-features {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      margin-bottom: 3rem;
+      flex: 1;
+    }
+
+    .pricing-features li {
+      display: flex;
+      align-items: center;
+      gap: 0.8rem;
+      font-size: 0.85rem;
+      color: rgba(255, 255, 255, 0.8);
+      font-weight: 400;
+    }
+
+    .pricing-features li.disabled {
+      color: var(--text-muted);
+      text-decoration: line-through;
+      opacity: 0.5;
+    }
+
+    .pricing-features li i {
+      font-size: 0.9rem;
+    }
+
+    .pricing-features li i.fa-circle-check {
+      color: var(--gold-primary);
+    }
+
+    .pricing-features li i.fa-circle-xmark {
+      color: var(--text-muted);
+    }
+
+    .pricing-btn {
+      width: 100%;
+    }
+
+    @media (max-width: 968px) {
+      .pricing-grid {
+        grid-template-columns: 1fr;
+        max-width: 450px;
+        gap: 3rem;
+      }
+      .pricing-card.popular {
+        transform: none;
+      }
+      .pricing-card.popular:hover {
+        transform: translateY(-5px);
+      }
+    }
   </style>
 </head>
 <body>
@@ -1976,9 +2159,10 @@
       <li><a href="#tour">Recursos</a></li>
       <li><a href="#vendedora">A Vendedora</a></li>
       <li><a href="#simulador">Simulador</a></li>
+      <li><a href="#planos">Planos</a></li>
     </ul>
     <div style="display: flex; align-items: center; gap: 1rem;">
-      <a href="index.html" class="btn-portal nav-portal-btn">
+      <a href="login.html" class="btn-portal nav-portal-btn">
         <i class="fa-solid fa-lock"></i> <span class="portal-text">Acessar Portal</span>
       </a>
       <button class="menu-toggle" id="menu-toggle" aria-label="Menu de Navegação">
@@ -1994,7 +2178,8 @@
       <li><a href="#tour" onclick="toggleMobileNav()">Recursos</a></li>
       <li><a href="#vendedora" onclick="toggleMobileNav()">A Vendedora</a></li>
       <li><a href="#simulador" onclick="toggleMobileNav()">Simulador</a></li>
-      <li><a href="index.html" class="btn btn-gold" style="width: 100%; margin-top: 1.5rem;"><i class="fa-solid fa-lock"></i> Acessar Portal</a></li>
+      <li><a href="#planos" onclick="toggleMobileNav()">Planos</a></li>
+      <li><a href="login.html" class="btn btn-gold" style="width: 100%; margin-top: 1.5rem;"><i class="fa-solid fa-lock"></i> Acessar Portal</a></li>
     </ul>
   </div>
 
@@ -2007,7 +2192,7 @@
       <h1>Gestão Inteligente de Consignados para <span>Marcas de Joias</span></h1>
       <p>Desenvolvido para distribuidoras que querem modernizar sua rede. Dê adeus às planilhas e traga clareza jurídica e financeira para as suas vendedoras, reduzindo perdas e impulsionando vendas através de um app premium.</p>
       <div class="hero-actions">
-        <a href="index.html?cadastro=true" class="btn btn-gold">
+        <a href="login.html?cadastro=true" class="btn btn-gold">
           <i class="fa-solid fa-wand-magic-sparkles"></i> Cadastrar Minha Marca
         </a>
         <a href="#simulador" class="btn btn-outline">
@@ -2522,7 +2707,7 @@
   <section id="depoimentos">
     <div class="section-header reveal">
       <div class="badge-premium"><i class="fa-solid fa-chart-pie"></i> Eficiência Comprovada</div>
-      <h2>O Impacto do Conecta Joias <span>em Números</span></h2>
+      <h2>O Impacto do <span>Conecta Joias</span> em Números</h2>
       <p>Projete a redução de custos, otimização de tempo e segurança operacional que a automação digital do consignado traz para a sua marca.</p>
     </div>
 
@@ -2553,6 +2738,123 @@
         <div class="metric-number">100%</div>
         <div class="metric-title">Processo Digital</div>
         <p class="metric-text">Contratos assinados na tela e recibos de vendas compartilhados via WhatsApp, eliminando totalmente blocos de papel.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Diferencial de Personalização -->
+  <section id="personalizacao" style="padding: 5rem 0; background: linear-gradient(180deg, rgba(212, 175, 55, 0.02) 0%, transparent 100%); border-top: 1px solid rgba(212, 175, 55, 0.1);">
+    <div class="section-header reveal">
+      <div class="badge-premium"><i class="fa-solid fa-wand-magic-sparkles"></i> Identidade Única</div>
+      <h2>Diferencial de <span>Personalização Total</span></h2>
+      <p>Sua marca de joias com visual próprio, regras exclusivas e presença marcante perante suas revendedoras.</p>
+    </div>
+
+    <div class="features-grid reveal" style="max-width: 1100px; margin: 0 auto;">
+      <div class="feature-card">
+        <div class="feature-icon-wrapper"><i class="fa-solid fa-palette"></i></div>
+        <h3>Cores e Logo da Sua Empresa</h3>
+        <p>Personalize todo o portal da distribuidora e o app da revendedora com a paleta de cores e o logotipo exclusivo da sua marca de semijoias.</p>
+      </div>
+
+      <div class="feature-card delay-1">
+        <div class="feature-icon-wrapper"><i class="fa-solid fa-sliders"></i></div>
+        <h3>Regras de Comissão Flexíveis</h3>
+        <p>Defina comissões fixas, por metas ou em faixas progressivas. Configure regras de perda por valor de venda, custo ou com isenções personalizadas.</p>
+      </div>
+
+      <div class="feature-card delay-2">
+        <div class="feature-icon-wrapper"><i class="fa-solid fa-file-contract"></i></div>
+        <h3>Termos de Consignação Próprios</h3>
+        <p>Gere termos contratuais sob medida com a sua razão social e regras específicas. Suas revendedoras assinam digitalmente direto na tela do celular.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Planos e Preços -->
+  <section class="pricing-section" id="planos">
+    <div class="section-header reveal">
+      <div class="badge-premium"><i class="fa-solid fa-coins"></i> Nossos Planos</div>
+      <h2>Planos que Acompanham o <span>Seu Crescimento</span></h2>
+      <p>Escolha a opção ideal para a sua distribuidora. Comece a organizar sua rede de consignados hoje mesmo.</p>
+    </div>
+
+    <div class="pricing-grid reveal">
+      <!-- Plano Bronze -->
+      <div class="pricing-card">
+        <div class="pricing-header">
+          <h3>Bronze</h3>
+          <p class="pricing-desc">Para quem está começando e quer aposentar as planilhas manuais.</p>
+        </div>
+        <div class="pricing-price">
+          <span class="currency">R$</span>
+          <span class="value">69</span>
+          <span class="period">,90/mês</span>
+        </div>
+        <ul class="pricing-features">
+          <li><i class="fa-solid fa-circle-check"></i> Até 5 Revendedoras ativas</li>
+          <li><i class="fa-solid fa-circle-check"></i> Até 500 produtos cadastrados</li>
+          <li><i class="fa-solid fa-circle-check"></i> Gestão de maletas e estoque</li>
+          <li><i class="fa-solid fa-circle-check"></i> Acerto automático de comissão</li>
+          <li><i class="fa-solid fa-circle-check"></i> Links de pagamento (ASAAS)</li>
+          <li class="disabled"><i class="fa-solid fa-circle-xmark"></i> Personalização White-Label</li>
+          <li class="disabled"><i class="fa-solid fa-circle-xmark"></i> Assinatura Digital de Termos</li>
+          <li class="disabled"><i class="fa-solid fa-circle-xmark"></i> Vídeos e PDFs de Treinamento</li>
+          <li class="disabled"><i class="fa-solid fa-circle-xmark"></i> Automação de WhatsApp</li>
+        </ul>
+        <a href="login.html?cadastro=true&plano=bronze" class="btn btn-outline pricing-btn">Começar Agora</a>
+      </div>
+
+      <!-- Plano Gold -->
+      <div class="pricing-card popular">
+        <span class="badge-popular">Mais Escolhido</span>
+        <div class="pricing-header">
+          <h3>Gold</h3>
+          <p class="pricing-desc">A melhor escolha para impor sua marca própria com segurança jurídica.</p>
+        </div>
+        <div class="pricing-price">
+          <span class="currency">R$</span>
+          <span class="value">99</span>
+          <span class="period">,90/mês</span>
+        </div>
+        <ul class="pricing-features">
+          <li><i class="fa-solid fa-circle-check"></i> <strong>Até 20 Revendedoras</strong> ativas</li>
+          <li><i class="fa-solid fa-circle-check"></i> <strong>Até 3.000 produtos</strong> cadastrados</li>
+          <li><i class="fa-solid fa-circle-check"></i> Gestão de maletas e estoque</li>
+          <li><i class="fa-solid fa-circle-check"></i> Acerto automático de comissão</li>
+          <li><i class="fa-solid fa-circle-check"></i> Links de pagamento (ASAAS)</li>
+          <li><i class="fa-solid fa-circle-check"></i> <strong>White-Label Completo (Sua Marca)</strong></li>
+          <li><i class="fa-solid fa-circle-check"></i> <strong>Assinatura Digital de Termos</strong></li>
+          <li><i class="fa-solid fa-circle-check"></i> Área de Treinamento / Marketing</li>
+          <li class="disabled"><i class="fa-solid fa-circle-xmark"></i> Automação de WhatsApp</li>
+        </ul>
+        <a href="login.html?cadastro=true&plano=gold" class="btn btn-gold pricing-btn">Assinar Gold</a>
+      </div>
+
+      <!-- Plano Platinum -->
+      <div class="pricing-card">
+        <div class="pricing-header">
+          <h3>Platinum</h3>
+          <p class="pricing-desc">Para grandes distribuidoras que necessitam de escala e automação total.</p>
+        </div>
+        <div class="pricing-price">
+          <span class="currency">R$</span>
+          <span class="value">249</span>
+          <span class="period">,90/mês</span>
+        </div>
+        <ul class="pricing-features">
+          <li><i class="fa-solid fa-circle-check"></i> <strong>Revendedoras Ilimitadas</strong></li>
+          <li><i class="fa-solid fa-circle-check"></i> <strong>Produtos Ilimitados</strong></li>
+          <li><i class="fa-solid fa-circle-check"></i> Gestão de maletas e estoque</li>
+          <li><i class="fa-solid fa-circle-check"></i> Acerto automático de comissão</li>
+          <li><i class="fa-solid fa-circle-check"></i> Links de pagamento (ASAAS)</li>
+          <li><i class="fa-solid fa-circle-check"></i> White-Label Completo (Sua Marca)</li>
+          <li><i class="fa-solid fa-circle-check"></i> Assinatura Digital de Termos</li>
+          <li><i class="fa-solid fa-circle-check"></i> Área de Treinamento / Marketing</li>
+          <li><i class="fa-solid fa-circle-check"></i> <strong>Automações de WhatsApp completas</strong></li>
+          <li><i class="fa-solid fa-circle-check"></i> Múltiplos logins administrativos</li>
+        </ul>
+        <a href="login.html?cadastro=true&plano=platinum" class="btn btn-outline pricing-btn">Contratar Platinum</a>
       </div>
     </div>
   </section>
@@ -2613,7 +2915,7 @@
     <div class="cta-box reveal">
       <h2>Chegou a Hora de Modernizar</h2>
       <p>Cadastre sua marca de joias ou semijoias hoje mesmo e tenha controle absoluto sobre suas consultoras e faturamento.</p>
-      <a href="index.html?cadastro=true" class="btn btn-gold">
+      <a href="login.html?cadastro=true" class="btn btn-gold">
         <i class="fa-solid fa-right-to-bracket"></i> Começar Agora Grátis
       </a>
     </div>
@@ -2631,6 +2933,7 @@
         <a href="#tour">Recursos</a>
         <a href="#vendedora">A Vendedora</a>
         <a href="#simulador">Simulador</a>
+        <a href="#planos">Planos</a>
         <a href="termos_uso.html" target="_blank">Termos de Uso</a>
         <a href="politica_privacidade.html" target="_blank">Política de Privacidade</a>
       </div>

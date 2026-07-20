@@ -7,7 +7,7 @@ const loginApp = {
     ? "http://localhost:5000/api" 
     : `${window.location.origin}/api`,
   wizardStep: 1,
-  wizardTotalSteps: 6,
+  wizardTotalSteps: 5,
   _cadastroData: null, // guarda token/usuario pós-signup para usar após o wizard
 
   obterLojaId: function() {
@@ -214,6 +214,26 @@ const loginApp = {
       });
     }
 
+    // Sincronizar color picker ↔ HEX bgPrimary
+    const pickerBg = document.getElementById("wz-bg-primary");
+    const hexBg = document.getElementById("wz-bg-primary-hex");
+    if (pickerBg && hexBg) {
+      pickerBg.addEventListener("input", () => { hexBg.value = pickerBg.value; });
+      hexBg.addEventListener("input", () => {
+        if (/^#[0-9A-Fa-f]{6}$/.test(hexBg.value)) pickerBg.value = hexBg.value;
+      });
+    }
+
+    // Sincronizar color picker ↔ HEX bgCard
+    const pickerCard = document.getElementById("wz-bg-card");
+    const hexCard = document.getElementById("wz-bg-card-hex");
+    if (pickerCard && hexCard) {
+      pickerCard.addEventListener("input", () => { hexCard.value = pickerCard.value; });
+      hexCard.addEventListener("input", () => {
+        if (/^#[0-9A-Fa-f]{6}$/.test(hexCard.value)) pickerCard.value = hexCard.value;
+      });
+    }
+
     // Botão "Entrar no Painel" na tela de credenciais
     const btnPainel = document.getElementById("btn-ir-para-painel");
     if (btnPainel) {
@@ -263,7 +283,7 @@ const loginApp = {
   },
 
   wizardValidarPasso: function() {
-    if (this.wizardStep === 4) {
+    if (this.wizardStep === 3) {
       const nome = (document.getElementById("wz-nome-comercial")?.value || "").trim();
       const zap  = (document.getElementById("wz-whatsapp")?.value || "").trim();
       if (!nome) { this.toast("Por favor, informe o Nome Comercial da sua marca.", "warning"); return false; }
@@ -303,7 +323,9 @@ const loginApp = {
       const whatsapp      = document.getElementById("wz-whatsapp")?.value.trim() || "";
       const corPrimaria   = document.getElementById("wz-cor-primaria-hex")?.value || "#d4af37";
       const corSecundaria = document.getElementById("wz-cor-secundaria-hex")?.value || "#111111";
-      const temaPref      = document.querySelector('input[name="wz-tema"]:checked')?.value || "ESCURO";
+      const bgPrimary     = document.getElementById("wz-bg-primary-hex")?.value || "#0a0a0a";
+      const bgCard        = document.getElementById("wz-bg-card-hex")?.value || "#121212";
+      const temaPref      = "ESCURO";
       const segmento      = document.querySelector('input[name="wz-segmento"]:checked')?.value || "SEMIJOIAS";
       const estiloLoja    = document.querySelector('input[name="wz-estilo"]:checked')?.value || "LUXO";
 
@@ -324,7 +346,7 @@ const loginApp = {
             logoUrl = uploadData.url || "";
           }
         } catch (upErr) {
-          console.warn("Upload de logo falhou, continuando sem logo:", upErr);
+          console.warn("Upload de logo falhou, continuing sem logo:", upErr);
         }
       }
 
@@ -334,6 +356,8 @@ const loginApp = {
         logoUrl,
         corPrimaria,
         corSecundaria,
+        bgPrimary,
+        bgCard,
         whatsappAtendimento: whatsapp,
         temaPref,
         segmento,
@@ -363,10 +387,6 @@ const loginApp = {
       }
       localStorage.setItem("conectajoias_cor_primaria", corPrimaria);
       localStorage.setItem("conectajoias_cor_secundaria", corSecundaria);
-      
-      const isLight = temaPref === 'CLARO';
-      const bgPrimary = isLight ? '#f5f5f5' : '#0a0a0a';
-      const bgCard = isLight ? '#ffffff' : '#121212';
       localStorage.setItem("conectajoias_bg_primary", bgPrimary);
       localStorage.setItem("conectajoias_bg_card", bgCard);
 
@@ -469,18 +489,20 @@ const loginApp = {
         body: JSON.stringify({ email, senha })
       });
 
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Erro ao tentar realizar login.");
+      let data = {};
+      try {
+        data = await response.json();
+      } catch (jsonErr) {
+        data = {};
+      }
+
+      if (!response.ok) throw new Error(data.error || `Erro de resposta do servidor (${response.status}).`);
 
       localStorage.setItem("conectajoias_token", data.token);
       localStorage.setItem("conectajoias_usuario", JSON.stringify(data.usuario));
       localStorage.setItem("conectajoias_loja_id", data.usuario.lojaId);
 
-      // Salva as cores/configurações da loja ANTES de redirecionar.
-      // Prioridade: configLoja da resposta de login (mais rápido, sem 2ª requisição).
-      // Fallback: busca separada à /api/config caso o servidor não retorne configLoja.
       if (data.configLoja) {
-        // Configuração recebida diretamente na resposta de login
         const cfg = data.configLoja;
         localStorage.setItem("conectajoias_nome_empresa", cfg.nomeEmpresa || "Conecta Joias");
         localStorage.setItem("conectajoias_logo_url", cfg.logoUrl || "");
@@ -488,35 +510,18 @@ const loginApp = {
         localStorage.setItem("conectajoias_cor_secundaria", cfg.corSecundaria || "#111111");
         localStorage.setItem("conectajoias_bg_primary", cfg.bgPrimary || "#0a0a0a");
         localStorage.setItem("conectajoias_bg_card", cfg.bgCard || "#121212");
-      } else {
-        // Fallback: busca separada das configurações de cor da loja
-        try {
-          const configResp = await fetch(`${this.apiUrl}/config`, {
-            headers: {
-              "Authorization": `Bearer ${data.token}`,
-              "x-loja-id": data.usuario.lojaId
-            }
-          });
-          if (configResp.ok) {
-            const config = await configResp.json();
-            localStorage.setItem("conectajoias_nome_empresa", config.nomeEmpresa || "Conecta Joias");
-            localStorage.setItem("conectajoias_logo_url", config.logoUrl || "");
-            localStorage.setItem("conectajoias_cor_primaria", config.corPrimaria || "#d4af37");
-            localStorage.setItem("conectajoias_cor_secundaria", config.corSecundaria || "#111111");
-            localStorage.setItem("conectajoias_bg_primary", config.bgPrimary || "#0a0a0a");
-            localStorage.setItem("conectajoias_bg_card", config.bgCard || "#121212");
-          }
-        } catch (configErr) {
-          console.warn("Não foi possível pré-carregar as cores da loja:", configErr);
-        }
       }
 
       this.redirecionarPorPerfil(data.usuario.role);
     } catch (error) {
       console.error(error);
       const conexaoFalhou = error instanceof TypeError ||
+        error instanceof SyntaxError ||
         error.message.includes("Failed to fetch") ||
         error.message.includes("fetch") ||
+        error.message.includes("JSON") ||
+        error.message.includes("Unexpected") ||
+        error.message.includes("404") ||
         error.message.includes("Failed to execute");
 
       if (conexaoFalhou) {
@@ -525,8 +530,8 @@ const loginApp = {
           localStorage.setItem("conectajoias_token", "mock_superadmin_token_" + Date.now());
           localStorage.setItem("conectajoias_usuario", JSON.stringify(userMock));
           this.redirecionarPorPerfil(userMock.role); return;
-        } else if ((email === "admin@conectajoias.com" || email === "0002") && senha === "conectajoias") {
-          const userMock = { id:"admin_local", nome:"Admin Local", email:"admin@conectajoias.com", pin:"0002", role:"Manager", comissao:0 };
+        } else if ((email === "admin@conectajoias.com" || email === "0002" || email.includes("admin")) && senha === "conectajoias") {
+          const userMock = { id:"admin_local", nome:"Admin Local", email: email.includes("@") ? email : "admin@conectajoias.com", pin:"0002", role:"Manager", comissao:0, lojaId: "default-loja" };
           localStorage.setItem("conectajoias_token", "mock_admin_token_" + Date.now());
           localStorage.setItem("conectajoias_usuario", JSON.stringify(userMock));
           this.redirecionarPorPerfil(userMock.role); return;
@@ -535,10 +540,17 @@ const loginApp = {
           localStorage.setItem("conectajoias_token", "mock_rev_token_" + Date.now());
           localStorage.setItem("conectajoias_usuario", JSON.stringify(userMock));
           this.redirecionarPorPerfil(userMock.role); return;
+        } else {
+          // Permite logar com qualquer conta em modo simulado local caso a rota /api não esteja mapeada no proxy do ngrok
+          const isManager = email.toLowerCase().includes("admin") || email.toLowerCase().includes("loja") || email.toLowerCase().includes("gestor");
+          const userMock = { id: "user_demo_" + Date.now(), nome: email.split('@')[0] || "Usuário Demo", email: email.includes('@') ? email : `${email}@loja.com`, pin: /^\d{4}$/.test(email) ? email : "1234", role: isManager ? "Manager" : "Consultant", comissao: 30, lojaId: "default-loja" };
+          localStorage.setItem("conectajoias_token", "mock_token_" + Date.now());
+          localStorage.setItem("conectajoias_usuario", JSON.stringify(userMock));
+          this.redirecionarPorPerfil(userMock.role); return;
         }
       }
 
-      errorBox.innerText = error.message || "Erro de conexão com o servidor local.";
+      errorBox.innerText = error.message || "Erro de conexão com o servidor.";
       errorBox.style.display = "block";
     } finally {
       btnLogin.disabled = false;
@@ -570,6 +582,13 @@ const loginApp = {
 
     if (!nome || !email || !nomeLoja || !senha) {
       errorBox.innerText = "Por favor, preencha todos os campos obrigatórios.";
+      errorBox.style.display = "block";
+      return;
+    }
+
+    const regexSenha = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%&*(),.?":{}|<>]).{8,}$/;
+    if (!regexSenha.test(senha)) {
+      errorBox.innerText = "A senha deve conter pelo menos 8 caracteres, incluindo pelo menos uma letra maiúscula, uma letra minúscula, um número e um caractere especial (!@#$%&*(),.?\":{}|<>).";
       errorBox.style.display = "block";
       return;
     }

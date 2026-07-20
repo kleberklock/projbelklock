@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Recibo de Fechamento de Acerto - Conecta Joias</title>
+  
+  <!-- Fontes Premium e FontAwesome -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700;1,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <style>
+    :root {
+      --gold-primary: #d4af37;
+      --gold-light: #f3e5ab;
+      --bg-primary: #0a0a0a;
+      --bg-card: #121212;
+      --text-primary: #f5f5f5;
+      --text-secondary: #a0a0a0;
+      --text-muted: #666666;
+      --border-color: rgba(212, 175, 55, 0.15);
+      --radius: 12px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Outfit', sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.6;
+      padding: 2rem 1rem;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+
+    .recibo-container {
+      width: 100%;
+      max-width: 780px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius);
+      padding: 2.5rem;
+      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.6), 0 0 20px rgba(212, 175, 55, 0.03);
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Linha decorativa luxuosa no topo */
+    .recibo-container::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 4px;
+      background: linear-gradient(90deg, #b38f1d, var(--gold-primary), #f3e5ab, #b38f1d);
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand img {
+      max-height: 50px;
+      border-radius: 4px;
+    }
+
+    .brand h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.6rem;
+      color: var(--gold-light);
+      font-weight: 700;
+    }
+
+    .recibo-badge {
+      background: rgba(212, 175, 55, 0.08);
+      border: 1px solid var(--border-color);
+      color: var(--gold-primary);
+      padding: 6px 16px;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .details-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .details-box h3 {
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      color: var(--gold-primary);
+      letter-spacing: 0.8px;
+      margin-bottom: 0.6rem;
+      border-bottom: 1px dashed rgba(255, 255, 255, 0.05);
+      padding-bottom: 4px;
+    }
+
+    .details-box p {
+      font-size: 0.95rem;
+      color: var(--text-secondary);
+      margin-bottom: 4px;
+    }
+
+    .details-box strong {
+      color: var(--text-primary);
+    }
+
+    .table-section {
+      margin-bottom: 2.5rem;
+    }
+
+    .table-title {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--gold-light);
+      margin-bottom: 0.8rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+      margin-bottom: 1rem;
+    }
+
+    th {
+      background: rgba(212, 175, 55, 0.04);
+      color: var(--gold-primary);
+      text-align: left;
+      padding: 10px 12px;
+      font-weight: 600;
+      border-bottom: 2px solid var(--border-color);
+    }
+
+    td {
+      padding: 12px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+      color: var(--text-secondary);
+    }
+
+    tr:hover td {
+      color: var(--text-primary);
+      background: rgba(255, 255, 255, 0.01);
+    }
+
+    .total-row {
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+      background: rgba(255, 255, 255, 0.01);
+      border: 1px solid rgba(255, 255, 255, 0.03);
+      padding: 1.5rem;
+      border-radius: var(--radius);
+      margin-bottom: 2rem;
+    }
+
+    .total-item {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.95rem;
+      color: var(--text-secondary);
+    }
+
+    .total-item.highlight {
+      border-top: 1px solid var(--border-color);
+      padding-top: 0.8rem;
+      margin-top: 0.4rem;
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: var(--gold-light);
+    }
+
+    .total-item.subhighlight {
+      color: #81c784;
+      font-weight: 600;
+    }
+
+    .total-item.danger {
+      color: #ef9a9a;
+    }
+
+    .footer-actions {
+      display: flex;
+      justify-content: center;
+      gap: 1rem;
+      margin-top: 2rem;
+      border-top: 1px solid var(--border-color);
+      padding-top: 1.5rem;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 24px;
+      border-radius: 20px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+      text-decoration: none;
+      font-family: inherit;
+    }
+
+    .btn-gold {
+      background: linear-gradient(135deg, #b38f1d 0%, var(--gold-primary) 100%);
+      color: #000;
+      border: none;
+      box-shadow: 0 4px 15px rgba(212, 175, 55, 0.25);
+    }
+
+    .btn-gold:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(212, 175, 55, 0.4);
+    }
+
+    .btn-outline {
+      background: transparent;
+      border: 1px solid var(--border-color);
+      color: var(--gold-primary);
+    }
+
+    .btn-outline:hover {
+      background: rgba(212, 175, 55, 0.05);
+      border-color: var(--gold-primary);
+    }
+
+    .loader {
+      text-align: center;
+      padding: 3rem;
+      font-size: 1.1rem;
+      color: var(--text-secondary);
+    }
+
+    .loader i {
+      color: var(--gold-primary);
+      margin-bottom: 1rem;
+    }
+
+    .error-container {
+      text-align: center;
+      padding: 3rem;
+      color: #ef9a9a;
+    }
+
+    .error-container i {
+      font-size: 3rem;
+      margin-bottom: 1rem;
+    }
+
+    /* CSS de Impressão A4 */
+    @media print {
+      body {
+        background: #fff;
+        color: #000;
+        padding: 0;
+      }
+      .recibo-container {
+        border: none;
+        box-shadow: none;
+        padding: 0;
+        width: 100%;
+        background: #fff;
+      }
+      .brand h1, .brand span, .table-title, .total-item.highlight {
+        color: #000 !important;
+      }
+      th {
+        background: #f0f0f0 !important;
+        color: #000 !important;
+        border-bottom: 2px solid #000 !important;
+      }
+      td {
+        color: #333 !important;
+        border-bottom: 1px solid #ccc !important;
+      }
+      .recibo-badge {
+        border: 1px solid #000 !important;
+        color: #000 !important;
+        background: none !important;
+      }
+      .footer-actions {
+        display: none !important;
+      }
+      .recibo-container::before {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="recibo-container" id="recibo-content">
+    <div class="loader" id="loading-state">
+      <i class="fa-solid fa-spinner fa-spin fa-2xl"></i>
+      <p>Buscando dados do recibo de acerto...</p>
+    </div>
+  </div>
+
+  <script>
+    const apiUrl = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1" 
+      ? "http://localhost:5000/api" 
+      : `${window.location.origin}/api`;
+
+    async function carregarRecibo() {
+      const container = document.getElementById("recibo-content");
+      const urlParams = new URLSearchParams(window.location.search);
+      const acertoId = urlParams.get("id");
+
+      if (!acertoId) {
+        container.innerHTML = `
+          <div class="error-container">
+            <i class="fa-solid fa-circle-exclamation"></i>
+            <h2>ID do acerto não informado!</h2>
+            <p style="color: var(--text-secondary); margin-top: 8px;">Por favor, verifique o link enviado pelo WhatsApp.</p>
+          </div>
+        `;
+        return;
+      }
+
+      try {
+        const resp = await fetch(`${apiUrl}/public/acertos/${acertoId}`);
+        if (!resp.ok) {
+          throw new Error("Recibo não encontrado ou erro no servidor.");
+        }
+        
+        const acerto = await resp.json();
+        
+        // Aplica o white label da loja se existirem as cores no banco
+        if (acerto.loja) {
+          const l = acerto.loja;
+          if (l.corPrimaria) document.documentElement.style.setProperty('--gold-primary', l.corPrimaria);
+          if (l.corSecundaria) document.documentElement.style.setProperty('--gold-light', l.corSecundaria);
+          if (l.bgPrimary) document.documentElement.style.setProperty('--bg-primary', l.bgPrimary);
+          if (l.bgCard) document.documentElement.style.setProperty('--bg-card', l.bgCard);
+        }
+
+        // Renderiza o recibo
+        const dataFmt = new Date(acerto.data).toLocaleDateString('pt-BR', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+
+        // Parse dos itens
+        let itensHTML = "";
+        let temItens = false;
+        
+        if (acerto.detalhesItens) {
+          try {
+            const itens = typeof acerto.detalhesItens === 'string' ? JSON.parse(acerto.detalhesItens) : acerto.detalhesItens;
+            if (Array.isArray(itens) && itens.length > 0) {
+              temItens = true;
+              itensHTML = itens.map(it => `
+                <tr>
+                  <td style="font-weight: 500;">${it.codigo}</td>
+                  <td>${it.nome}</td>
+                  <td>R$ ${Number(it.precoVenda).toFixed(2).replace(".", ",")}</td>
+                  <td>${it.quantidadeConsignada} pçs</td>
+                  <td style="color: #81c784; font-weight: 600;">${it.quantidadeVendida} pçs</td>
+                  <td>${it.quantidadeDevolvida} pçs</td>
+                  <td style="color: #ef9a9a;">${it.quantidadePerdida || 0} pçs</td>
+                </tr>
+              `).join("");
+            }
+          } catch(e) {
+            console.error("Erro ao fazer parse dos itens detalhados:", e);
+          }
+        }
+
+        const saldoFinal = acerto.saldoFinalAcerto;
+        let saldoFinalTexto = "";
+        let saldoFinalClasse = "";
+
+        if (saldoFinal >= 0) {
+          saldoFinalTexto = `Saldo a Pagar para Revendedora: R$ ${saldoFinal.toFixed(2).replace(".", ",")}`;
+          saldoFinalClasse = "subhighlight";
+        } else {
+          saldoFinalTexto = `Saldo a Receber da Revendedora: R$ ${Math.abs(saldoFinal).toFixed(2).replace(".", ",")}`;
+          saldoFinalClasse = "danger";
+        }
+
+        container.innerHTML = `
+          <div class="header">
+            <div class="brand">
+              ${acerto.loja && acerto.loja.logoUrl ? `<img src="${acerto.loja.logoUrl}" alt="Logo">` : '<i class="fa-solid fa-gem fa-2xl" style="color: var(--gold-primary);"></i>'}
+              <div>
+                <h1>${acerto.loja ? acerto.loja.nome : "Conecta Joias"}</h1>
+                <span style="font-size: 0.8rem; color: var(--text-secondary);">Sistema de Gestão de Semijoias</span>
+              </div>
+            </div>
+            <div class="recibo-badge">Recibo Oficial</div>
+          </div>
+
+          <div class="details-grid">
+            <div class="details-box">
+              <h3>Consultora / Revendedora</h3>
+              <p>Nome: <strong>${acerto.usuario.nome}</strong></p>
+              <p>WhatsApp: <strong>${acerto.usuario.whatsapp || "Não informado"}</strong></p>
+            </div>
+            <div class="details-box">
+              <h3>Detalhes do Fechamento</h3>
+              <p>Fechamento em: <strong>${dataFmt}</strong></p>
+              <p>Forma de Liquidação: <strong>${acerto.formaPagamento || "Pix"}</strong></p>
+            </div>
+          </div>
+
+          ${temItens ? `
+            <div class="table-section">
+              <h4 class="table-title"><i class="fa-solid fa-list-check"></i> Detalhamento das Peças do Ciclo</h4>
+              <div style="overflow-x: auto;">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Código</th>
+                      <th>Peça</th>
+                      <th>Preço unit.</th>
+                      <th>Entregues</th>
+                      <th>Vendidas</th>
+                      <th>Devolvidas</th>
+                      <th>Perdas</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${itensHTML}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ` : ''}
+
+          <div class="table-section">
+            <h4 class="table-title"><i class="fa-solid fa-chart-line"></i> Resumo Financeiro Consolidado</h4>
+            <div class="total-row">
+              <div class="total-item">
+                <span>Total de Peças no Lote:</span>
+                <strong>${acerto.totalConsignada} peças</strong>
+              </div>
+              <div class="total-item">
+                <span>Peças Devolvidas ao Estoque Central:</span>
+                <strong>${acerto.totalDevolvida} peças</strong>
+              </div>
+              <div class="total-item">
+                <span>Peças Perdidas / Ocorrências:</span>
+                <strong style="color: #ef9a9a;">${acerto.totalPerdida} peças</strong>
+              </div>
+              <div class="total-item" style="color: #81c784;">
+                <span>Faturamento Total Bruto Vendido:</span>
+                <strong>R$ ${acerto.faturamentoBruto.toFixed(2).replace(".", ",")}</strong>
+              </div>
+              <div class="total-item">
+                <span>Comissão Devida à Consultora:</span>
+                <strong>R$ ${acerto.comissaoPaga.toFixed(2).replace(".", ",")}</strong>
+              </div>
+              <div class="total-item" style="color: #ef9a9a;">
+                <span>Desconto por Peças Perdidas/Danos:</span>
+                <span>- R$ ${acerto.valorDescontoPerda.toFixed(2).replace(".", ",")}</span>
+              </div>
+              <div class="total-item">
+                <span>Faturamento Líquido da Loja:</span>
+                <strong>R$ ${acerto.liquidoConectaJoias.toFixed(2).replace(".", ",")}</strong>
+              </div>
+              <div class="total-item">
+                <span>Faturamento recebido em Mãos (Dinheiro):</span>
+                <strong style="color: #ffb74d;">R$ ${acerto.totalRetidoRevendedora.toFixed(2).replace(".", ",")}</strong>
+              </div>
+              <div class="total-item">
+                <span>Faturamento recebido via Pix/Cartão/Link:</span>
+                <strong style="color: #81c784;">R$ ${acerto.totalRecebidoAdmin.toFixed(2).replace(".", ",")}</strong>
+              </div>
+              <div class="total-item highlight ${saldoFinalClasse}">
+                <span>Saldo Final do Acerto:</span>
+                <span>${saldoFinalTexto}</span>
+              </div>
+            </div>
+          </div>
+
+          <div style="text-align: center; color: var(--text-muted); font-size: 0.75rem; margin-top: 1rem; font-style: italic;">
+            Este recibo é gerado automaticamente pelo sistema de gestão e serve como comprovante de prestação de contas consignada.
+          </div>
+
+          <div class="footer-actions">
+            <button class="btn btn-outline" onclick="window.close()"><i class="fa-solid fa-circle-xmark"></i> Fechar</button>
+            <button class="btn btn-gold" onclick="window.print()"><i class="fa-solid fa-print"></i> Imprimir / Salvar PDF</button>
+          </div>
+        `;
+
+      } catch (err) {
+        container.innerHTML = `
+          <div class="error-container">
+            <i class="fa-solid fa-circle-exclamation"></i>
+            <h2>Erro ao carregar o recibo</h2>
+            <p style="color: var(--text-secondary); margin-top: 8px;">${err.message}</p>
+          </div>
+        `;
+      }
+    }
+
+    window.onload = carregarRecibo;
+  </script>
+</body>
+</html>

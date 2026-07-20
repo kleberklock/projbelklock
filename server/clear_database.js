@@ -63,31 +63,8 @@ async function main() {
 
     console.log("Todos os dados do banco foram limpos com sucesso!");
 
-    // 2. Criar a estrutura básica padrão
-    console.log("\nCriando Loja Padrão...");
-    await prisma.loja.create({
-      data: {
-        id: "default-loja",
-        nome: "Loja Padrão",
-        plano: "GOLD"
-      }
-    });
-
-    console.log("Criando Configuração da Loja Padrão...");
-    await prisma.configuracao.create({
-      data: {
-        lojaId: "default-loja",
-        nomeEmpresa: "Conecta Joias",
-        corPrimaria: "#d4af37",
-        corSecundaria: "#111111",
-        bgPrimary: "#0a0a0a",
-        bgCard: "#121212",
-        onboardingCompleto: true
-      }
-    });
-
-    // 3. Criar a conta de SuperAdmin e Manager de forma segura
-    console.log("Criando conta do SuperAdmin e da Gestora padrão...");
+    // 2. Criar apenas a conta de SuperAdmin de forma segura
+    console.log("\nCriando conta do SuperAdmin padrão...");
     const superAdminEmail = process.env.SUPER_ADMIN_EMAIL || "superadmin@plataforma.com";
     const superAdminSenha = process.env.SUPER_ADMIN_SENHA || "admin0001";
     const superAdminPin = process.env.SUPER_ADMIN_PIN || "0001";
@@ -104,31 +81,10 @@ async function main() {
       }
     });
 
-    const managerEmail = "admin@conectajoias.com";
-    const managerPin = "0002";
-    const managerSenha = "conectajoias";
-    const managerSenhaHash = await bcrypt.hash(managerSenha, 10);
-    const manager = await prisma.usuario.create({
-      data: {
-        nome: "Conecta Joias Admin",
-        email: managerEmail,
-        pin: managerPin,
-        senhaHash: managerSenhaHash,
-        role: "Manager",
-        lojaId: "default-loja",
-        whatsapp: "(11) 99999-9999",
-        comissao: 0.0
-      }
-    });
-
     console.log("=========================================");
     console.log("SuperAdmin criado com sucesso!");
     console.log(`E-mail: ${superAdmin.email}`);
     console.log(`PIN (Login): ${superAdminPin}`);
-    console.log("-----------------------------------------");
-    console.log("Gestora (Manager) criada com sucesso!");
-    console.log(`E-mail: ${manager.email}`);
-    console.log(`PIN (Login): ${managerPin}`);
     console.log("=========================================");
 
   } catch (err) {

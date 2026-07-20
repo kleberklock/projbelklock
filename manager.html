@@ -30,12 +30,21 @@
   <!-- ==========================================
        TELA DE LOGIN PREMIUM (REMOVIDA DESTA PÁGINA)
        ========================================== -->
+  <!-- Barra Superior Mobile com Hambúrguer -->
+  <div class="mobile-top-bar">
+    <img src="assets/logo.svg" alt="Conecta Joias" class="mobile-brand">
+    <button class="btn-mobile-toggle" id="btn-toggle-sidebar-mobile" onclick="app.toggleSidebarMobile()" aria-label="Abrir Menu">
+      <i class="fa-solid fa-bars"></i>
+    </button>
+  </div>
+  <div class="sidebar-overlay" id="sidebar-overlay" onclick="app.toggleSidebarMobile()"></div>
+
   <div class="app-container" id="app-main-container" style="display: flex;">
     
     <!-- ==========================================
          SIDEBAR LATERAL (NAVEGAÇÃO SPA)
          ========================================== -->
-    <aside class="sidebar">
+    <aside class="sidebar mobile-drawer">
       <div class="brand" style="display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 2.5rem; padding: 0 0.5rem;">
         <!-- Inclusão do logotipo SVG premium criado previamente -->
         <img src="assets/logo.svg" alt="Conecta Joias" id="logo-brand" style="max-width: 140px; height: auto;">
@@ -496,7 +505,10 @@
       <section id="minha-maleta" class="app-section active">
         <div class="section-header">
           <div class="section-title">
-            <h1 id="maleta-boas-vindas">Olá, Revendedora!</h1>
+            <h1 id="maleta-boas-vindas" style="display: inline-flex; align-items: center; gap: 0.5rem;">
+              Olá, Revendedora!
+              <button id="btn-edit-rev-widgets" class="btn-edit-widgets" title="Personalizar Painel" onclick="app.toggleModoEdicaoWidgets()"><i class="fa-solid fa-pen"></i></button>
+            </h1>
             <p>Aqui está a sua maleta de semijoias e o resumo das suas vendas.</p>
           </div>
           <div class="header-actions">
@@ -508,32 +520,51 @@
 
         <!-- Cards de Resumo -->
         <div class="metrics-grid" id="maleta-metrics-grid">
-          <div class="metric-card">
+          <div class="metric-card" id="widget-pecas" data-widget="pecas" style="position: relative;">
+            <div class="widget-controls" style="position: absolute; top: 8px; right: 8px; display: flex; gap: 4px; z-index: 10;">
+              <button onclick="event.stopPropagation(); app.moverWidget('left', 'pecas')" style="background: rgba(0,0,0,0.4); border: 1px solid rgba(212,175,55,0.2); color: var(--gold-primary); cursor: pointer; border-radius: 4px; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; font-size: 0.75rem;" title="Mover Esquerda"><i class="fa-solid fa-chevron-left"></i></button>
+              <button onclick="event.stopPropagation(); app.moverWidget('right', 'pecas')" style="background: rgba(0,0,0,0.4); border: 1px solid rgba(212,175,55,0.2); color: var(--gold-primary); cursor: pointer; border-radius: 4px; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; font-size: 0.75rem;" title="Mover Direita"><i class="fa-solid fa-chevron-right"></i></button>
+            </div>
             <div class="metric-icon"><i class="fa-solid fa-briefcase"></i></div>
             <div class="metric-info">
               <h3>Peças na Maleta</h3>
               <div class="metric-value" id="maleta-total-pecas">0 pçs</div>
             </div>
           </div>
-          <div class="metric-card">
+          
+          <div class="metric-card" id="widget-valor" data-widget="valor" style="position: relative;">
+            <div class="widget-controls" style="position: absolute; top: 8px; right: 8px; display: flex; gap: 4px; z-index: 10;">
+              <button onclick="event.stopPropagation(); app.moverWidget('left', 'valor')" style="background: rgba(0,0,0,0.4); border: 1px solid rgba(212,175,55,0.2); color: var(--gold-primary); cursor: pointer; border-radius: 4px; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; font-size: 0.75rem;" title="Mover Esquerda"><i class="fa-solid fa-chevron-left"></i></button>
+              <button onclick="event.stopPropagation(); app.moverWidget('right', 'valor')" style="background: rgba(0,0,0,0.4); border: 1px solid rgba(212,175,55,0.2); color: var(--gold-primary); cursor: pointer; border-radius: 4px; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; font-size: 0.75rem;" title="Mover Direita"><i class="fa-solid fa-chevron-right"></i></button>
+            </div>
             <div class="metric-icon"><i class="fa-solid fa-money-bill-wave"></i></div>
             <div class="metric-info">
               <h3>Valor da Maleta</h3>
               <div class="metric-value" id="maleta-valor-total">R$ 0,00</div>
             </div>
           </div>
-          <div class="metric-card">
+          
+          <div class="metric-card" id="widget-comissao" data-widget="comissao" style="position: relative;">
+            <div class="widget-controls" style="position: absolute; top: 8px; right: 8px; display: flex; gap: 4px; z-index: 10;">
+              <button onclick="event.stopPropagation(); app.moverWidget('left', 'comissao')" style="background: rgba(0,0,0,0.4); border: 1px solid rgba(212,175,55,0.2); color: var(--gold-primary); cursor: pointer; border-radius: 4px; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; font-size: 0.75rem;" title="Mover Esquerda"><i class="fa-solid fa-chevron-left"></i></button>
+              <button onclick="event.stopPropagation(); app.moverWidget('right', 'comissao')" style="background: rgba(0,0,0,0.4); border: 1px solid rgba(212,175,55,0.2); color: var(--gold-primary); cursor: pointer; border-radius: 4px; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; font-size: 0.75rem;" title="Mover Direita"><i class="fa-solid fa-chevron-right"></i></button>
+            </div>
             <div class="metric-icon"><i class="fa-solid fa-percent"></i></div>
             <div class="metric-info">
               <h3>Comissão Projetada</h3>
               <div class="metric-value comissao-destaque" id="maleta-comissao-projetada">R$ 0,00</div>
             </div>
           </div>
-          <div class="metric-card">
+          
+          <div class="metric-card" id="widget-faturamento" data-widget="faturamento" style="position: relative;">
+            <div class="widget-controls" style="position: absolute; top: 8px; right: 8px; display: flex; gap: 4px; z-index: 10;">
+              <button onclick="event.stopPropagation(); app.moverWidget('left', 'faturamento')" style="background: rgba(0,0,0,0.4); border: 1px solid rgba(212,175,55,0.2); color: var(--gold-primary); cursor: pointer; border-radius: 4px; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; font-size: 0.75rem;" title="Mover Esquerda"><i class="fa-solid fa-chevron-left"></i></button>
+              <button onclick="event.stopPropagation(); app.moverWidget('right', 'faturamento')" style="background: rgba(0,0,0,0.4); border: 1px solid rgba(212,175,55,0.2); color: var(--gold-primary); cursor: pointer; border-radius: 4px; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; font-size: 0.75rem;" title="Mover Direita"><i class="fa-solid fa-chevron-right"></i></button>
+            </div>
             <div class="metric-icon"><i class="fa-solid fa-check-circle"></i></div>
             <div class="metric-info">
-              <h3>Vendas Registradas</h3>
-              <div class="metric-value vendas-destaque" id="maleta-vendas-hoje">0</div>
+              <h3>Faturamento Total</h3>
+              <div class="metric-value vendas-destaque" id="maleta-vendas-hoje">R$ 0,00</div>
             </div>
           </div>
         </div>
@@ -722,11 +753,17 @@
             </div>
 
             <!-- Resumos de Finanças e Peças Consignadas -->
-            <div class="metrics-grid" style="grid-template-columns: repeat(3, 1fr); margin-bottom: 2rem;">
+            <div class="metrics-grid" style="grid-template-columns: repeat(4, 1fr); margin-bottom: 2rem;">
               <div class="metric-card" style="padding: 1.2rem; gap: 0.8rem; border-color: rgba(255, 255, 255, 0.05);">
                 <div class="metric-info">
-                  <h3 style="font-size: 0.75rem;">Consignadas</h3>
+                  <h3 style="font-size: 0.75rem;">Consignadas (Inicial)</h3>
                   <div class="metric-value" style="font-size: 1.4rem;" id="detalhe-qtd-consignada">0 pçs</div>
+                </div>
+              </div>
+              <div class="metric-card" style="padding: 1.2rem; gap: 0.8rem; border-color: rgba(212, 175, 55, 0.25); background: rgba(212, 175, 55, 0.03);">
+                <div class="metric-info">
+                  <h3 style="font-size: 0.75rem; color: var(--gold-primary);"><i class="fa-solid fa-briefcase"></i> Peças Atuais</h3>
+                  <div class="metric-value" style="font-size: 1.4rem; color: var(--gold-light);" id="detalhe-qtd-atual">0 pçs</div>
                 </div>
               </div>
               <div class="metric-card" style="padding: 1.2rem; gap: 0.8rem; border-color: rgba(255, 255, 255, 0.05);">
@@ -739,7 +776,8 @@
                 <div class="metric-info">
                   <h3 style="font-size: 0.75rem;">Sua Margem Líquida</h3>
                   <div class="metric-value" style="font-size: 1.4rem; color: #81c784;" id="detalhe-liquido-projetado">R$ 0,00</div>
-                    </div>
+                </div>
+              </div>
             </div>
 
             <!-- Card: Status do Ciclo Atual da Revendedora -->
@@ -1997,6 +2035,14 @@
               </div>
             </div>
 
+            <!-- Opção de Retenção de Estoque na Maleta -->
+            <div style="margin-top: 1rem; margin-bottom: 1rem; padding: 0.8rem; background: rgba(212, 175, 55, 0.05); border: 1px solid rgba(212, 175, 55, 0.2); border-radius: var(--radius-sm);">
+              <label style="display: flex; align-items: center; gap: 0.6rem; cursor: pointer; font-size: 0.85rem; color: var(--gold-light);">
+                <input type="checkbox" id="acerto-manter-pecas-maleta" style="width: 18px; height: 18px; accent-color: var(--gold-primary);">
+                <span><i class="fa-solid fa-briefcase"></i> Manter peças não vendidas com a revendedora no próximo ciclo</span>
+              </label>
+            </div>
+
             <!-- Resultado do Acerto -->
             <div class="pricing-row total" style="margin: 0.8rem 0; padding: 0.8rem 0; font-size: 1.1rem; background: rgba(212, 175, 55, 0.05); padding-left: 0.5rem; padding-right: 0.5rem; border-radius: var(--radius-sm);">
               <span id="lbl-acerto-dinheiro-receber">Dinheiro a receber da Rev.</span>
@@ -2019,9 +2065,6 @@
             <div style="display: flex; flex-direction: column; gap: 0.8rem; margin-top: 1.5rem;">
               <button class="btn-gold" id="btn-finalizar-acerto-whats" style="font-size: 0.85rem; padding: 0.75rem; justify-content: center;">
                 <i class="fa-brands fa-whatsapp"></i> WhatsApp e Fechar
-              </button>
-              <button class="btn-outline-gold" id="btn-finalizar-acerto-excel" style="font-size: 0.85rem; padding: 0.75rem; justify-content: center;">
-                <i class="fa-solid fa-file-excel"></i> Exportar Acerto Excel
               </button>
               <button class="btn-outline-gold" id="btn-finalizar-acerto-pdf" onclick="app.imprimirAcerto()" style="font-size: 0.85rem; padding: 0.75rem; justify-content: center;">
                 <i class="fa-solid fa-file-pdf"></i> Imprimir / Salvar PDF
@@ -2184,10 +2227,13 @@
         <i class="fa-solid fa-circle-exclamation"></i> <span id="venda-rev-aviso-texto"></span>
       </div>
 
-      <div class="modal-footer">
-        <button class="btn-outline-gold" id="btn-cancelar-venda-rev">Cancelar</button>
-        <button class="btn-gold" id="btn-confirmar-venda-rev">
-          <i class="fa-solid fa-check"></i> Confirmar Venda
+      <div class="modal-footer" style="display: flex; gap: 0.6rem; justify-content: flex-end; width: 100%;">
+        <button class="btn-outline-gold" id="btn-cancelar-venda-rev" style="flex: 1; min-width: 0; padding: 0.6rem 0.5rem; font-size: 0.85rem;">Cancelar</button>
+        <button class="btn-outline-gold" id="btn-add-carrinho-venda-rev" onclick="app.adicionarAoCarrinho()" style="flex: 1.2; min-width: 0; background: rgba(212,175,55,0.05); color: var(--gold-primary); display: flex; align-items: center; justify-content: center; gap: 6px; padding: 0.6rem 0.5rem; font-size: 0.85rem; border-color: rgba(212,175,55,0.35);">
+          <i class="fa-solid fa-cart-plus"></i> + Sacola
+        </button>
+        <button class="btn-gold" id="btn-confirmar-venda-rev" style="flex: 1.5; min-width: 0; padding: 0.6rem 0.5rem; font-size: 0.85rem;">
+          <i class="fa-solid fa-check"></i> Venda Direta
         </button>
       </div>
     </div>
@@ -2245,6 +2291,130 @@
       </div>
     </div>
   </div>
+
+  <!-- Botão Flutuante da Sacola de Vendas (Carrinho) -->
+  <button id="btn-sacola-flutuante" class="sacola-flutuante" onclick="app.abrirModalCarrinho()" style="display: none;">
+    <i class="fa-solid fa-bag-shopping"></i>
+    <span id="badge-sacola-qtd" class="sacola-badge">0</span>
+  </button>
+
+  <!-- Modal do Carrinho de Vendas (Sacola) -->
+  <div class="modal-backdrop" id="modal-carrinho-vendas">
+    <div class="modal-card modal-venda-rev-card" style="max-width: 600px; width: 95%;">
+      <div class="modal-title-row">
+        <h3><i class="fa-solid fa-bag-shopping" style="color: var(--gold-primary);"></i> Minha Sacola de Vendas</h3>
+        <button class="btn-close-modal" onclick="app.fecharModalCarrinho()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <div class="venda-rev-form-container" style="padding-top: 0.5rem;">
+        <div class="table-responsive" style="max-height: 250px; overflow-y: auto; margin-bottom: 1rem; border: 1px solid rgba(255,255,255,0.05); border-radius: 6px;">
+          <table class="premium-table" style="font-size: 0.85rem; margin-bottom: 0;">
+            <thead>
+              <tr>
+                <th>Peça</th>
+                <th>Qtd</th>
+                <th>Preço</th>
+                <th>Desc.</th>
+                <th>Total</th>
+                <th style="text-align: center;">Remover</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-carrinho-itens">
+              <!-- Preenchido via JS -->
+            </tbody>
+          </table>
+        </div>
+
+        <div class="form-group">
+          <label for="carrinho-cliente">Cliente Geral (Opcional)</label>
+          <select id="carrinho-cliente" class="form-control">
+            <option value="">— Cliente Avulso (Sem cadastro) —</option>
+          </select>
+        </div>
+
+        <div class="form-group" style="margin-top: 0.8rem;">
+          <label for="carrinho-pagamento">Forma de Pagamento Geral *</label>
+          <select id="carrinho-pagamento" class="form-control">
+            <option value="Dinheiro" selected>Dinheiro</option>
+            <option value="Pix">Pix</option>
+            <option value="Cartão de Crédito">Cartão de Crédito</option>
+            <option value="Cartão de Débito">Cartão de Débito</option>
+          </select>
+        </div>
+
+        <div class="pricing-calculator-card" style="margin-top: 1rem; padding: 1rem; background: rgba(255,255,255,0.02); border-color: rgba(212,175,55,0.2);">
+          <div class="pricing-row">
+            <span>Total Bruto</span>
+            <span id="carrinho-total-bruto" style="font-weight: 600; color: var(--text-primary);">R$ 0,00</span>
+          </div>
+          <div class="pricing-row" style="color: #ef9a9a;">
+            <span>Total Descontos</span>
+            <span id="carrinho-total-desconto">- R$ 0,00</span>
+          </div>
+          <div class="pricing-row" style="border-top: 1px solid rgba(255,255,255,0.05); padding-top: 0.6rem; margin-top: 0.6rem; font-weight: 700; font-size: 1.1rem; color: var(--gold-primary);">
+            <span>Total Líquido</span>
+            <span id="carrinho-total-liquido">R$ 0,00</span>
+          </div>
+          <div class="pricing-row" style="font-weight: 600; color: #81c784; font-size: 0.9rem;">
+            <span>Estimativa de Comissão</span>
+            <span id="carrinho-total-comissao">R$ 0,00</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-actions-row" style="margin-top: 1.2rem; display: flex; gap: 0.8rem; justify-content: flex-end; padding-top: 0.8rem; border-top: 1px solid rgba(255,255,255,0.05);">
+        <button class="btn-outline-gold" onclick="app.limparCarrinho()" style="padding: 0.7rem 1.2rem; font-size: 0.85rem; border-color: #ef5350; color: #ef5350; background: transparent;"><i class="fa-solid fa-trash-can"></i> Limpar Sacola</button>
+        <button class="btn-gold" id="btn-finalizar-carrinho" onclick="app.finalizarCarrinho()" style="padding: 0.7rem 1.5rem; font-size: 0.85rem; display: flex; align-items: center; gap: 6px;"><i class="fa-solid fa-bag-shopping"></i> Finalizar Venda</button>
+      </div>
+    </div>
+  </div>
+
+  <style>
+    /* Estilos do botão flutuante da Sacola de Vendas */
+    .sacola-flutuante {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--gold-primary), #b38f2d);
+      color: #0d0d0d;
+      border: none;
+      box-shadow: 0 4px 20px rgba(212, 175, 55, 0.4);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      z-index: 999;
+      transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    .sacola-flutuante:hover {
+      transform: scale(1.1) translateY(-4px);
+      box-shadow: 0 8px 25px rgba(212, 175, 55, 0.6);
+    }
+    .sacola-flutuante:active {
+      transform: scale(0.95);
+    }
+    .sacola-badge {
+      position: absolute;
+      top: -4px;
+      right: -4px;
+      background-color: #ef5350;
+      color: white;
+      font-size: 0.75rem;
+      font-weight: 700;
+      border-radius: 50%;
+      width: 22px;
+      height: 22px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 2px solid #0d0d0d;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+    }
+  </style>
 
   <!-- ==========================================
        SCRIPTS JAVASCRIPT

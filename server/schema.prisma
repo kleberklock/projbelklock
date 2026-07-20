@@ -1,5 +1,5 @@
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -12,6 +12,7 @@ model Loja {
   nome         String             @default("Loja Padrão")
   cnpj         String?            @unique
   plano        String             @default("BRONZE") // "BRONZE" | "GOLD" | "PLATINUM"
+  logoUrl      String?
   createdAt    DateTime           @default(now())
   usuarios     Usuario[]
   produtos     Produto[]
@@ -64,41 +65,64 @@ model Usuario {
   clientes     Cliente[]
   createdAt    DateTime           @default(now())
   faixasComissao FaixaComissao[]
+
+  @@index([lojaId])
+  @@index([role])
 }
 
 model Produto {
-  id                 String        @id @default(uuid())
-  lojaId             String        @default("default-loja")
-  loja               Loja          @relation(fields: [lojaId], references: [id], onDelete: Cascade)
+  id                 String            @id @default(uuid())
+  lojaId             String            @default("default-loja")
+  loja               Loja              @relation(fields: [lojaId], references: [id], onDelete: Cascade)
   codigo             String
   nome               String
   categoria          String
+  custoBruto         Float             @default(0.0)
+  custoBanho         Float             @default(0.0)
+  custoLiquido       Float             @default(0.0)
+  markup             Float             @default(3.0)
+  fotoUrl            String?
+  variacoes          ProdutoVariacao[]
+  createdAt          DateTime          @default(now())
+
+  @@unique([lojaId, codigo])
+  @@index([lojaId])
+}
+
+model ProdutoVariacao {
+  id                 String        @id @default(uuid())
+  lojaId             String        @default("default-loja")
+  produtoId          String
+  sku                String        // SKU único da variação (Ex: CO-GOTA-OU-16)
+  tamanho            String?       // Aro (ex: 14, 16, 18) ou tamanho
+  banho              String        // "OURO" | "RODIO" | "RODIO_NEGRO" | "PRATA"
+  corPedra           String?       // Cor da pedra
   quantidade         Int           @default(0) // estoque no centro de distribuição
   quantidadeDefeito  Int           @default(0) // peças devolvidas com defeito
-  custoBruto         Float         @default(0.0)
-  custoBanho         Float         @default(0.0)
-  custoLiquido       Float         @default(0.0)
-  markup             Float         @default(3.0)
-  fotoUrl            String?
+  produto            Produto       @relation(fields: [produtoId], references: [id], onDelete: Cascade)
   consignados        Consignado[]
   createdAt          DateTime      @default(now())
 
-  @@unique([lojaId, codigo])
+  @@unique([lojaId, sku])
+  @@index([lojaId])
+  @@index([produtoId])
 }
 
 model Consignado {
-  id                   String   @id @default(uuid())
-  lojaId               String   @default("default-loja")
-  loja                 Loja     @relation(fields: [lojaId], references: [id], onDelete: Cascade)
+  id                   String          @id @default(uuid())
+  lojaId               String          @default("default-loja")
+  loja                 Loja            @relation(fields: [lojaId], references: [id], onDelete: Cascade)
   usuarioId            String
-  produtoId            String
+  produtoVariacaoId    String
   quantidadeConsignada Int
   precoVenda           Float
-  usuario              Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
-  produto              Produto  @relation(fields: [produtoId], references: [id], onDelete: Cascade)
-  createdAt            DateTime @default(now())
+  usuario              Usuario         @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  produtoVariacao      ProdutoVariacao @relation(fields: [produtoVariacaoId], references: [id], onDelete: Cascade)
+  createdAt            DateTime        @default(now())
 
-  @@unique([usuarioId, produtoId])
+  @@unique([usuarioId, produtoVariacaoId])
+  @@index([lojaId])
+  @@index([usuarioId])
 }
 
 model HistoricoAcerto {
@@ -122,8 +146,13 @@ model HistoricoAcerto {
   totalRetidoRevendedora Float    @default(0.0)
   totalRecebidoAdmin     Float    @default(0.0)
   saldoFinalAcerto       Float    @default(0.0)
+  detalhesItens          String?
 
   usuario            Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@index([lojaId])
+  @@index([usuarioId])
+  @@index([data])
 }
 
 model VendaDireta {
@@ -133,6 +162,7 @@ model VendaDireta {
   data            DateTime @default(now())
   codigo          String
   nome            String
+  quantidade      Int      @default(1)
   preco           Float
   whatsappCliente String?
   nomeCliente     String?
@@ -141,22 +171,27 @@ model VendaDireta {
   desconto        Float    @default(0.0)
   motivoDesconto  String?
   formaPagamento  String?  @default("Pix")
+
+  @@index([lojaId])
+  @@index([data])
 }
 
 model VendaRevendedora {
-  id            String   @id @default(uuid())
-  lojaId        String   @default("default-loja")
-  loja          Loja     @relation(fields: [lojaId], references: [id], onDelete: Cascade)
-  data          DateTime @default(now())
-  usuarioId     String
-  produtoId     String
-  nomeProduto   String
-  codigoProduto String
-  quantidade    Int
-  precoVenda    Float
-  comissaoValor Float
-  clienteId     String?
-  cliente       Cliente? @relation(fields: [clienteId], references: [id])
+  id              String   @id @default(uuid())
+  lojaId          String   @default("default-loja")
+  loja            Loja     @relation(fields: [lojaId], references: [id], onDelete: Cascade)
+  data            DateTime @default(now())
+  usuarioId       String
+  produtoId       String
+  produtoVariacaoId String? // ID da variação específica vendida
+  sku             String?  // SKU específico vendido
+  nomeProduto     String
+  codigoProduto   String
+  quantidade      Int
+  precoVenda      Float
+  comissaoValor   Float
+  clienteId       String?
+  cliente         Cliente? @relation(fields: [clienteId], references: [id])
 
   // Novos campos para controle de links de pagamento e canal
   canalPagamento  String             @default("DINHEIRO_REVENDEDORA") // "LINK_PAGO_ADMIN" | "DINHEIRO_REVENDEDORA"
@@ -167,6 +202,10 @@ model VendaRevendedora {
   desconto        Float    @default(0.0)
   motivoDesconto  String?
   formaPagamento  String?  @default("Dinheiro")
+
+  @@index([lojaId])
+  @@index([usuarioId])
+  @@index([data])
 }
 
 model Cliente {
@@ -183,6 +222,9 @@ model Cliente {
   vendasRevendedora VendaRevendedora[]
   linksPagamento    LinkPagamento[]
   createdAt        DateTime           @default(now())
+
+  @@index([lojaId])
+  @@index([usuarioId])
 }
 
 model LogAcao {
@@ -203,6 +245,9 @@ model Notificacao {
   detalhes  String?  // JSON string contendo detalhes
   lida      Boolean  @default(false)
   createdAt DateTime @default(now())
+
+  @@index([lojaId])
+  @@index([createdAt])
 }
 
 model Configuracao {

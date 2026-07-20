@@ -11,18 +11,18 @@
       const token = localStorage.getItem("conectajoias_token");
       const usuarioJson = localStorage.getItem("conectajoias_usuario");
       if (!token || !usuarioJson) {
-        window.location.href = "index.html";
+        window.location.href = "login.html";
         return;
       }
       try {
         const usuario = JSON.parse(usuarioJson);
         if (usuario.role !== "SuperAdmin") {
           // Se não for SuperAdmin, expulsa
-          window.location.href = "index.html";
+          window.location.href = "login.html";
         }
       } catch (e) {
         localStorage.clear();
-        window.location.href = "index.html";
+        window.location.href = "login.html";
       }
     })();
   </script>
@@ -126,13 +126,22 @@
 </head>
 <body>
 
+  <!-- Barra Superior Mobile com Hambúrguer -->
+  <div class="mobile-top-bar">
+    <img src="assets/logo.svg" alt="Conecta Joias SaaS" class="mobile-brand">
+    <button class="btn-mobile-toggle" id="btn-toggle-sidebar-mobile" onclick="saasApp.toggleSidebarMobile()" aria-label="Abrir Menu">
+      <i class="fa-solid fa-bars"></i>
+    </button>
+  </div>
+  <div class="sidebar-overlay" id="sidebar-overlay" onclick="saasApp.toggleSidebarMobile()"></div>
+
   <!-- Container Principal do App SPA -->
   <div class="app-container" id="app-main-container" style="display: flex;">
     
     <!-- ==========================================
          SIDEBAR LATERAL (NAVEGAÇÃO SPA)
          ========================================== -->
-    <aside class="sidebar">
+    <aside class="sidebar mobile-drawer">
       <div class="brand">
         <!-- Logo SVG Premium da marca Conecta Joias -->
         <img src="assets/logo.svg" alt="Conecta Joias SaaS" id="logo-brand">

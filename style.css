@@ -2976,3 +2976,312 @@ body {
   background: transparent !important;
   border: none !important;
 }
+
+/* ==========================================
+   WIDGETS REORDENÁVEIS (MODO EDIÇÃO ESTILO iOS)
+   ========================================== */
+.widget-controls {
+  display: none !important; /* Oculta por padrão no modo normal */
+}
+
+.edit-mode .widget-controls {
+  display: flex !important; /* Exibe os botões apenas no modo de edição */
+  animation: fadeIn 0.3s ease forwards;
+}
+
+@keyframes widgetWiggle {
+  0% { transform: rotate(-0.8deg); }
+  50% { transform: rotate(0.8deg); }
+  100% { transform: rotate(-0.8deg); }
+}
+
+.edit-mode .metric-card {
+  animation: widgetWiggle 0.28s ease-in-out infinite;
+  border: 1px dashed var(--gold-primary) !important;
+  box-shadow: var(--shadow-glow) !important;
+}
+
+.edit-mode .metric-card:nth-child(even) {
+  animation-duration: 0.31s;
+  animation-delay: 0.05s;
+}
+
+.btn-edit-widgets {
+  background: rgba(212, 175, 55, 0.05);
+  border: 1px solid rgba(212, 175, 55, 0.25);
+  color: var(--gold-primary);
+  cursor: pointer;
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.95rem;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  margin-left: 0.8rem;
+}
+
+.btn-edit-widgets.active {
+  background: var(--gold-primary);
+  color: #000 !important;
+  border-color: var(--gold-primary);
+  box-shadow: var(--shadow-glow);
+}
+
+.btn-edit-widgets:hover {
+  transform: scale(1.08);
+  border-color: var(--gold-primary);
+}
+
+/* ==========================================================================
+   SISTEMA DE RESPONSIVIDADE GLOBAL (MOBILE, TABLET, DESKTOP)
+   ========================================================================== */
+
+/* Utility classes para controle de visibilidade por dispositivo */
+.show-mobile { display: none !important; }
+.show-tablet { display: none !important; }
+.hide-mobile { display: block !important; }
+
+/* Barra Superior Mobile (Top Header com Hambúrguer) */
+.mobile-top-bar {
+  display: none;
+  position: sticky;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1001;
+  background-color: var(--bg-absolute);
+  border-bottom: var(--border-gold);
+  padding: 0.8rem 1.2rem;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.7);
+}
+
+.mobile-top-bar .mobile-brand {
+  height: 32px;
+  width: auto;
+}
+
+.btn-mobile-toggle {
+  background: transparent;
+  border: var(--border-gold);
+  color: var(--gold-primary);
+  width: 42px;
+  height: 42px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.btn-mobile-toggle:hover,
+.btn-mobile-toggle:active {
+  background: var(--gold-translucent);
+  color: var(--gold-light);
+}
+
+/* Overlay Escuro para Mobile Drawer */
+.sidebar-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(4px);
+  z-index: 1045;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.sidebar-overlay.active {
+  display: block;
+  opacity: 1;
+}
+
+/* --- BREAKPOINT: TABLET & DESKTOP PEQUENO (max-width: 992px) --- */
+@media (max-width: 992px) {
+  .show-tablet { display: block !important; }
+  
+  /* Layout principal em coluna */
+  .app-container {
+    flex-direction: column;
+  }
+
+  .main-content {
+    margin-left: 0 !important;
+    padding: 1.5rem 1rem !important;
+    width: 100% !important;
+  }
+
+  /* Ajustes em Grids e Layouts de duas colunas */
+  .dashboard-grid,
+  .split-layout,
+  .form-grid,
+  .feed-planner {
+    grid-template-columns: 1fr !important;
+    gap: 1.25rem !important;
+  }
+
+  .metrics-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 1rem !important;
+  }
+
+  .metric-card {
+    padding: 1.2rem !important;
+  }
+
+  .metric-icon {
+    width: 48px !important;
+    height: 48px !important;
+    font-size: 1.4rem !important;
+  }
+
+  .metric-info .metric-value {
+    font-size: 1.4rem !important;
+  }
+}
+
+/* --- BREAKPOINT: MOBILE (max-width: 768px) --- */
+@media (max-width: 768px) {
+  .show-mobile { display: flex !important; }
+  .hide-mobile { display: none !important; }
+  .mobile-top-bar { display: flex !important; }
+
+  /* Drawer Off-canvas para a Sidebar */
+  .sidebar.mobile-drawer {
+    position: fixed !important;
+    top: 0 !important;
+    left: -300px !important;
+    width: 280px !important;
+    height: 100vh !important;
+    z-index: 1050 !important;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    box-shadow: 10px 0 30px rgba(0, 0, 0, 0.9) !important;
+  }
+
+  .sidebar.mobile-drawer.active,
+  body.sidebar-open .sidebar.mobile-drawer {
+    transform: translateX(300px) !important;
+  }
+
+  /* Cabeçalhos de Seção */
+  .section-header {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 0.8rem !important;
+    margin-bottom: 1.5rem !important;
+    padding-bottom: 1rem !important;
+  }
+
+  .section-title h1 {
+    font-size: 1.6rem !important;
+  }
+
+  .section-title p {
+    font-size: 0.85rem !important;
+  }
+
+  /* Botões com Touch Target Adequado em Mobile */
+  .btn-gold, .btn-outline-gold, .btn-danger, .btn-danger-outline {
+    min-height: 44px;
+    padding: 0.7rem 1.1rem;
+    font-size: 0.85rem;
+    justify-content: center;
+    width: 100%;
+  }
+
+  .section-header .btn-gold, 
+  .section-header .btn-outline-gold {
+    width: 100%;
+  }
+
+  /* Grids em 1 Coluna para Celular */
+  .metrics-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Modais em Telas de Celular */
+  .modal-dialog,
+  .modal-content,
+  .modal-container {
+    width: 95vw !important;
+    max-width: 100% !important;
+    margin: 10px auto !important;
+    padding: 1.2rem !important;
+    max-height: 90vh !important;
+    overflow-y: auto !important;
+    border-radius: var(--radius-md) !important;
+  }
+
+  /* Tabelas Responsivas Touch */
+  .table-responsive {
+    width: 100% !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+    border-radius: var(--radius-sm);
+    margin-bottom: 1rem;
+  }
+
+  .premium-table th, 
+  .premium-table td {
+    padding: 0.6rem 0.5rem !important;
+    font-size: 0.78rem !important;
+    white-space: nowrap;
+  }
+
+  /* Mockup Instagram Responsivo */
+  .instagram-mockup {
+    width: 100% !important;
+    max-width: 350px !important;
+    border-radius: 24px !important;
+    padding: 1.5rem 0.8rem !important;
+  }
+}
+
+/* --- BREAKPOINT: MOBILE PEQUENO (max-width: 480px) --- */
+@media (max-width: 480px) {
+  body {
+    font-size: 14px !important;
+  }
+
+  .main-content {
+    padding: 1rem 0.75rem !important;
+  }
+
+  .section-title h1 {
+    font-size: 1.4rem !important;
+  }
+
+  .metric-card {
+    flex-direction: row;
+    gap: 1rem !important;
+    padding: 1rem !important;
+  }
+
+  .metric-info .metric-value {
+    font-size: 1.25rem !important;
+  }
+
+  /* Inputs com toque facilitado */
+  .form-control, select, textarea {
+    font-size: 16px !important; /* Evita auto-zoom no iOS Safari */
+    padding: 0.75rem 0.85rem !important;
+    min-height: 44px;
+  }
+
+  /* Login Card & Wizard Responsivos */
+  .login-card,
+  #onboarding-wizard-card {
+    width: 94vw !important;
+    max-width: 440px !important;
+    padding: 1.5rem 1.2rem !important;
+    margin: 10px auto !important;
+  }
+}
+
+

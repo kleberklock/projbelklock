@@ -10,6 +10,7 @@ const fs = require('fs');
 const path = require('path');
 require('dotenv').config({ path: require('path').resolve(__dirname, '.env') });
 const { criarCobranca, obterQrCodePix, obterCodigoBarrasBoleto } = require('./asaas-service');
+const comissaoService = require('./services/ComissaoService');
 const crypto = require('crypto');
 
 // Função de segurança que garante um JWT_SECRET robusto gravado no .env
@@ -77,6 +78,7 @@ const prisma = basePrisma.$extends({
         const modelsWithLojaId = [
           'Usuario',
           'Produto',
+          'ProdutoVariacao',
           'Consignado',
           'HistoricoAcerto',
           'VendaDireta',
@@ -173,7 +175,7 @@ app.use(cors({
       return originDomain === allowedDomain || originDomain.endsWith('.' + allowedDomain);
     });
 
-    if (isAllowed) {
+    if (isAllowed || origin.includes('ngrok') || origin.includes('localhost') || origin.includes('127.0.0.1')) {
       callback(null, true);
     } else {
       callback(new Error('Bloqueado pelo CORS do Conecta Joias'));
@@ -206,6 +208,22 @@ if (!fs.existsSync(DOCUMENTOS_DIR)) {
 
 // Servir a pasta uploads de forma estática
 app.use('/uploads', express.static(UPLOADS_DIR));
+
+// Servir o frontend de forma segura sob a mesma porta para ngrok
+app.use((req, res, next) => {
+  const lowercasePath = req.path.toLowerCase();
+  if (lowercasePath.startsWith('/server') || lowercasePath.includes('.env') || lowercasePath.startsWith('/.git')) {
+    return res.status(403).send('Acesso proibido');
+  }
+  next();
+});
+
+// Forçar a rota raiz '/' a servir a Landing Page apresentacao.html
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'apresentacao.html'));
+});
+
+app.use(express.static(path.join(__dirname, '..')));
 
 // Configuração do Multer para Imagens em Memória
 const storage = multer.memoryStorage();
@@ -247,11 +265,18 @@ if (process.env.AZURE_STORAGE_CONNECTION_STRING) {
 
 const autenticarJWT = (req, res, next) => {
   const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+  let token = null;
+
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    token = authHeader.split(' ')[1];
+  } else if (req.query && req.query.token) {
+    token = req.query.token;
+  }
+
+  if (!token) {
     return res.status(401).json({ error: 'Acesso negado. Token de autenticação não fornecido.' });
   }
 
-  const token = authHeader.split(' ')[1];
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
     req.user = decoded;
@@ -303,7 +328,14 @@ const identificarLoja = (req, res, next) => {
   // SuperAdmin não exige lojaId fixo — pode operar em nome de qualquer loja via header
   if (req.user && req.user.role === 'SuperAdmin') {
     // Aceita o lojaId do token (se tiver) ou do header (para operar como uma loja específica)
-    req.lojaId = req.user.lojaId || req.headers['x-loja-id'] || null;
+    let lojaId = req.user.lojaId || req.headers['x-loja-id'] || null;
+    
+    // Tratamento defensivo contra null ou "null" enviado pelo frontend
+    if (!lojaId || lojaId === 'null' || lojaId === 'undefined') {
+      lojaId = 'default-loja';
+    }
+    
+    req.lojaId = lojaId;
     if (req.contextStore) {
       req.contextStore.lojaId = req.lojaId;
     }
@@ -391,6 +423,12 @@ function gerarSenhaAleatoria(tamanho = 8) {
     senha += caracteres.charAt(Math.floor(Math.random() * caracteres.length));
   }
   return senha;
+}
+
+// Função para validar se a senha é forte
+function validarSenhaForte(senha) {
+  const regex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%&*(),.?":{}|<>]).{8,}$/;
+  return regex.test(senha);
 }
 
 // Função para gerar um PIN de 4 dígitos único
@@ -499,6 +537,10 @@ app.post('/api/auth/signup', signupLimiter, async (req, res) => {
   const { nome, email, senha, nomeLoja } = req.body;
   if (!nome || !email || !senha || !nomeLoja) {
     return res.status(400).json({ error: 'Campos obrigatórios ausentes: nome, email, senha e nomeLoja.' });
+  }
+
+  if (!validarSenhaForte(senha)) {
+    return res.status(400).json({ error: 'A senha deve conter pelo menos 8 caracteres, incluindo pelo menos uma letra maiúscula, uma letra minúscula, um número e um caractere especial (!@#$%&*(),.?\":{}|<>).' });
   }
 
   try {
@@ -620,6 +662,10 @@ app.post('/api/auth/register', autenticarJWT, autorizarRole(['Manager', 'SuperAd
   const { nome, email, senha, role, whatsapp, comissao, faixasComissao, tipoComissao, metaUnicaValor, metaUnicaBonus, metaUnicaTipoBonus, baseCalculo, regraPerda, limiteIsencaoPerda, periodoAcumulo, ciclo } = req.body;
   if (!nome || !email || !senha || !role) {
     return res.status(400).json({ error: 'Campos obrigatórios ausentes.' });
+  }
+
+  if (!validarSenhaForte(senha)) {
+    return res.status(400).json({ error: 'A senha deve conter pelo menos 8 caracteres, incluindo pelo menos uma letra maiúscula, uma letra minúscula, um número e um caractere especial (!@#$%&*(),.?\":{}|<>).' });
   }
 
   // Normaliza a role para maiúsculas e mapeia valores antigos
@@ -746,12 +792,25 @@ app.get('/api/produtos', autenticarJWT, identificarLoja, async (req, res) => {
   try {
     const produtos = await prisma.produto.findMany({
       where: { lojaId: req.lojaId },
+      include: {
+        variacoes: true
+      },
       orderBy: { nome: 'asc' }
+    });
+
+    const produtosMapeados = produtos.map(p => {
+      const quantidade = p.variacoes.reduce((acc, v) => acc + (v.quantidade || 0), 0);
+      const quantidadeDefeito = p.variacoes.reduce((acc, v) => acc + (v.quantidadeDefeito || 0), 0);
+      return {
+        ...p,
+        quantidade,
+        quantidadeDefeito
+      };
     });
 
     // Se o usuário logado for revendedora, removemos os custos por segurança comercial
     if (req.user.role === 'Consultant') {
-      const produtosPublicos = produtos.map(p => {
+      const produtosPublicos = produtosMapeados.map(p => {
         const custoTotal = p.custoBruto + p.custoBanho + p.custoLiquido;
         const precoVenda = custoTotal * p.markup;
         return {
@@ -768,8 +827,9 @@ app.get('/api/produtos', autenticarJWT, identificarLoja, async (req, res) => {
     }
 
     // Admins recebem o estoque completo com custos e markup
-    res.json(produtos);
+    res.json(produtosMapeados);
   } catch (error) {
+    console.error("Erro ao listar produtos:", error);
     res.status(500).json({ error: 'Erro ao listar produtos.' });
   }
 });
@@ -777,15 +837,35 @@ app.get('/api/produtos', autenticarJWT, identificarLoja, async (req, res) => {
 // Listar Produtos com Defeito (Admin)
 app.get('/api/produtos/defeitos', autenticarJWT, autorizarRole(['Manager', 'SuperAdmin']), identificarLoja, async (req, res) => {
   try {
-    const produtosComDefeito = await prisma.produto.findMany({
+    const variacoesComDefeito = await prisma.produtoVariacao.findMany({
       where: {
         lojaId: req.lojaId,
         quantidadeDefeito: {
           gt: 0
         }
       },
-      orderBy: { nome: 'asc' }
+      include: {
+        produto: true
+      },
+      orderBy: {
+        produto: {
+          nome: 'asc'
+        }
+      }
     });
+
+    const produtosComDefeito = variacoesComDefeito.map(v => {
+      return {
+        ...v.produto,
+        quantidade: v.quantidade,
+        quantidadeDefeito: v.quantidadeDefeito,
+        variacaoId: v.id,
+        sku: v.sku,
+        tamanho: v.tamanho,
+        banho: v.banho
+      };
+    });
+
     res.json(produtosComDefeito);
   } catch (error) {
     console.error("Erro ao listar produtos com defeito:", error);
@@ -808,7 +888,7 @@ app.post('/api/produtos', autenticarJWT, autorizarRole(['Manager', 'SuperAdmin']
     const plano = loja ? (loja.plano || 'BRONZE').toUpperCase() : 'BRONZE';
 
     if (plano !== 'PLATINUM') {
-      const totalProdutos = await prisma.produto.aggregate({
+      const totalProdutos = await prisma.produtoVariacao.aggregate({
         where: { lojaId: req.lojaId },
         _sum: {
           quantidade: true
@@ -827,21 +907,39 @@ app.post('/api/produtos', autenticarJWT, autorizarRole(['Manager', 'SuperAdmin']
         codigo: cod,
         nome,
         categoria,
-        quantidade: parseInt(quantidade) || 0,
         custoBruto: parseFloat(custoBruto) || 0.0,
         custoBanho: parseFloat(custoBanho) || 0.0,
         custoLiquido: parseFloat(custoLiquido) || 0.0,
         markup: parseFloat(markup) || 3.0,
         fotoUrl,
-        quantidadeDefeito: parseInt(quantidadeDefeito) || 0,
-        lojaId: req.lojaId
+        lojaId: req.lojaId,
+        variacoes: {
+          create: {
+            lojaId: req.lojaId,
+            sku: `${cod}-UN-OU`,
+            tamanho: "Único",
+            banho: "OURO",
+            quantidade: parseInt(quantidade) || 0,
+            quantidadeDefeito: parseInt(quantidadeDefeito) || 0
+          }
+        }
+      },
+      include: {
+        variacoes: true
       }
     });
 
-    registrarLog(req, "PRODUTO_CRIAR", `Criou o produto ${novoProduto.nome} (${novoProduto.codigo}) com estoque inicial de ${novoProduto.quantidade}.`);
+    const produtoRetorno = {
+      ...novoProduto,
+      quantidade: parseInt(quantidade) || 0,
+      quantidadeDefeito: parseInt(quantidadeDefeito) || 0
+    };
 
-    res.status(201).json(novoProduto);
+    registrarLog(req, "PRODUTO_CRIAR", `Criou o produto ${novoProduto.nome} (${novoProduto.codigo}) com estoque inicial de ${quantidade}.`);
+
+    res.status(201).json(produtoRetorno);
   } catch (error) {
+    console.error("Erro ao criar produto:", error);
     if (error.code === 'P2002') {
       return res.status(400).json({ error: 'Já existe um produto cadastrado com este Código/Referência.' });
     }
@@ -866,20 +964,54 @@ app.put('/api/produtos/:id', autenticarJWT, autorizarRole(['Manager', 'SuperAdmi
         codigo,
         nome,
         categoria,
-        quantidade: parseInt(quantidade) || 0,
         custoBruto: parseFloat(custoBruto) || 0.0,
         custoBanho: parseFloat(custoBanho) || 0.0,
         custoLiquido: parseFloat(custoLiquido) || 0.0,
         markup: parseFloat(markup) || 3.0,
-        fotoUrl,
-        quantidadeDefeito: parseInt(quantidadeDefeito) || 0
+        fotoUrl
+      },
+      include: {
+        variacoes: true
       }
     });
 
-    registrarLog(req, "PRODUTO_EDITAR", `Atualizou dados do produto ${produtoAtualizado.nome} (${produtoAtualizado.codigo}). Estoque: ${produtoAtualizado.quantidade}, Defeitos: ${produtoAtualizado.quantidadeDefeito}.`);
+    const cod = codigo || produtoAtualizado.codigo;
+    let variacaoPadrao = produtoAtualizado.variacoes.find(v => v.tamanho === "Único" && v.banho === "OURO");
 
-    res.json(produtoAtualizado);
+    if (variacaoPadrao) {
+      await prisma.produtoVariacao.update({
+        where: { id: variacaoPadrao.id },
+        data: {
+          sku: `${cod}-UN-OU`,
+          quantidade: parseInt(quantidade) || 0,
+          quantidadeDefeito: parseInt(quantidadeDefeito) || 0
+        }
+      });
+    } else {
+      await prisma.produtoVariacao.create({
+        data: {
+          lojaId: req.lojaId,
+          produtoId: produtoAtualizado.id,
+          sku: `${cod}-UN-OU`,
+          tamanho: "Único",
+          banho: "OURO",
+          quantidade: parseInt(quantidade) || 0,
+          quantidadeDefeito: parseInt(quantidadeDefeito) || 0
+        }
+      });
+    }
+
+    const produtoRetorno = {
+      ...produtoAtualizado,
+      quantidade: parseInt(quantidade) || 0,
+      quantidadeDefeito: parseInt(quantidadeDefeito) || 0
+    };
+
+    registrarLog(req, "PRODUTO_EDITAR", `Atualizou dados do produto ${produtoAtualizado.nome} (${produtoAtualizado.codigo}). Estoque: ${quantidade}, Defeitos: ${quantidadeDefeito}.`);
+
+    res.json(produtoRetorno);
   } catch (error) {
+    console.error("Erro ao atualizar produto:", error);
     res.status(500).json({ error: 'Erro ao atualizar produto.' });
   }
 });
@@ -947,7 +1079,11 @@ app.get('/api/revendedoras', autenticarJWT, autorizarRole(['Manager', 'SuperAdmi
         consignados: {
           where: { lojaId: req.lojaId },
           include: {
-            produto: true
+            produtoVariacao: {
+              include: {
+                produto: true
+              }
+            }
           }
         },
         vendas: {
@@ -955,24 +1091,95 @@ app.get('/api/revendedoras', autenticarJWT, autorizarRole(['Manager', 'SuperAdmi
           select: {
             data: true,
             precoVenda: true,
-            quantidade: true
+            quantidade: true,
+            produtoVariacaoId: true,
+            produtoId: true
           }
         },
         historico: {
-          where: { lojaId: req.lojaId }
+          where: { lojaId: req.lojaId },
+          orderBy: { data: 'desc' }
         }
       },
       orderBy: { nome: 'asc' }
     });
     
-    // Desserializa o ciclo para devolver como objeto
-    const revendedorasFormatadas = revendedoras.map(r => ({
-      ...r,
-      ciclo: r.ciclo ? JSON.parse(r.ciclo) : null
-    }));
+    // Desserializa o ciclo e mapeia os consignados para compatibilidade com o frontend
+    const revendedorasFormatadas = revendedoras.map(r => {
+      const ultimoAcerto = r.historico && r.historico.length > 0 ? r.historico[0] : null;
+      const dataInicioCiclo = ultimoAcerto ? new Date(ultimoAcerto.data) : new Date(0);
+
+      // Mapeia vendas registradas no ciclo atual
+      const mapaVendasCiclo = new Map();
+      if (r.vendas && Array.isArray(r.vendas)) {
+        r.vendas.forEach(v => {
+          if (new Date(v.data) > dataInicioCiclo) {
+            const keyVar = v.produtoVariacaoId || v.produtoId;
+            mapaVendasCiclo.set(keyVar, (mapaVendasCiclo.get(keyVar) || 0) + (v.quantidade || 1));
+            if (v.produtoId) {
+              mapaVendasCiclo.set(v.produtoId, (mapaVendasCiclo.get(v.produtoId) || 0) + (v.quantidade || 1));
+            }
+          }
+        });
+      }
+
+      let quantidadeAtivaTotal = 0;
+      let valorMaletaAtivoTotal = 0;
+
+      const consignadosMapeados = r.consignados.map(c => {
+        const qtdVendidaApp = mapaVendasCiclo.get(c.produtoVariacaoId) || mapaVendasCiclo.get(c.produtoVariacao?.produtoId) || 0;
+        const qtdDisponivel = Math.max(0, c.quantidadeConsignada - qtdVendidaApp);
+
+        quantidadeAtivaTotal += qtdDisponivel;
+        valorMaletaAtivoTotal += (qtdDisponivel * (c.precoVenda || 0));
+
+        return {
+          id: c.id,
+          lojaId: c.lojaId,
+          usuarioId: c.usuarioId,
+          produtoVariacaoId: c.produtoVariacaoId,
+          quantidadeConsignada: c.quantidadeConsignada,
+          quantidadeDisponivel: qtdDisponivel,
+          quantidadeVendidaApp: qtdVendidaApp,
+          precoVenda: c.precoVenda,
+          createdAt: c.createdAt,
+          // Propriedades virtuais para compatibilidade com o frontend
+          produtoId: c.produtoVariacao?.produtoId,
+          produto: c.produtoVariacao?.produto
+        };
+      });
+
+      // Contabiliza total real de faturamento e peças vendidas do histórico e vendas
+      let totalPecasVendidasGeral = 0;
+      let faturamentoTotalGeral = 0;
+
+      if (r.vendas && Array.isArray(r.vendas)) {
+        r.vendas.forEach(v => {
+          totalPecasVendidasGeral += (v.quantidade || 1);
+          faturamentoTotalGeral += (v.precoVenda || 0) * (v.quantidade || 1);
+        });
+      }
+      if (r.historico && Array.isArray(r.historico)) {
+        r.historico.forEach(h => {
+          totalPecasVendidasGeral += (h.totalVendida || 0);
+          faturamentoTotalGeral += (h.faturamentoBruto || 0);
+        });
+      }
+
+      return {
+        ...r,
+        consignados: consignadosMapeados,
+        quantidadeAtiva: quantidadeAtivaTotal,
+        valorMaletaAtivo: valorMaletaAtivoTotal,
+        totalPecasVendidasGeral,
+        faturamentoTotalGeral,
+        ciclo: r.ciclo ? JSON.parse(r.ciclo) : null
+      };
+    });
 
     res.json(revendedorasFormatadas);
   } catch (error) {
+    console.error("Erro ao listar revendedoras:", error);
     res.status(500).json({ error: 'Erro ao listar revendedoras.' });
   }
 });
@@ -1073,7 +1280,7 @@ app.put('/api/revendedoras/:id/reset-pin', autenticarJWT, autorizarRole(['Manage
   }
 });
 
-// Excluir uma Revendedora (Admin)
+// Excluir uma Revendedora (Admin) com retorno automático de peças ao estoque central
 app.delete('/api/revendedoras/:id', autenticarJWT, autorizarRole(['Manager', 'SuperAdmin']), identificarLoja, async (req, res) => {
   const { id } = req.params;
   try {
@@ -1085,10 +1292,27 @@ app.delete('/api/revendedoras/:id', autenticarJWT, autorizarRole(['Manager', 'Su
       return res.status(403).json({ error: 'Acesso negado ou revendedora não encontrada nesta loja.' });
     }
 
-    await prisma.usuario.delete({
-      where: { id }
+    await prisma.$transaction(async (tx) => {
+      // Devolve todas as peças ativas do consignado ao estoque central
+      const consignados = await tx.consignado.findMany({
+        where: { usuarioId: id, lojaId: req.lojaId }
+      });
+
+      for (const c of consignados) {
+        if (c.quantidadeConsignada > 0 && c.produtoVariacaoId) {
+          await tx.produtoVariacao.update({
+            where: { id: c.produtoVariacaoId },
+            data: { quantidade: { increment: c.quantidadeConsignada } }
+          });
+        }
+      }
+
+      await tx.usuario.delete({
+        where: { id }
+      });
     });
-    res.json({ message: 'Revendedora excluída com sucesso!' });
+
+    res.json({ message: 'Revendedora excluída com sucesso e peças devolvidas ao Estoque Central!' });
   } catch (error) {
     console.error("Erro ao excluir revendedora:", error);
     res.status(500).json({ error: 'Erro ao excluir revendedora.' });
@@ -1114,29 +1338,71 @@ app.delete('/api/revendedoras', autenticarJWT, autorizarRole(['Manager', 'SuperA
 // Obter Maleta Própria (Revendedora logada)
 app.get('/api/revendedoras/minha-maleta', autenticarJWT, identificarLoja, async (req, res) => {
   try {
+    const usuarioId = req.user.id;
     const consignados = await prisma.consignado.findMany({
-      where: { usuarioId: req.user.id, lojaId: req.lojaId },
+      where: { usuarioId, lojaId: req.lojaId },
       include: {
-        produto: {
-          select: {
-            codigo: true,
-            nome: true,
-            categoria: true,
-            fotoUrl: true
+        produtoVariacao: {
+          include: {
+            produto: {
+              select: {
+                codigo: true,
+                nome: true,
+                categoria: true,
+                fotoUrl: true
+              }
+            }
           }
         }
       }
     });
 
-    const maletaFormatada = consignados.map(c => ({
-      produtoId: c.produtoId,
-      codigo: c.produto.codigo,
-      nome: c.produto.nome,
-      categoria: c.produto.categoria,
-      quantidadeConsignada: c.quantidadeConsignada,
-      precoVenda: c.precoVenda,
-      fotoUrl: c.produto.fotoUrl
-    }));
+    const ultimoAcerto = await prisma.historicoAcerto.findFirst({
+      where: { usuarioId, lojaId: req.lojaId },
+      orderBy: { data: 'desc' }
+    });
+    const dataInicioCiclo = ultimoAcerto ? new Date(ultimoAcerto.data) : new Date(0);
+
+    const vendasCiclo = await prisma.vendaRevendedora.findMany({
+      where: {
+        usuarioId,
+        lojaId: req.lojaId,
+        data: { gt: dataInicioCiclo }
+      }
+    });
+
+    const mapaVendasCiclo = new Map();
+    vendasCiclo.forEach(v => {
+      const keyVar = v.produtoVariacaoId || v.produtoId;
+      mapaVendasCiclo.set(keyVar, (mapaVendasCiclo.get(keyVar) || 0) + (v.quantidade || 1));
+      if (v.produtoId) {
+        mapaVendasCiclo.set(v.produtoId, (mapaVendasCiclo.get(v.produtoId) || 0) + (v.quantidade || 1));
+      }
+    });
+
+    const maletaFormatada = consignados.map(c => {
+      const qtdVendidaApp = mapaVendasCiclo.get(c.produtoVariacaoId) || mapaVendasCiclo.get(c.produtoVariacao?.produtoId) || 0;
+      const disponivel = Math.max(0, c.quantidadeConsignada - qtdVendidaApp);
+
+      return {
+        id: c.id,
+        produtoId: c.produtoVariacao.produtoId,
+        produtoVariacaoId: c.produtoVariacaoId,
+        sku: c.produtoVariacao.sku,
+        tamanho: c.produtoVariacao.tamanho,
+        banho: c.produtoVariacao.banho,
+        corPedra: c.produtoVariacao.corPedra,
+        codigo: c.produtoVariacao.produto.codigo,
+        nome: c.produtoVariacao.produto.nome,
+        categoria: c.produtoVariacao.produto.categoria,
+        quantidadeConsignadaTotal: c.quantidadeConsignada,
+        quantidadeConsignada: disponivel, // Retorna a quantidade disponível para o frontend da revendedora
+        quantidadeDisponivel: disponivel,
+        quantidadeVendidaApp: qtdVendidaApp,
+        precoVenda: c.precoVenda,
+        fotoUrl: c.produtoVariacao.produto.fotoUrl
+      };
+    });
 
     // Busca faixas de comissão da revendedora
     let faixas = await prisma.faixaComissao.findMany({
@@ -1184,18 +1450,45 @@ app.get('/api/revendedoras/minha-maleta', autenticarJWT, identificarLoja, async 
 
 // Enviar Peças para a Maleta (Consignar - Admin)
 app.post('/api/consignacoes', autenticarJWT, autorizarRole(['Manager', 'SuperAdmin']), identificarLoja, async (req, res) => {
-  const { usuarioId, produtoId, quantidade } = req.body;
-  if (!usuarioId || !produtoId || !quantidade || quantidade <= 0) {
-    return res.status(400).json({ error: 'Dados incompletos para consignação.' });
+  const { usuarioId, produtoVariacaoId, produtoId, quantidade } = req.body;
+  const qtdParsed = parseInt(quantidade);
+  if (!usuarioId || (!produtoVariacaoId && !produtoId) || isNaN(qtdParsed) || qtdParsed <= 0) {
+    return res.status(400).json({ error: 'Dados incompletos para consignação. A quantidade deve ser um número maior que zero.' });
   }
 
   try {
-    const produto = await prisma.produto.findFirst({ where: { id: produtoId, lojaId: req.lojaId } });
-    if (!produto) {
-      return res.status(404).json({ error: 'Produto não encontrado nesta loja.' });
+    let variacao = null;
+    if (produtoVariacaoId) {
+      variacao = await prisma.produtoVariacao.findFirst({
+        where: { id: produtoVariacaoId, lojaId: req.lojaId },
+        include: { produto: true }
+      });
+    } else if (produtoId) {
+      variacao = await prisma.produtoVariacao.findFirst({
+        where: { 
+          produtoId: produtoId,
+          lojaId: req.lojaId,
+          tamanho: "Único",
+          banho: "OURO"
+        },
+        include: { produto: true }
+      });
+      if (!variacao) {
+        variacao = await prisma.produtoVariacao.findFirst({
+          where: { produtoId: produtoId, lojaId: req.lojaId },
+          include: { produto: true }
+        });
+      }
     }
-    if (produto.quantidade < quantidade) {
-      return res.status(400).json({ error: 'Estoque central insuficiente para esta semijoia.' });
+
+    if (!variacao) {
+      return res.status(404).json({ error: 'Variação de produto não encontrada nesta loja.' });
+    }
+
+    const variacaoIdReal = variacao.id;
+
+    if (variacao.quantidade < qtdParsed) {
+      return res.status(400).json({ error: 'Estoque central insuficiente para esta variação de semijoia.' });
     }
 
     const revendedora = await prisma.usuario.findFirst({ where: { id: usuarioId, role: 'Consultant', lojaId: req.lojaId } });
@@ -1203,21 +1496,22 @@ app.post('/api/consignacoes', autenticarJWT, autorizarRole(['Manager', 'SuperAdm
       return res.status(404).json({ error: 'Revendedora não encontrada nesta loja.' });
     }
 
-    // Calcula preço de venda atualizado com base nos custos e markup
+    // Calcula preço de venda atualizado com base nos custos e markup do produto-pai
+    const produto = variacao.produto;
     const custoTotal = produto.custoBruto + produto.custoBanho + produto.custoLiquido;
     const precoVendaCalculado = custoTotal * produto.markup;
 
-    // Deduz do estoque central
-    await prisma.produto.update({
-      where: { id: produtoId },
-      data: { quantidade: produto.quantidade - quantidade }
+    // Deduz do estoque central da variação de forma atômica para evitar race conditions
+    await prisma.produtoVariacao.update({
+      where: { id: variacaoIdReal },
+      data: { quantidade: { decrement: qtdParsed } }
     });
 
     // Cria ou atualiza o registro de consignação
     const consignadoExistente = await prisma.consignado.findFirst({
       where: {
         usuarioId,
-        produtoId,
+        produtoVariacaoId: variacaoIdReal,
         lojaId: req.lojaId
       }
     });
@@ -1227,7 +1521,7 @@ app.post('/api/consignacoes', autenticarJWT, autorizarRole(['Manager', 'SuperAdm
       consignacao = await prisma.consignado.update({
         where: { id: consignadoExistente.id },
         data: {
-          quantidadeConsignada: consignadoExistente.quantidadeConsignada + quantidade,
+          quantidadeConsignada: { increment: qtdParsed },
           precoVenda: precoVendaCalculado
         }
       });
@@ -1235,8 +1529,8 @@ app.post('/api/consignacoes', autenticarJWT, autorizarRole(['Manager', 'SuperAdm
       consignacao = await prisma.consignado.create({
         data: {
           usuarioId,
-          produtoId,
-          quantidadeConsignada: quantidade,
+          produtoVariacaoId: variacaoIdReal,
+          quantidadeConsignada: qtdParsed,
           precoVenda: precoVendaCalculado,
           lojaId: req.lojaId
         }
@@ -1244,12 +1538,12 @@ app.post('/api/consignacoes', autenticarJWT, autorizarRole(['Manager', 'SuperAdm
     }
 
     const nomeRevendedora = revendedora.nome;
-    registrarLog(req, "CONSIGNACAO_CRIAR", `Consignou ${quantidade} unidades do produto ${produto.nome} (${produto.codigo}) para a revendedora ${nomeRevendedora}.`);
+    registrarLog(req, "CONSIGNACAO_CRIAR", `Consignou ${qtdParsed} unidades do produto ${produto.nome} (SKU: ${variacao.sku}) para a revendedora ${nomeRevendedora}.`);
 
     // Dispara mensagem automática de consignação para a revendedora (Opção A)
     try {
       if (revendedora.whatsapp && revendedora.whatsapp.trim() !== '') {
-        const msgConsignar = `Olá, *${revendedora.nome}*! ✨\nNovas semijoias foram adicionadas à sua maleta consignada pela administradora!\n\n*Novas Peças Recebidas:*\n- Produto: ${produto.nome} (${produto.codigo})\n- Quantidade: ${quantidade} unid.\n- Preço de venda sugerido: R$ ${precoVendaCalculado.toFixed(2).replace('.', ',')}\n- Valor total adicionado: R$ ${(precoVendaCalculado * quantidade).toFixed(2).replace('.', ',')}\n\nBoas vendas! Sucesso! 💎💼`;
+        const msgConsignar = `Olá, *${revendedora.nome}*! ✨\nNovas semijoias foram adicionadas à sua maleta consignada pela administradora!\n\n*Novas Peças Recebidas:*\n- Produto: ${produto.nome} (SKU: ${variacao.sku})\n- Tamanho: ${variacao.tamanho || 'Único'} | Banho: ${variacao.banho}\n- Quantidade: ${qtdParsed} unid.\n- Preço de venda sugerido: R$ ${precoVendaCalculado.toFixed(2).replace('.', ',')}\n- Valor total adicionado: R$ ${(precoVendaCalculado * qtdParsed).toFixed(2).replace('.', ',')}\n\nBoas vendas! Sucesso! 💎💼`;
         
         await prisma.mensagemWhatsapp.create({
           data: {
@@ -1268,14 +1562,89 @@ app.post('/api/consignacoes', autenticarJWT, autorizarRole(['Manager', 'SuperAdm
     res.json(consignacao);
   } catch (error) {
     console.error('Erro ao consignar:', error);
-    res.status(500).json({ error: 'Erro ao registrar consignação.' });
+    res.status(500).json({ error: 'Erro ao processar consignação no banco de dados.' });
+  }
+});
+
+// Devolver peças consignadas da maleta para o estoque central
+app.post('/api/consignacoes/devolver', autenticarJWT, autorizarRole(['Manager', 'SuperAdmin']), identificarLoja, async (req, res) => {
+  const { consignadoId, quantidadeDevolver } = req.body;
+  const qtdParsed = parseInt(quantidadeDevolver);
+
+  if (!consignadoId || isNaN(qtdParsed) || qtdParsed <= 0) {
+    return res.status(400).json({ error: 'Dados incompletos. Informe o ID do consignado e a quantidade maior que zero.' });
+  }
+
+  try {
+    const consignado = await prisma.consignado.findFirst({
+      where: { id: consignadoId, lojaId: req.lojaId },
+      include: {
+        produtoVariacao: {
+          include: {
+            produto: true
+          }
+        },
+        usuario: true
+      }
+    });
+
+    if (!consignado) {
+      return res.status(404).json({ error: 'Consignado não encontrado ou não pertence a esta loja.' });
+    }
+
+    const ultimoAcerto = await prisma.historicoAcerto.findFirst({
+      where: { usuarioId: consignado.usuarioId, lojaId: req.lojaId },
+      orderBy: { data: 'desc' }
+    });
+    const dataInicioCiclo = ultimoAcerto ? new Date(ultimoAcerto.data) : new Date(0);
+
+    const vendasCiclo = await prisma.vendaRevendedora.findMany({
+      where: {
+        usuarioId: consignado.usuarioId,
+        produtoVariacaoId: consignado.produtoVariacaoId,
+        lojaId: req.lojaId,
+        data: { gt: dataInicioCiclo }
+      }
+    });
+
+    const totalJaVendido = vendasCiclo.reduce((acc, v) => acc + (v.quantidade || 1), 0);
+    const disponivelNaMaleta = Math.max(0, consignado.quantidadeConsignada - totalJaVendido);
+
+    if (disponivelNaMaleta < qtdParsed) {
+      return res.status(400).json({ error: `Quantidade a devolver (${qtdParsed}) maior do que a quantidade disponível na maleta (${disponivelNaMaleta}).` });
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.produtoVariacao.update({
+        where: { id: consignado.produtoVariacaoId },
+        data: { quantidade: { increment: qtdParsed } }
+      });
+
+      if (consignado.quantidadeConsignada === qtdParsed && totalJaVendido === 0) {
+        await tx.consignado.delete({
+          where: { id: consignado.id }
+        });
+      } else {
+        await tx.consignado.update({
+          where: { id: consignado.id },
+          data: { quantidadeConsignada: { decrement: qtdParsed } }
+        });
+      }
+    });
+
+    await registrarLog(req, 'CONSIGNACAO_DEVOLVER', `Devolveu ${qtdParsed} unidades do produto ${consignado.produtoVariacao.produto.nome} (SKU: ${consignado.produtoVariacao.sku}) da maleta da revendedora ${consignado.usuario.nome} para o estoque central.`);
+    res.json({ message: 'Peças devolvidas ao estoque central com sucesso!' });
+  } catch (error) {
+    console.error('Erro ao devolver consignado:', error);
+    res.status(500).json({ error: 'Erro ao processar a devolução no banco de dados.' });
   }
 });
 
 // Finalizar Acerto de Contas (Admin)
 app.post('/api/acertos', autenticarJWT, autorizarRole(['Manager', 'SuperAdmin']), identificarLoja, async (req, res) => {
   // itensAcerto: [{ produtoId, quantidadeVendida, quantidadeDevolvida, quantidadePerdida, quantidadeDefeito }]
-  const { usuarioId, itensAcerto, formaPagamento } = req.body;
+  const { usuarioId, itensAcerto, formaPagamento, detalhesItens, manterPecasMaleta } = req.body;
+  const reterEstoqueComRevendedora = Boolean(manterPecasMaleta === true || manterPecasMaleta === 'true');
 
   if (!usuarioId || !itensAcerto || itensAcerto.length === 0) {
     return res.status(400).json({ error: 'Falta dados para o fechamento.' });
@@ -1304,33 +1673,52 @@ app.post('/api/acertos', autenticarJWT, autorizarRole(['Manager', 'SuperAdmin'])
     let valorDescontoPerda = 0;
     let lostPiecesCounter = 0;
 
-    for (const item of itensAcerto) {
-      const consignado = await prisma.consignado.findFirst({
-        where: {
-          usuarioId,
-          produtoId: item.produtoId,
-          lojaId: req.lojaId
+    // Executa as operações críticas do acerto de contas em transação ACID para evitar estados inconsistentes
+    const acertoResult = await prisma.$transaction(async (tx) => {
+      for (const item of itensAcerto) {
+        let consignado = null;
+        if (item.consignadoId) {
+          consignado = await tx.consignado.findFirst({ where: { id: item.consignadoId, lojaId: req.lojaId } });
         }
-      });
+        if (!consignado && item.produtoVariacaoId) {
+          consignado = await tx.consignado.findFirst({ where: { usuarioId, produtoVariacaoId: item.produtoVariacaoId, lojaId: req.lojaId } });
+        }
+        if (!consignado && item.produtoId) {
+          consignado = await tx.consignado.findFirst({
+            where: {
+              usuarioId,
+              produtoVariacao: { produtoId: item.produtoId },
+              lojaId: req.lojaId
+            }
+          });
+        }
 
-      if (consignado) {
+        const qtdVendida = parseInt(item.quantidadeVendida) || 0;
+        const qtdDevolvida = parseInt(item.quantidadeDevolvida) || 0;
         const qtdPerdida = parseInt(item.quantidadePerdida) || 0;
         const qtdDefeito = parseInt(item.quantidadeDefeito) || 0;
+        const precoItem = item.precoVenda ? parseFloat(item.precoVenda) : (consignado ? consignado.precoVenda : 0);
+        const qtdConsignadaItem = item.quantidadeConsignada || (consignado ? consignado.quantidadeConsignada : (qtdVendida + qtdDevolvida + qtdPerdida + qtdDefeito));
 
-        totalConsignada += consignado.quantidadeConsignada;
-        totalVendida += parseInt(item.quantidadeVendida) || 0;
-        totalDevolvida += parseInt(item.quantidadeDevolvida) || 0;
+        totalConsignada += qtdConsignadaItem;
+        totalVendida += qtdVendida;
+        totalDevolvida += qtdDevolvida;
         totalPerdida += qtdPerdida;
         totalDefeito += qtdDefeito;
-        faturamentoBruto += consignado.precoVenda * (parseInt(item.quantidadeVendida) || 0);
+        faturamentoBruto += precoItem * qtdVendida;
 
         // Valor das perdas: calcula com base na regra de perda personalizada da revendedora
         let itemPerdaValor = 0;
         if (qtdPerdida > 0) {
-          let custoLiquido = 0;
+          let custoRealItem = 0;
           if (revendedora.regraPerda === 'VALOR_CUSTO') {
-            const produto = await prisma.produto.findUnique({ where: { id: item.produtoId } });
-            custoLiquido = produto ? (produto.custoLiquido || 0) : 0;
+            let prodId = item.produtoId;
+            if (!prodId && consignado) {
+              const pv = await tx.produtoVariacao.findUnique({ where: { id: consignado.produtoVariacaoId } });
+              if (pv) prodId = pv.produtoId;
+            }
+            const produto = prodId ? await tx.produto.findUnique({ where: { id: prodId } }) : null;
+            custoRealItem = produto ? ((produto.custoBruto || 0) + (produto.custoBanho || 0) + (produto.custoLiquido || 0)) : 0;
           }
 
           for (let i = 0; i < qtdPerdida; i++) {
@@ -1338,136 +1726,151 @@ app.post('/api/acertos', autenticarJWT, autorizarRole(['Manager', 'SuperAdmin'])
             if (revendedora.regraPerda === 'ISENTO' && lostPiecesCounter <= (revendedora.limiteIsencaoPerda || 0)) {
               itemPerdaValor += 0;
             } else if (revendedora.regraPerda === 'VALOR_CUSTO') {
-              itemPerdaValor += custoLiquido;
+              itemPerdaValor += custoRealItem;
             } else {
-              itemPerdaValor += consignado.precoVenda;
+              itemPerdaValor += precoItem;
             }
           }
         }
         valorDescontoPerda += itemPerdaValor;
 
-        // 1. As devoluções normais retornam ao Estoque Central
-        if (parseInt(item.quantidadeDevolvida) > 0) {
-          await prisma.produto.update({
-            where: { id: item.produtoId },
-            data: { quantidade: { increment: parseInt(item.quantidadeDevolvida) } }
+        const varId = consignado ? consignado.produtoVariacaoId : item.produtoVariacaoId;
+
+        // 1. As devoluções normais retornam ao Estoque Central da variação SE NÃO forem retidas com a revendedora
+        if (qtdDevolvida > 0 && varId && !reterEstoqueComRevendedora) {
+          await tx.produtoVariacao.update({
+            where: { id: varId },
+            data: { quantidade: { increment: qtdDevolvida } }
           });
         }
 
-        // 2. Defeitos: incrementam o contador de defeito no produto (não voltam ao estoque normal)
-        if (qtdDefeito > 0) {
-          await prisma.produto.update({
-            where: { id: item.produtoId },
+        // 2. Defeitos: incrementam o contador de defeito na variação do produto
+        if (qtdDefeito > 0 && varId) {
+          await tx.produtoVariacao.update({
+            where: { id: varId },
             data: { quantidadeDefeito: { increment: qtdDefeito } }
           });
         }
 
-        // 3. Remove o item consignado (limpa a maleta)
-        await prisma.consignado.delete({ where: { id: consignado.id } });
-      }
-    }
-
-    // 1. Base de cálculo da comissão: Bruto vs Líquido
-    const valorBaseComissao = (revendedora.baseCalculo === 'LIQUIDO')
-      ? Math.max(0, faturamentoBruto - valorDescontoPerda)
-      : faturamentoBruto;
-
-    // 2. Determinação da comissão e bônus conforme o tipo de comissão
-    let percentualComissao = revendedora.comissao;
-    let comissaoBruta = 0;
-
-    // Volume de faturamento para fins de enquadramento de faixa ou meta
-    let faturamentoVolumeParaFaixa = faturamentoBruto;
-    if (revendedora.periodoAcumulo === 'MENSAL') {
-      const agora = new Date();
-      const inicioMes = new Date(agora.getFullYear(), agora.getMonth(), 1, 0, 0, 0, 0);
-      const vendasMes = await prisma.vendaRevendedora.findMany({
-        where: {
-          usuarioId,
-          lojaId: req.lojaId,
-          data: {
-            gte: inicioMes
+        // 3. Atualização ou Remoção do item consignado na maleta
+        if (consignado) {
+          if (reterEstoqueComRevendedora && qtdDevolvida > 0) {
+            // Mantém a maleta com as peças não vendidas no novo ciclo
+            await tx.consignado.update({
+              where: { id: consignado.id },
+              data: { quantidadeConsignada: qtdDevolvida }
+            });
+          } else {
+            // Remove o item consignado zerado
+            await tx.consignado.delete({ where: { id: consignado.id } });
           }
+        } else if (reterEstoqueComRevendedora && qtdDevolvida > 0 && varId) {
+          // Cria o registro consignado para o novo ciclo se não existia previamente
+          await tx.consignado.create({
+            data: {
+              lojaId: req.lojaId,
+              usuarioId,
+              produtoVariacaoId: varId,
+              quantidadeConsignada: qtdDevolvida,
+              precoVenda: precoItem
+            }
+          });
+        }
+      }
+
+      // Se NÃO for para reter estoque, limpa quaisquer itens consignados restantes
+      if (!reterEstoqueComRevendedora) {
+        await tx.consignado.deleteMany({ where: { usuarioId, lojaId: req.lojaId } });
+      }
+
+      // 1. Base de cálculo da comissão: Bruto vs Líquido
+      const valorBaseComissao = (revendedora.baseCalculo === 'LIQUIDO')
+        ? Math.max(0, faturamentoBruto - valorDescontoPerda)
+        : faturamentoBruto;
+
+      // 2. Determinação da comissão e bônus conforme o tipo de comissão
+      let percentualComissao = revendedora.comissao;
+      let comissaoBruta = 0;
+
+      // Volume de faturamento para fins de enquadramento de faixa ou meta
+      let faturamentoVolumeParaFaixa = faturamentoBruto;
+      if (revendedora.periodoAcumulo === 'MENSAL') {
+        const agora = new Date();
+        const inicioMes = new Date(agora.getFullYear(), agora.getMonth(), 1, 0, 0, 0, 0);
+        const vendasMes = await tx.vendaRevendedora.findMany({
+          where: {
+            usuarioId,
+            lojaId: req.lojaId,
+            data: {
+              gte: inicioMes
+            }
+          }
+        });
+        faturamentoVolumeParaFaixa = vendasMes.reduce((acc, v) => acc + (v.precoVenda * v.quantidade), 0);
+        if (faturamentoVolumeParaFaixa < faturamentoBruto) {
+          faturamentoVolumeParaFaixa = faturamentoBruto;
+        }
+      }
+
+      // Utiliza o ComissaoService para calcular a comissão final de forma limpa e modular
+      const calcComissao = comissaoService.calcularComissao(
+        revendedora,
+        faturamentoBruto,
+        faturamentoVolumeParaFaixa,
+        valorDescontoPerda
+      );
+
+      const comissaoPaga = calcComissao.comissaoPaga;
+      const liquidoConectaJoias = calcComissao.liquidoConectaJoias;
+      const totalRetidoRev = parseFloat(req.body.totalRetidoRevendedora) || 0.0;
+      const totalRecAdmin = parseFloat(req.body.totalRecebidoAdmin) || 0.0;
+      const saldoFinal = comissaoPaga - totalRetidoRev;
+
+      // Salva o histórico de acerto
+      const acerto = await tx.historicoAcerto.create({
+        data: {
+          usuarioId,
+          totalConsignada,
+          totalVendida,
+          totalDevolvida,
+          totalPerdida,
+          totalDefeito,
+          faturamentoBruto,
+          valorDescontoPerda,
+          comissaoPaga,
+          liquidoConectaJoias,
+          formaPagamento: formaPagamento || "Pix",
+          totalRetidoRevendedora: totalRetidoRev,
+          totalRecebidoAdmin: totalRecAdmin,
+          saldoFinalAcerto: saldoFinal,
+          detalhesItens: detalhesItens ? JSON.stringify(detalhesItens) : null,
+          lojaId: req.lojaId
         }
       });
-      faturamentoVolumeParaFaixa = vendasMes.reduce((acc, v) => acc + (v.precoVenda * v.quantidade), 0);
-      // Garante que inclua o faturamento do acerto atual se alguma venda ainda não tiver sido salva
-      if (faturamentoVolumeParaFaixa < faturamentoBruto) {
-        faturamentoVolumeParaFaixa = faturamentoBruto;
-      }
-    }
 
-    if (revendedora.tipoComissao === 'PROGRESSIVA') {
-      const faixas = (revendedora.faixasComissao && revendedora.faixasComissao.length > 0)
-        ? revendedora.faixasComissao
-        : (revendedora.loja && revendedora.loja.faixasComissao ? revendedora.loja.faixasComissao : []);
-      const faixa = encontrarFaixaComissao(faturamentoVolumeParaFaixa, faixas);
-      percentualComissao = faixa ? faixa.percentual : revendedora.comissao;
-      comissaoBruta = valorBaseComissao * (percentualComissao / 100);
-    } else if (revendedora.tipoComissao === 'META_UNICA') {
-      const atingiuMeta = faturamentoVolumeParaFaixa >= (revendedora.metaUnicaValor || 0);
-      if (atingiuMeta) {
-        if (revendedora.metaUnicaTipoBonus === 'PERCENTUAL') {
-          percentualComissao = revendedora.comissao + (revendedora.metaUnicaBonus || 0);
-          comissaoBruta = valorBaseComissao * (percentualComissao / 100);
-        } else { // Bônus Fixo em Dinheiro
-          percentualComissao = revendedora.comissao;
-          comissaoBruta = (valorBaseComissao * (percentualComissao / 100)) + (revendedora.metaUnicaBonus || 0);
-        }
-      } else {
-        percentualComissao = revendedora.comissao;
-        comissaoBruta = valorBaseComissao * (percentualComissao / 100);
-      }
-    } else { // FIXA
-      percentualComissao = revendedora.comissao;
-      comissaoBruta = valorBaseComissao * (percentualComissao / 100);
-    }
+      // Enviar mensagem de WhatsApp ao realizar acerto de contas (criar na fila) se houver número cadastrado
+      if (revendedora.whatsapp) {
+        const msgTexto = `Olá ${revendedora.nome}! Seu acerto de contas da Conecta Joias foi concluído com sucesso. Resumo do acerto: Faturamento Bruto: R$ ${faturamentoBruto.toFixed(2)} | Comissão Devida: R$ ${comissaoPaga.toFixed(2)} | Retido em Mãos: R$ ${totalRetidoRev.toFixed(2)} | Saldo Final: R$ ${Math.abs(saldoFinal).toFixed(2)} (${saldoFinal >= 0 ? 'A receber da Conecta Joias' : 'A repassar para a Conecta Joias'}). Visualizar Recibo Completo e PDF: ${frontendUrl}/recibo.html?id=${acerto.id}`;
 
-    const comissaoPaga = Math.max(0, comissaoBruta - valorDescontoPerda);
-    const liquidoConectaJoias = faturamentoBruto - comissaoPaga;
-    const totalRetidoRev = parseFloat(req.body.totalRetidoRevendedora) || 0.0;
-    const totalRecAdmin = parseFloat(req.body.totalRecebidoAdmin) || 0.0;
-    const saldoFinal = comissaoPaga - totalRetidoRev;
-
-    // Salva o histórico de acerto
-    const acerto = await prisma.historicoAcerto.create({
-      data: {
-        usuarioId,
-        totalConsignada,
-        totalVendida,
-        totalDevolvida,
-        totalPerdida,
-        totalDefeito,
-        faturamentoBruto,
-        valorDescontoPerda,
-        comissaoPaga,
-        liquidoConectaJoias,
-        formaPagamento: formaPagamento || "Pix",
-        totalRetidoRevendedora: totalRetidoRev,
-        totalRecebidoAdmin: totalRecAdmin,
-        saldoFinalAcerto: saldoFinal,
-        lojaId: req.lojaId
+        await tx.mensagemWhatsapp.create({
+          data: {
+            numero: revendedora.whatsapp,
+            mensagem: msgTexto,
+            tipo: 'ACERTO',
+            status: 'PENDENTE',
+            lojaId: req.lojaId
+          }
+        });
       }
+
+      return { acerto, faturamentoBruto, comissaoPaga, totalRetidoRev, liquidoConectaJoias };
     });
 
-    // Enviar mensagem de WhatsApp ao realizar acerto de contas (criar na fila)
-    const msgTexto = `Olá ${revendedora.nome}! Seu acerto de contas da Conecta Joias foi concluído com sucesso. Resumo do acerto: Faturamento Bruto: R$ ${faturamentoBruto.toFixed(2)} | Comissão Devida: R$ ${comissaoPaga.toFixed(2)} | Retido em Mãos: R$ ${totalRetidoRev.toFixed(2)} | Saldo Final: R$ ${Math.abs(saldoFinal).toFixed(2)} (${saldoFinal >= 0 ? 'A receber da Conecta Joias' : 'A repassar para a Conecta Joias'}). Obrigado pela parceria! ✨`;
-
-    await prisma.mensagemWhatsapp.create({
-      data: {
-        numero: revendedora.whatsapp,
-        mensagem: msgTexto,
-        tipo: 'ACERTO',
-        status: 'PENDENTE',
-        lojaId: req.lojaId
-      }
-    });
-
-    registrarLog(req, "ACERTO_CONCLUIR", `Concluiu acerto de contas com a revendedora ${revendedora.nome}. Pagamento: ${formaPagamento || "Pix"}. Vendido: ${totalVendida}, Devolvido: ${totalDevolvida}, Perda: ${totalPerdida}, Defeito: ${totalDefeito}. Faturamento Bruto: R$ ${faturamentoBruto.toFixed(2)}, Líquido Empresa: R$ ${liquidoConectaJoias.toFixed(2)}.`);
+    registrarLog(req, "ACERTO_CONCLUIR", `Concluiu acerto de contas com a revendedora ${revendedora.nome}. Pagamento: ${formaPagamento || "Pix"}. Vendido: ${totalVendida}, Devolvido: ${totalDevolvida}, Perda: ${totalPerdida}, Defeito: ${totalDefeito}. Faturamento Bruto: R$ ${acertoResult.faturamentoBruto.toFixed(2)}, Líquido Empresa: R$ ${acertoResult.liquidoConectaJoias.toFixed(2)}.`);
 
     res.json({
       message: 'Acerto concluído com sucesso!',
-      acerto
+      acerto: acertoResult.acerto
     });
   } catch (error) {
     console.error('Erro no acerto:', error);
@@ -1536,43 +1939,44 @@ app.post('/api/vendas-diretas', autenticarJWT, autorizarRole(['Manager', 'SuperA
 
   const qtd = parseInt(quantidade) || 1;
   const descTotal = parseFloat(desconto) || 0.0;
-  const descPorItem = descTotal / qtd;
   const motivo = motivoDesconto || null;
   const forma = formaPagamento || "Pix";
+  const precoUnitario = parseFloat(preco) || 0.0;
+  const precoTotalVenda = Math.max(0, (precoUnitario * qtd) - descTotal);
 
   try {
-    let ultimaVendaCreated = null;
-
-    // Cria tantas vendas diretas quanto a quantidade especificada
-    for (let i = 0; i < qtd; i++) {
-      const venda = await prisma.vendaDireta.create({
-        data: {
-          codigo,
-          nome,
-          preco: parseFloat(preco) - descPorItem,
-          whatsappCliente,
-          nomeCliente,
-          clienteId: clienteId || null,
-          lojaId: req.lojaId,
-          desconto: descPorItem,
-          motivoDesconto: motivo,
-          formaPagamento: forma
-        }
-      });
-      ultimaVendaCreated = venda;
-    }
+    // Registra a transação como uma venda em conjunto (1 única venda contendo a quantidade de itens)
+    const venda = await prisma.vendaDireta.create({
+      data: {
+        codigo,
+        nome,
+        quantidade: qtd,
+        preco: precoTotalVenda,
+        whatsappCliente,
+        nomeCliente,
+        clienteId: clienteId || null,
+        lojaId: req.lojaId,
+        desconto: descTotal,
+        motivoDesconto: motivo,
+        formaPagamento: forma
+      }
+    });
 
     // Deduz a quantidade do estoque central se houver essa peça disponível
-    const produto = await prisma.produto.findFirst({ where: { codigo, lojaId: req.lojaId } });
-    if (produto) {
-      const novaQtd = Math.max(0, produto.quantidade - qtd);
-      await prisma.produto.update({
-        where: { id: produto.id },
+    const produto = await prisma.produto.findFirst({
+      where: { codigo, lojaId: req.lojaId },
+      include: { variacoes: true }
+    });
+    if (produto && produto.variacoes.length > 0) {
+      const variacao = produto.variacoes.find(v => v.tamanho === "Único" && v.banho === "OURO") || produto.variacoes[0];
+      const novaQtd = Math.max(0, variacao.quantidade - qtd);
+      await prisma.produtoVariacao.update({
+        where: { id: variacao.id },
         data: { quantidade: novaQtd }
       });
     }
 
-    res.status(201).json(ultimaVendaCreated);
+    res.status(201).json(venda);
   } catch (error) {
     console.error("Erro ao registrar venda direta:", error);
     res.status(500).json({ error: 'Erro ao registrar venda direta.' });
@@ -1692,10 +2096,11 @@ app.get('/api/relatorios/dre', autenticarJWT, autorizarRole(['Manager', 'SuperAd
 
     vendasDiretas.forEach(v => {
       faturamentoVendasDiretas += v.preco;
+      const qtdItem = v.quantidade || 1;
       const prod = produtosMap.get(v.codigo);
       const custoReal = prod ? (prod.custoBruto + prod.custoBanho + prod.custoLiquido) : 0;
       if (custoReal > 0) {
-        custoVendasDiretas += custoReal;
+        custoVendasDiretas += custoReal * qtdItem;
       } else {
         custoVendasDiretas += v.preco * (cmvEstimado / 100);
       }
@@ -1728,7 +2133,9 @@ app.get('/api/relatorios/dre', autenticarJWT, autorizarRole(['Manager', 'SuperAd
 
     const faturamentoBrutoTotal = faturamentoVendasDiretas + faturamentoAcertos;
     const custoTotalMercadorias = custoVendasDiretas + custoVendasConsignado;
-    const lucroLiquidoEstimado = faturamentoBrutoTotal - comissoesPagas - custoTotalMercadorias;
+    const lucroLiquidoEstimado = faturamentoBrutoTotal - comissoesPagas - custoTotalMercadorias + descontoPerdas;
+    const markupMedioReal = custoTotalMercadorias > 0 ? (faturamentoBrutoTotal / custoTotalMercadorias) : 3.0;
+    const margemLucroReal = faturamentoBrutoTotal > 0 ? ((lucroLiquidoEstimado / faturamentoBrutoTotal) * 100) : 0.0;
 
     res.json({
       periodo: {
@@ -1744,7 +2151,9 @@ app.get('/api/relatorios/dre', autenticarJWT, autorizarRole(['Manager', 'SuperAd
         custoVendasDiretas,
         custoVendasConsignado,
         custoTotalMercadorias,
-        lucroLiquidoEstimado
+        lucroLiquidoEstimado,
+        markupMedioReal,
+        margemLucroReal
       }
     });
 
@@ -1759,78 +2168,152 @@ app.get('/api/relatorios/dre', autenticarJWT, autorizarRole(['Manager', 'SuperAd
 // ==========================================
 
 app.post('/api/vendas-revendedora', autenticarJWT, autorizarRole(['Consultant']), identificarLoja, async (req, res) => {
-  const { produtoId, quantidade, desconto, motivoDesconto, formaPagamento, clienteId } = req.body;
+  const { produtoVariacaoId, quantidade, desconto, motivoDesconto, formaPagamento, clienteId } = req.body;
   const usuarioId = req.user.id;
 
-  if (!produtoId || !quantidade || quantidade <= 0) {
-    return res.status(400).json({ error: 'Dados incompletos para registrar a venda.' });
+  const qtdParsed = parseInt(quantidade);
+  const descTotal = parseFloat(desconto) || 0.0;
+
+  if (!produtoVariacaoId || isNaN(qtdParsed) || qtdParsed <= 0) {
+    return res.status(400).json({ error: 'Quantidade inválida ou dados incompletos para registrar a venda.' });
+  }
+
+  if (isNaN(descTotal) || descTotal < 0) {
+    return res.status(400).json({ error: 'Desconto inválido. O valor do desconto não pode ser negativo.' });
   }
 
   try {
-    // Busca o item consignado desta revendedora
+    // Busca o item consignado desta revendedora vinculado à variação específica
     const consignado = await prisma.consignado.findFirst({
       where: {
         usuarioId,
-        produtoId,
+        produtoVariacaoId,
         lojaId: req.lojaId
       },
-      include: { produto: true, usuario: true }
+      include: { 
+        produtoVariacao: {
+          include: { produto: true }
+        }, 
+        usuario: true 
+      }
     });
 
     if (!consignado) {
-      return res.status(404).json({ error: 'Este produto não está na sua maleta.' });
+      return res.status(404).json({ error: 'Esta variação de produto não está na sua maleta.' });
     }
 
-    if (consignado.quantidadeConsignada < quantidade) {
-      return res.status(400).json({ error: `Quantidade insuficiente na maleta. Você tem apenas ${consignado.quantidadeConsignada} unidade(s).` });
+    // Busca o último acerto para verificar a quantidade já vendida no ciclo atual
+    const ultimoAcerto = await prisma.historicoAcerto.findFirst({
+      where: { usuarioId, lojaId: req.lojaId },
+      orderBy: { data: 'desc' }
+    });
+    const dataInicioCiclo = ultimoAcerto ? new Date(ultimoAcerto.data) : new Date(0);
+
+    const vendasCiclo = await prisma.vendaRevendedora.findMany({
+      where: {
+        usuarioId,
+        produtoVariacaoId,
+        lojaId: req.lojaId,
+        data: { gt: dataInicioCiclo }
+      }
+    });
+
+    const disponivelNaMaleta = Math.max(0, consignado.quantidadeConsignada);
+
+    if (disponivelNaMaleta < qtdParsed) {
+      return res.status(400).json({ error: `Quantidade insuficiente na maleta. Você tem apenas ${disponivelNaMaleta} unidade(s) disponível(is).` });
     }
 
-    const descTotal = parseFloat(desconto) || 0.0;
-    const descPorItem = descTotal / quantidade;
+    const descPorItem = descTotal / qtdParsed;
+    if (descPorItem > consignado.precoVenda) {
+      return res.status(400).json({ error: 'Desconto inválido. O desconto por item não pode ser superior ao preço de venda do produto.' });
+    }
+
     const precoFinal = consignado.precoVenda - descPorItem;
-    const comissaoValor = precoFinal * quantidade * (consignado.usuario.comissao / 100);
+    const comissaoValor = precoFinal * qtdParsed * (consignado.usuario.comissao / 100);
 
-    // Deduz da maleta ou remove o item se zerou
-    const novaQtd = consignado.quantidadeConsignada - quantidade;
-    if (novaQtd === 0) {
-      await prisma.consignado.delete({ where: { id: consignado.id } });
-    } else {
-      await prisma.consignado.update({
-        where: { id: consignado.id },
-        data: { quantidadeConsignada: novaQtd }
-      });
-    }
+    // Quantidade física que sobrará na maleta após esta venda
+    const novaQtd = disponivelNaMaleta - qtdParsed;
 
-    // Registra a venda
+    const variacao = consignado.produtoVariacao;
+    const produto = variacao.produto;
+
+    const isLink = (formaPagamento === "Link de Pagamento");
+    const canalPagamento = isLink ? "LINK_PAGO_ADMIN" : "DINHEIRO_REVENDEDORA";
+    const pago = !isLink;
+
+    // Registra a venda contendo as informações da variação e SKU
     const venda = await prisma.vendaRevendedora.create({
       data: {
         usuarioId,
-        produtoId,
-        nomeProduto: consignado.produto.nome,
-        codigoProduto: consignado.produto.codigo,
-        quantidade,
+        produtoId: produto.id,
+        produtoVariacaoId: variacao.id,
+        sku: variacao.sku,
+        nomeProduto: produto.nome,
+        codigoProduto: produto.codigo,
+        quantidade: qtdParsed,
         precoVenda: precoFinal,
         comissaoValor,
         lojaId: req.lojaId,
         desconto: descPorItem,
         motivoDesconto: motivoDesconto || null,
         formaPagamento: formaPagamento || "Dinheiro",
-        clienteId: clienteId || null
+        clienteId: clienteId || null,
+        pago,
+        canalPagamento
       }
     });
+
+    // Atualiza a quantidade real em tempo real na tabela Consignado do banco de dados
+    if (consignado.quantidadeConsignada - qtdParsed <= 0) {
+      await prisma.consignado.delete({ where: { id: consignado.id } });
+    } else {
+      await prisma.consignado.update({
+        where: { id: consignado.id },
+        data: { quantidadeConsignada: { decrement: qtdParsed } }
+      });
+    }
+
+    let linkSimulado = null;
+    if (isLink) {
+      const linkId = Math.random().toString(36).substring(2, 15);
+      linkSimulado = `${frontendUrl}/pagamento.html?id=${linkId}`;
+
+      await prisma.linkPagamento.create({
+        data: {
+          id: linkId,
+          usuarioId,
+          clienteId: clienteId || null,
+          valor: parseFloat(precoFinal * qtdParsed),
+          formaEnvio: "PIX",
+          status: 'PENDENTE',
+          linkSimulado,
+          vendaId: venda.id
+        }
+      });
+
+      // Atualiza a venda com o ID do link
+      await prisma.vendaRevendedora.update({
+        where: { id: venda.id },
+        data: { linkPagamentoId: linkId }
+      });
+    }
 
     // Cria notificação de venda para o Admin
     try {
       const valorTotal = precoFinal * quantidade;
-      await prisma.notificacao.create({
+      const nomeProd = consignado.produtoVariacao?.produto?.nome || 'Produto';
+      const codProd = consignado.produtoVariacao?.produto?.codigo || '—';
+
+      const novaNotif = await prisma.notificacao.create({
         data: {
           tipo: 'venda_revendedora',
-          mensagem: `A revendedora ${consignado.usuario.nome} vendeu ${quantidade}x ${consignado.produto.nome} (Código: ${consignado.produto.codigo}) no valor total de R$ ${valorTotal.toFixed(2).replace('.', ',')}.`,
+          mensagem: `A revendedora ${consignado.usuario.nome} vendeu ${quantidade}x ${nomeProd} (Código: ${codProd}) no valor total de R$ ${valorTotal.toFixed(2).replace('.', ',')}.`,
           detalhes: JSON.stringify({
             vendaId: venda.id,
             revendedoraNome: consignado.usuario.nome,
-            produtoNome: consignado.produto.nome,
-            produtoCodigo: consignado.produto.codigo,
+            produtoNome: nomeProd,
+            produtoCodigo: codProd,
             quantidade,
             precoVenda: precoFinal,
             valorTotal,
@@ -1840,6 +2323,7 @@ app.post('/api/vendas-revendedora', autenticarJWT, autorizarRole(['Consultant'])
           lojaId: req.lojaId
         }
       });
+      dispararNotificacaoRealtime(req.lojaId, novaNotif);
     } catch (notifErr) {
       console.error("Erro ao gerar notificação de venda no backend:", notifErr);
     }
@@ -1861,10 +2345,12 @@ app.post('/api/vendas-revendedora', autenticarJWT, autorizarRole(['Consultant'])
       }
 
       const valorTotal = precoFinal * quantidade;
+      const nomeProd = consignado.produtoVariacao?.produto?.nome || 'Produto';
+      const codProd = consignado.produtoVariacao?.produto?.codigo || '—';
 
       // 1. WhatsApp para a Administradora (se configurado)
       if (whatsappAdmin && whatsappAdmin.trim() !== '') {
-        const msgAdmin = `📢 *Nova Venda Registrada!*\nA consultora *${consignado.usuario.nome}* registrou uma venda no sistema.\n\n*Detalhes da Venda:*\n- Produto: ${consignado.produto.nome} (${consignado.produto.codigo})\n- Quantidade: ${quantidade} unid.\n- Preço unitário: R$ ${precoFinal.toFixed(2).replace('.', ',')}\n- Valor total: R$ ${valorTotal.toFixed(2).replace('.', ',')}\n- Forma de pagamento: ${formaPagamento || 'Dinheiro'}\n- Cliente: ${nomeCliente}`;
+        const msgAdmin = `📢 *Nova Venda Registrada!*\nA consultora *${consignado.usuario.nome}* registrou uma venda no sistema.\n\n*Detalhes da Venda:*\n- Produto: ${nomeProd} (${codProd})\n- Quantidade: ${quantidade} unid.\n- Preço unitário: R$ ${precoFinal.toFixed(2).replace('.', ',')}\n- Valor total: R$ ${valorTotal.toFixed(2).replace('.', ',')}\n- Forma de pagamento: ${formaPagamento || 'Dinheiro'}\n- Cliente: ${nomeCliente}`;
 
         await prisma.mensagemWhatsapp.create({
           data: {
@@ -1879,7 +2365,7 @@ app.post('/api/vendas-revendedora', autenticarJWT, autorizarRole(['Consultant'])
 
       // 2. WhatsApp para o Cliente (somente se clienteId estiver cadastrado e tiver WhatsApp)
       if (clienteId && telCliente && telCliente.trim() !== '') {
-        const msgCliente = `Olá, *${nomeCliente}*! ✨\nAgradecemos a sua compra com a nossa consultora *${consignado.usuario.nome}*!\n\n*Resumo da sua Compra:*\n- Produto: ${consignado.produto.nome}\n- Quantidade: ${quantidade} unid.\n- Valor total: R$ ${valorTotal.toFixed(2).replace('.', ',')}\n- Forma de pagamento: ${formaPagamento || 'Dinheiro'}\n\nQualquer dúvida, estamos à disposição! 💖`;
+        const msgCliente = `Olá, *${nomeCliente}*! ✨\nAgradecemos a sua compra com a nossa consultora *${consignado.usuario.nome}*!\n\n*Resumo da sua Compra:*\n- Produto: ${nomeProd}\n- Quantidade: ${quantidade} unid.\n- Valor total: R$ ${valorTotal.toFixed(2).replace('.', ',')}\n- Forma de pagamento: ${formaPagamento || 'Dinheiro'}\n\nQualquer dúvida, estamos à disposição! 💖`;
 
         await prisma.mensagemWhatsapp.create({
           data: {
@@ -1898,11 +2384,12 @@ app.post('/api/vendas-revendedora', autenticarJWT, autorizarRole(['Consultant'])
     res.status(201).json({
       venda,
       resumo: {
-        nomeProduto: consignado.produto.nome,
+        nomeProduto: consignado.produtoVariacao?.produto?.nome || 'Produto',
         quantidade,
         totalVenda: consignado.precoVenda * quantidade,
         comissaoValor,
-        qtdRestanteNaMaleta: novaQtd
+        qtdRestanteNaMaleta: novaQtd,
+        linkSimulado
       }
     });
   } catch (error) {
@@ -1966,14 +2453,21 @@ app.post('/api/uploads', autenticarJWT, upload.single('imagem'), async (req, res
     return res.status(400).json({ error: 'Nenhum arquivo enviado.' });
   }
 
-  // Se não estiver configurado o Azure Blob Storage, retorna fallback simulado ou erro
+  // Se não estiver configurado o Azure Blob Storage, realiza upload local na pasta de uploads
   if (!containerClient) {
-    console.warn("Aviso: Azure Blob Storage não configurado. Utilizando link simulado temporariamente.");
-    // Fallback: Simulador de link local para testes locais
-    const blobNameSimulado = `fallback_${Date.now()}_${req.file.originalname}`;
-    return res.json({
-      url: `https://via.placeholder.com/450/423004/d4af37?text=${encodeURIComponent(blobNameSimulado)}`
-    });
+    console.warn("Aviso: Azure Blob Storage não configurado. Salvando imagem localmente.");
+    try {
+      const ext = path.extname(req.file.originalname) || '.png';
+      const localFileName = `upload_${Date.now()}_${Math.random().toString(36).substr(2, 5)}${ext}`;
+      const localFilePath = path.join(UPLOADS_DIR, localFileName);
+      fs.writeFileSync(localFilePath, req.file.buffer);
+      
+      // Retorna a URL relativa local
+      return res.json({ url: `/uploads/${localFileName}` });
+    } catch (err) {
+      console.error("Erro ao salvar arquivo localmente:", err);
+      return res.status(500).json({ error: 'Erro ao salvar imagem localmente.' });
+    }
   }
 
   try {
@@ -2019,16 +2513,39 @@ app.post('/api/importar', autenticarJWT, autorizarRole(['Manager', 'SuperAdmin']
 
         if (existente) {
           if (!substituirTudo) {
-            await prisma.produto.update({
+            const produtoAtualizado = await prisma.produto.update({
               where: { id: existente.id },
               data: {
-                quantidade: parseInt(p.quantidade) || 0,
                 custoBruto: parseFloat(p.custoBruto) || 0.0,
                 custoBanho: parseFloat(p.custoBanho) || 0.0,
                 custoLiquido: parseFloat(p.custoLiquido) || 0.0,
                 markup: parseFloat(p.markup) || 3.0
-              }
+              },
+              include: { variacoes: true }
             });
+
+            const cod = p.codigo || produtoAtualizado.codigo;
+            let variacao = produtoAtualizado.variacoes.find(v => v.tamanho === "Único" && v.banho === "OURO");
+            if (variacao) {
+              await prisma.produtoVariacao.update({
+                where: { id: variacao.id },
+                data: {
+                  sku: `${cod}-UN-OU`,
+                  quantidade: parseInt(p.quantidade) || 0
+                }
+              });
+            } else {
+              await prisma.produtoVariacao.create({
+                data: {
+                  lojaId: req.lojaId,
+                  produtoId: produtoAtualizado.id,
+                  sku: `${cod}-UN-OU`,
+                  tamanho: "Único",
+                  banho: "OURO",
+                  quantidade: parseInt(p.quantidade) || 0
+                }
+              });
+            }
           }
         } else {
           await prisma.produto.create({
@@ -2037,12 +2554,20 @@ app.post('/api/importar', autenticarJWT, autorizarRole(['Manager', 'SuperAdmin']
               codigo: p.codigo,
               nome: p.nome,
               categoria: p.categoria || 'Outros',
-              quantidade: parseInt(p.quantidade) || 0,
               custoBruto: parseFloat(p.custoBruto) || 0.0,
               custoBanho: parseFloat(p.custoBanho) || 0.0,
               custoLiquido: parseFloat(p.custoLiquido) || 0.0,
               markup: parseFloat(p.markup) || 3.0,
-              lojaId: req.lojaId
+              lojaId: req.lojaId,
+              variacoes: {
+                create: {
+                  lojaId: req.lojaId,
+                  sku: `${p.codigo}-UN-OU`,
+                  tamanho: "Único",
+                  banho: "OURO",
+                  quantidade: parseInt(p.quantidade) || 0
+                }
+              }
             }
           });
         }
@@ -2108,12 +2633,16 @@ app.post('/api/importar', autenticarJWT, autorizarRole(['Manager', 'SuperAdmin']
         // Importa itens consignados da maleta
         if (r.consignado && r.consignado.length > 0) {
           for (const c of r.consignado) {
-            const prod = await prisma.produto.findFirst({ where: { codigo: c.codigo, lojaId: req.lojaId } });
-            if (prod) {
+            const prod = await prisma.produto.findFirst({
+              where: { codigo: c.codigo, lojaId: req.lojaId },
+              include: { variacoes: true }
+            });
+            if (prod && prod.variacoes.length > 0) {
+              const variacao = prod.variacoes.find(v => v.tamanho === "Único" && v.banho === "OURO") || prod.variacoes[0];
               const consExistente = await prisma.consignado.findFirst({
                 where: {
                   usuarioId: revendedoraId,
-                  produtoId: prod.id,
+                  produtoVariacaoId: variacao.id,
                   lojaId: req.lojaId
                 }
               });
@@ -2130,7 +2659,7 @@ app.post('/api/importar', autenticarJWT, autorizarRole(['Manager', 'SuperAdmin']
                 await prisma.consignado.create({
                   data: {
                     usuarioId: revendedoraId,
-                    produtoId: prod.id,
+                    produtoVariacaoId: variacao.id,
                     quantidadeConsignada: parseInt(c.quantidadeConsignada) || 0,
                     precoVenda: parseFloat(c.precoVenda) || (prod.custoBruto + prod.custoBanho + prod.custoLiquido) * prod.markup,
                     lojaId: req.lojaId
@@ -2167,6 +2696,13 @@ app.get('/api/clientes', autenticarJWT, autorizarRole(['Consultant', 'Manager', 
     }
     const clientes = await prisma.cliente.findMany({
       where,
+      include: {
+        usuario: {
+          select: {
+            nome: true
+          }
+        }
+      },
       orderBy: { nome: 'asc' }
     });
     res.json(clientes);
@@ -2294,6 +2830,53 @@ app.delete('/api/clientes', autenticarJWT, autorizarRole(['Manager', 'SuperAdmin
 // ROTAS DE NOTIFICAÇÕES (ADMIN)
 // ==========================================
 
+let sseClients = [];
+
+function dispararNotificacaoRealtime(lojaId, notificacao) {
+  // Disparado de forma restrita e exclusiva apenas para contas Manager/SuperAdmin daquela loja
+  const clientsOfLoja = sseClients.filter(c => c.lojaId === lojaId && (c.role === 'Manager' || c.role === 'SuperAdmin'));
+  clientsOfLoja.forEach(c => {
+    try {
+      c.res.write(`data: ${JSON.stringify({ tipo: 'notificacao', data: notificacao })}\n\n`);
+    } catch (err) {
+      console.error('Erro ao enviar mensagem SSE para cliente:', err.message);
+    }
+  });
+}
+
+// Canal de notificações em tempo real (SSE)
+app.get('/api/realtime/notificacoes', autenticarJWT, autorizarRole(['Manager', 'SuperAdmin']), identificarLoja, (req, res) => {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.flushHeaders();
+
+  const cliente = {
+    id: Date.now(),
+    lojaId: req.lojaId,
+    role: req.user ? req.user.role : 'Manager',
+    res
+  };
+  sseClients.push(cliente);
+
+  // Envia ping inicial
+  res.write(`data: ${JSON.stringify({ tipo: 'ping', message: 'Conectado ao canal de notificações em tempo real.' })}\n\n`);
+
+  // Mantém a conexão ativa com pings a cada 15 segundos para evitar timeouts do Heroku/Azure/etc
+  const keepAlive = setInterval(() => {
+    try {
+      res.write(`data: ${JSON.stringify({ tipo: 'ping' })}\n\n`);
+    } catch (e) {
+      clearInterval(keepAlive);
+    }
+  }, 15000);
+
+  req.on('close', () => {
+    clearInterval(keepAlive);
+    sseClients = sseClients.filter(c => c.id !== cliente.id);
+  });
+});
+
 // Listar notificações não lidas
 app.get('/api/notificacoes', autenticarJWT, autorizarRole(['Consultant', 'Manager', 'SuperAdmin']), identificarLoja, async (req, res) => {
   try {
@@ -2408,6 +2991,13 @@ app.put('/api/config', autenticarJWT, autorizarRole(['Manager', 'SuperAdmin']), 
           site: site !== undefined ? site : (config.site || ''),
           onboardingCompleto: onboardingCompleto !== undefined ? onboardingCompleto : config.onboardingCompleto
         }
+      });
+    }
+    // Sincroniza o logoUrl diretamente na tabela Loja
+    if (logoUrl !== undefined) {
+      await prisma.loja.update({
+        where: { id: req.lojaId },
+        data: { logoUrl: logoUrl }
       });
     }
     await registrarLog(req, 'Atualizar Configurações', `Configuração alterada: ${JSON.stringify(config)}`);
@@ -2659,7 +3249,15 @@ app.get('/api/usuarios/:id/documentos', autenticarJWT, autorizarRole(['Manager',
 // 3. Criar link de pagamento (Revendedora ou Admin)
 app.post('/api/pagamentos/link', autenticarJWT, identificarLoja, async (req, res) => {
   const { clienteId, valor, formaEnvio, vendaId } = req.body;
-  if (!valor || !formaEnvio) {
+  let formaEnvioEfetiva = formaEnvio || req.body.forma;
+  if (formaEnvioEfetiva) {
+    formaEnvioEfetiva = formaEnvioEfetiva.toUpperCase();
+    if (formaEnvioEfetiva.includes("PIX")) formaEnvioEfetiva = "PIX";
+    else if (formaEnvioEfetiva.includes("CARTA") || formaEnvioEfetiva.includes("CREDIT") || formaEnvioEfetiva.includes("DEBIT")) formaEnvioEfetiva = "CARTAO";
+    else if (formaEnvioEfetiva.includes("BOLET")) formaEnvioEfetiva = "BOLETO";
+  }
+
+  if (!valor || !formaEnvioEfetiva) {
     return res.status(400).json({ error: 'Valor e Forma de Envio (PIX, BOLETO, CARTAO) são obrigatórios.' });
   }
 
@@ -2673,7 +3271,7 @@ app.post('/api/pagamentos/link', autenticarJWT, identificarLoja, async (req, res
         usuarioId: req.user.id,
         clienteId: clienteId || null,
         valor: parseFloat(valor),
-        formaEnvio,
+        formaEnvio: formaEnvioEfetiva,
         status: 'PENDENTE',
         linkSimulado,
         vendaId: vendaId || null
@@ -2695,6 +3293,29 @@ app.post('/api/pagamentos/link', autenticarJWT, identificarLoja, async (req, res
   } catch (error) {
     console.error('Erro ao gerar link de pagamento:', error);
     res.status(500).json({ error: 'Erro ao gerar link de pagamento.' });
+  }
+});
+
+// Buscar detalhes de um acerto de contas (Público)
+app.get('/api/public/acertos/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const acerto = await prisma.historicoAcerto.findUnique({
+      where: { id },
+      include: {
+        usuario: { select: { nome: true, whatsapp: true } },
+        loja: { select: { nome: true, logoUrl: true, corPrimaria: true, corSecundaria: true, bgPrimary: true, bgCard: true } }
+      }
+    });
+
+    if (!acerto) {
+      return res.status(404).json({ error: 'Recibo de acerto não encontrado.' });
+    }
+
+    res.json(acerto);
+  } catch (error) {
+    console.error('Erro ao buscar recibo de acerto público:', error);
+    res.status(500).json({ error: 'Erro ao buscar dados do acerto.' });
   }
 });
 
@@ -2849,7 +3470,7 @@ app.post('/api/public/pagamento/:id/processar', paymentLimiter, async (req, res)
 });
 
 // Listar links de pagamento da revendedora
-app.get('/api/pagamentos/link', autenticarJWT, async (req, res) => {
+const listarLinksPagamento = async (req, res) => {
   try {
     const links = await prisma.linkPagamento.findMany({
       where: { usuarioId: req.user.id },
@@ -2862,7 +3483,10 @@ app.get('/api/pagamentos/link', autenticarJWT, async (req, res) => {
   } catch (error) {
     res.status(500).json({ error: 'Erro ao buscar links de pagamento.' });
   }
-});
+};
+
+app.get('/api/pagamentos/link', autenticarJWT, listarLinksPagamento);
+app.get('/api/pagamentos/links', autenticarJWT, listarLinksPagamento);
 
 // Simular confirmação de pagamento (Webhook / Baixa Automática)
 app.post('/api/public/pagamento/:id/confirmar', async (req, res) => {
@@ -2912,6 +3536,14 @@ app.post('/api/public/pagamento/:id/confirmar', async (req, res) => {
 
 // Webhook público para receber eventos de pagamento do ASAAS
 app.post('/api/webhooks/asaas', async (req, res) => {
+  const tokenRecebido = req.headers['asaas-access-token'];
+  const tokenEsperado = process.env.ASAAS_WEBHOOK_SECRET;
+
+  if (!tokenEsperado || tokenRecebido !== tokenEsperado) {
+    console.error("🚫 [Webhook ASAAS] Tentativa de acesso não autorizada ao Webhook de pagamentos.");
+    return res.status(401).json({ error: 'Acesso não autorizado. Chave de Webhook inválida.' });
+  }
+
   const { event, payment } = req.body;
 
   if (!event || !payment) {
@@ -3739,6 +4371,22 @@ async function verificarCiclosENotificarRevendedoras() {
     console.error('[Ciclo Worker] Erro ao verificar ciclos mensais das revendedoras:', err);
   }
 }
+
+// ==========================================
+// MIDDLEWARE DE ERRO GLOBAL
+// ==========================================
+app.use((err, req, res, next) => {
+  console.error("💥 [Global Error Handler] Erro capturado:", err.stack || err.message || err);
+
+  const status = err.status || 500;
+  const mensagem = process.env.NODE_ENV === 'production'
+    ? 'Ocorreu um erro interno no servidor.'
+    : err.message || 'Erro interno desconhecido.';
+
+  res.status(status).json({
+    error: mensagem
+  });
+});
 
 // ==========================================
 // INICIALIZAÇÃO

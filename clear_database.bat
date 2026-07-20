@@ -11,7 +11,7 @@ echo - Produtos
 echo - Historicos de Acertos
 echo - Revendedoras Cadastradas
 echo.
-echo Apenas a conta Administradora (admin@conectajoias.com / PIN: 0002) e o SuperAdmin serao mantidos.
+echo Apenas a conta do SuperAdmin sera mantida.
 echo.
 set /p confirm="Digite 'SIM' e pressione Enter para confirmar a exclusao: "
 

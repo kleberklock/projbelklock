@@ -29,7 +29,7 @@ const app = {
     bgPrimary: "#0a0a0a",
     bgCard: "#121212",
     revendedoraSelecionadaId: null,
-    usandoFicticio: true,
+    usandoFicticio: false,
     colunasEstoque: ["Código", "Nome do Produto", "Categoria", "Estoque Central", "Custo Bruto", "Custo Banho", "Custo Oper.", "Markup", "Preço Venda"],
     vendasSessao: [], // Vendas registradas pela revendedora nesta sessão
     ordenacao: {
@@ -37,7 +37,8 @@ const app = {
       clientes: { coluna: null, direcao: "asc" },
       vendas: { coluna: null, direcao: "asc" },
       defeitos: { coluna: null, direcao: "asc" }
-    }
+    },
+    carrinho: []
   },
 
   // Sistema de Toast premium
@@ -182,6 +183,14 @@ const app = {
         this.state.usuarioLogado = usuario;
         this.exibirInterfacePosLogin();
         this.carregarDadosIniciais();
+
+        // Configuração de sincronização de vendas offline resiliente
+        window.addEventListener("online", () => {
+          this.sincronizarVendasOffline();
+        });
+        setTimeout(() => {
+          this.sincronizarVendasOffline();
+        }, 3000);
       } else if (roleUpper === 'MANAGER' || roleUpper === 'SUPERADMIN' || roleUpper === 'ADMIN_LOJA' || roleUpper === 'SUPER_ADMIN') {
         window.location.href = "superadmin.html";
       } else {
@@ -323,7 +332,7 @@ const app = {
     sessionStorage.clear();
     document.documentElement.removeAttribute('style');
     
-    let url = "index.html";
+    let url = "login.html";
     if (motivo) {
       url += "?error=" + encodeURIComponent(motivo);
     }
@@ -331,7 +340,7 @@ const app = {
   },
 
   exibirInterfaceLogin: function() {
-    window.location.href = "index.html";
+    window.location.href = "login.html";
   },
 
   exibirInterfacePosLogin: function() {
@@ -522,40 +531,46 @@ const app = {
   carregarDadosIniciais: async function() {
     this.registrarEventosUI();
     this.inicializarFeedPadrao();
-    
-    // Carrega a configuração da marca e tema do backend
-    await this.carregarConfiguracaoAPI();
 
-    // Dispara carregamento assíncrono dos dados da API
-    await this.carregarProdutosDaAPI();
+    // Aplica o perfil e exibe a aba correta imediatamente (Frame 1) sem piscar a tela
+    this.aplicarRestricoesPerfil();
+    this.renderizarAbas();
+
+    const isManager = ['Manager', 'SuperAdmin', 'ADMIN_LOJA', 'SUPER_ADMIN', 'admin'].includes(this.state.usuarioLogado ? this.state.usuarioLogado.role : '');
     
-    if (['Manager', 'SuperAdmin', 'ADMIN_LOJA', 'SUPER_ADMIN', 'admin'].includes(this.state.usuarioLogado.role)) {
+    if (isManager) {
+      // Perfil Administrador/Manager: Carrega dados do painel completo
+      await this.carregarConfiguracaoAPI();
+      await this.carregarProdutosDaAPI();
       await this.carregarRevendedorasDaAPI();
       await this.carregarClientesDaAPI();
       await this.carregarVendasConsolidadas();
-      this.renderizarAbas();
       this.renderizarEstoque();
       this.renderizarRevendedoras();
       this.renderizarDashboard();
       this.renderizarClientes();
     } else {
-      // Revendedora: carrega maleta e navega direto para Minha Maleta
-      await this.carregarMaletaPropriaDaAPI();
-      await this.carregarVendasRevendedora();
-      await this.carregarClientesDaAPI();
-      try {
-        this.state.vendasPendentes = await this.requisitarAPI("/vendas-revendedora?apenasPendentes=true");
-      } catch (err) {
-        console.warn("Falha ao carregar vendas pendentes:", err.message);
-        this.state.vendasPendentes = [];
-      }
-      this.aplicarRestricoesPerfil();
-      this.renderizarAbas();
+      // Perfil Revendedora: Carregamento hiper-otimizado em PARALELO (Promise.all)
+      await Promise.all([
+        this.carregarConfiguracaoAPI(),
+        this.carregarMaletaPropriaDaAPI(),
+        this.carregarVendasRevendedora(),
+        this.carregarClientesDaAPI(),
+        this.requisitarAPI("/vendas-revendedora?apenasPendentes=true").then(vendas => {
+          this.state.vendasPendentes = vendas;
+        }).catch(err => {
+          console.warn("Falha ao carregar vendas pendentes:", err.message);
+          this.state.vendasPendentes = [];
+        })
+      ]);
+
       this.renderizarMinhaMaleta();
       this.renderizarClientes();
-      // Atualiza boas-vindas com nome
+      
       const el = document.getElementById("maleta-boas-vindas");
-      if (el) el.innerText = `Olá, ${this.state.usuarioLogado.nome.split(' ')[0]}! 💎`;
+      if (el && this.state.usuarioLogado && this.state.usuarioLogado.nome) {
+        el.innerText = `Olá, ${this.state.usuarioLogado.nome.split(' ')[0]}! 💎`;
+      }
       this.carregarPreferenciaPagamento();
       this.checarTermosPendentes();
     }
@@ -768,6 +783,13 @@ const app = {
     });
     const comissaoProjetada = valorTotal * (comissao / 100);
 
+    // Calcula faturamento monetário acumulado
+    let faturamentoTotal = 0;
+    const vendas = this.state.vendasSessao || [];
+    vendas.forEach(v => {
+      faturamentoTotal += Number(v.precoVenda || 0) * Number(v.quantidade || 0);
+    });
+
     // Atualiza cards
     const elPecas = document.getElementById("maleta-total-pecas");
     const elValor = document.getElementById("maleta-valor-total");
@@ -776,7 +798,10 @@ const app = {
     if (elPecas) elPecas.innerText = `${totalPecas} pçs`;
     if (elValor) elValor.innerText = `R$ ${valorTotal.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
     if (elComissao) elComissao.innerText = `R$ ${comissaoProjetada.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
-    if (elVendas) elVendas.innerText = this.state.vendasSessao.length;
+    if (elVendas) elVendas.innerText = `R$ ${faturamentoTotal.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
+
+    // Reaplica a ordem dos widgets no DOM
+    this.aplicarOrdemWidgets();
 
     // Renderiza tabela de histórico de vendas
     this.renderizarHistoricoVendasRev();
@@ -807,7 +832,15 @@ const app = {
       tr.setAttribute("data-busca", `${item.codigo || ""} ${item.nome || ""}`.toLowerCase());
       tr.innerHTML = `
         <td><strong>${item.codigo || "—"}</strong></td>
-        <td>${item.nome || "—"}</td>
+        <td>
+          <div style="display: flex; align-items: center; gap: 0.8rem;">
+            <img src="${item.fotoUrl || ''}" loading="lazy" style="width: 36px; height: 36px; object-fit: cover; border-radius: 6px; border: 1px solid rgba(255,255,255,0.1);" onerror="this.src='https://images.unsplash.com/photo-1617038260897-41a1f14a8ca0?w=100&auto=format&fit=crop'">
+            <div style="display: flex; flex-direction: column;">
+              <span style="font-weight: 500; color: var(--text-primary);">${item.nome || "—"}</span>
+              ${item.tamanho || item.banho ? `<span style="font-size: 0.72rem; color: var(--text-secondary);">${item.tamanho ? `Aro ${item.tamanho}` : ''}${item.tamanho && item.banho ? ' | ' : ''}${item.banho ? item.banho : ''}</span>` : ''}
+            </div>
+          </div>
+        </td>
         <td><span class="badge badge-ok" style="font-size:0.75rem;">${item.categoria || "—"}</span></td>
         <td><span style="font-size: 1.1rem; font-weight: 700; color: var(--gold-primary);">${item.quantidadeConsignada}</span></td>
         <td>R$ ${Number(item.precoVenda || 0).toFixed(2).replace(".", ",")}</td>
@@ -815,7 +848,7 @@ const app = {
         <td style="color: #81c784; font-weight: 600;">R$ ${comissaoItem.toFixed(2).replace(".", ",")}</td>
         <td>
           <button class="btn-qty" style="background: rgba(67,160,71,0.15); border-color: rgba(67,160,71,0.4); color: #81c784; padding: 0.4rem 0.8rem; border-radius: 6px; font-size: 0.8rem; white-space: nowrap;"
-            onclick="app.abrirModalVendaRevProduto('${item.produtoId}', '${(item.nome || "").replace(/'/g, "\\'")}', ${item.precoVenda}, ${item.quantidadeConsignada})">
+            onclick="app.abrirModalVendaRevProduto('${item.produtoVariacaoId}', '${(item.nome || "").replace(/'/g, "\\'")}', ${item.precoVenda}, ${item.quantidadeConsignada})">
             <i class="fa-solid fa-check"></i> Vendi!
           </button>
         </td>`;
@@ -1003,10 +1036,14 @@ const app = {
   },
 
   _abrirModalVendaRevInterno: function() {
+    const select = document.getElementById("venda-rev-produto");
     const rev = this.state.revendedoras.find(r => r.id === (this.state.usuarioLogado ? this.state.usuarioLogado.id : null));
     const maleta = rev ? (rev.consignado || []) : [];
+    
     // Popula o select com as peças da maleta
-    select.innerHTML = "<option value=''>— Selecione uma peça da sua maleta —</option>";
+    if (select) {
+      select.innerHTML = "<option value=''>— Selecione uma peça da sua maleta —</option>";
+    }
     
     // Popula o select de clientes cadastrados
     const selectCliente = document.getElementById("venda-rev-cliente");
@@ -1021,14 +1058,18 @@ const app = {
         });
       }
     }
-    maleta.forEach(item => {
-      const opt = document.createElement("option");
-      opt.value = item.produtoId;
-      opt.textContent = `[${item.codigo || '—'}] ${item.nome} (${item.quantidadeConsignada} unid. — R$ ${Number(item.precoVenda||0).toFixed(2).replace(".",",")})`;
-      opt.setAttribute("data-preco", item.precoVenda);
-      opt.setAttribute("data-max", item.quantidadeConsignada);
-      select.appendChild(opt);
-    });
+    
+    if (select) {
+      maleta.forEach(item => {
+        const opt = document.createElement("option");
+        opt.value = item.produtoVariacaoId;
+        const descVariacao = `${item.tamanho ? `Aro ${item.tamanho}` : ''}${item.tamanho && item.banho ? ' - ' : ''}${item.banho ? item.banho : ''}`;
+        opt.textContent = `[${item.codigo || '—'}] ${item.nome}${descVariacao ? ` (${descVariacao})` : ''} (${item.quantidadeConsignada} unid. — R$ ${Number(item.precoVenda||0).toFixed(2).replace(".",",")})`;
+        opt.setAttribute("data-preco", item.precoVenda);
+        opt.setAttribute("data-max", item.quantidadeConsignada);
+        select.appendChild(opt);
+      });
+    }
 
     // Reseta campos
     const qtdInput = document.getElementById("venda-rev-qtd");
@@ -1158,11 +1199,11 @@ const app = {
     const selectCliente = document.getElementById("venda-rev-cliente");
     if (!select || !qtdInput) return;
 
-    const produtoId = select.value;
+    const produtoVariacaoId = select.value;
     const quantidade = parseInt(qtdInput.value) || 0;
     const clienteId = selectCliente ? selectCliente.value : "";
 
-    if (!produtoId) {
+    if (!produtoVariacaoId) {
       this.toast("Por favor, selecione uma peça para registrar a venda.", "warning");
       return;
     }
@@ -1194,12 +1235,12 @@ const app = {
 
     try {
       let resp;
+      const rev = this.state.revendedoras.find(r => r.id === this.state.usuarioLogado.id);
+      if (!rev || !rev.consignado) throw new Error("Revendedora não encontrada localmente.");
+
       if (offlineMode) {
         // Modo offline / demonstração
-        const rev = this.state.revendedoras.find(r => r.id === this.state.usuarioLogado.id);
-        if (!rev || !rev.consignado) throw new Error("Revendedora não encontrada localmente.");
-
-        const idx = rev.consignado.findIndex(c => c.produtoId === produtoId);
+        const idx = rev.consignado.findIndex(c => c.produtoVariacaoId === produtoVariacaoId || c.produtoId === produtoVariacaoId);
         if (idx === -1) throw new Error("Este produto não está na sua maleta.");
 
         const item = rev.consignado[idx];
@@ -1222,7 +1263,8 @@ const app = {
           id: "mock_venda_" + Date.now(),
           data: new Date().toISOString(),
           usuarioId: this.state.usuarioLogado.id,
-          produtoId: produtoId,
+          produtoId: item.produtoId || produtoVariacaoId,
+          produtoVariacaoId: item.produtoVariacaoId || produtoVariacaoId,
           nomeProduto: item.nome,
           codigoProduto: item.codigo,
           quantidade: quantidade,
@@ -1262,7 +1304,7 @@ const app = {
           mensagem: `Nova venda registrada por ${this.state.usuarioLogado.nome}: ${quantidade}x ${item.nome}`,
           detalhes: JSON.stringify({
             itens: [{
-              produtoId: produtoId,
+              produtoId: item.produtoId,
               codigo: item.codigo,
               nome: item.nome,
               quantidade: quantidade
@@ -1273,19 +1315,80 @@ const app = {
         });
         localStorage.setItem("conectajoias_notificacoes_mock", JSON.stringify(mockNotificacoes));
       } else {
-        resp = await this.requisitarAPI("/vendas-revendedora", "POST", { produtoId, quantidade, desconto, motivoDesconto, formaPagamento, clienteId: clienteId || null });
+        const payloadVenda = { produtoVariacaoId, quantidade, desconto, motivoDesconto, formaPagamento, clienteId: clienteId || null };
+        const item = rev.consignado.find(c => c.produtoVariacaoId === produtoVariacaoId || c.produtoId === produtoVariacaoId);
 
-        // Atualiza maleta local: reduz a quantidade consignada ou remove item
-        const rev = this.state.revendedoras.find(r => r.id === this.state.usuarioLogado.id);
-        if (rev && rev.consignado) {
-          const idx = rev.consignado.findIndex(c => c.produtoId === produtoId);
-          if (idx !== -1) {
-            if (resp.resumo.qtdRestanteNaMaleta === 0) {
-              rev.consignado.splice(idx, 1);
-            } else {
-              rev.consignado[idx].quantidadeConsignada = resp.resumo.qtdRestanteNaMaleta;
+        if (!navigator.onLine) {
+          // Se estiver totalmente offline de rede física, enfileira localmente
+          this.toast("Você está sem internet! A venda foi armazenada localmente e será enviada automaticamente quando a conexão retornar.", "warning");
+          this.salvarVendaOffline(payloadVenda);
+
+          const totalBruto = (item?.precoVenda || 0) * quantidade;
+          const comissaoValor = (totalBruto - desconto) * ((this.state.usuarioLogado.comissao || 30) / 100);
+
+          resp = {
+            venda: {
+              id: "venda_offline_" + Date.now(),
+              data: new Date().toISOString(),
+              usuarioId: this.state.usuarioLogado.id,
+              produtoId: item?.produtoId || "",
+              produtoVariacaoId: produtoVariacaoId,
+              nomeProduto: item?.nome || "Venda Offline",
+              codigoProduto: item?.codigo || "—",
+              quantidade,
+              precoVenda: (item?.precoVenda || 0) - (desconto / quantidade),
+              comissaoValor,
+              desconto: desconto / quantidade,
+              motivoDesconto,
+              formaPagamento,
+              clienteId: clienteId || null,
+              offline: true
+            },
+            resumo: {
+              qtdRestanteNaMaleta: Math.max(0, (item?.quantidadeConsignada || 0) - quantidade)
             }
+          };
+        } else {
+          try {
+            resp = await this.requisitarAPI("/vendas-revendedora", "POST", payloadVenda);
+          } catch (apiErr) {
+            console.warn("Falha de rede/servidor na API de venda, guardando offline por resiliência:", apiErr.message);
+            this.toast("Falha temporária de rede. Salvando venda localmente para sincronização futura.", "warning");
+            this.salvarVendaOffline(payloadVenda);
+
+            const totalBruto = (item?.precoVenda || 0) * quantidade;
+            const comissaoValor = (totalBruto - desconto) * ((this.state.usuarioLogado.comissao || 30) / 100);
+
+            resp = {
+              venda: {
+                id: "venda_offline_" + Date.now(),
+                data: new Date().toISOString(),
+                usuarioId: this.state.usuarioLogado.id,
+                produtoId: item?.produtoId || "",
+                produtoVariacaoId: produtoVariacaoId,
+                nomeProduto: item?.nome || "Venda Offline",
+                codigoProduto: item?.codigo || "—",
+                quantidade,
+                precoVenda: (item?.precoVenda || 0) - (desconto / quantidade),
+                comissaoValor,
+                desconto: desconto / quantidade,
+                motivoDesconto,
+                formaPagamento,
+                clienteId: clienteId || null,
+                offline: true
+              },
+              resumo: {
+                qtdRestanteNaMaleta: Math.max(0, (item?.quantidadeConsignada || 0) - quantidade)
+              }
+            };
           }
+        }
+
+        // Atualiza maleta local: atualiza a quantidade restante disponível sem apagar a peça da consignação
+        const idx = rev.consignado.findIndex(c => c.produtoVariacaoId === produtoVariacaoId || c.produtoId === produtoVariacaoId);
+        if (idx !== -1) {
+          rev.consignado[idx].quantidadeDisponivel = resp.resumo.qtdRestanteNaMaleta;
+          rev.consignado[idx].quantidadeConsignada = resp.resumo.qtdRestanteNaMaleta;
         }
       }
 
@@ -1302,6 +1405,11 @@ const app = {
       const totalFmt = (resp.resumo.totalVenda || 0).toFixed(2).replace(".", ",");
       const comissaoFmt = (resp.resumo.comissaoValor || 0).toFixed(2).replace(".", ",");
       this.toast(`Venda registrada! 💎 ${resp.resumo.nomeProduto} (${resp.resumo.quantidade} pçs). Total: R$ ${totalFmt}. Comissão: R$ ${comissaoFmt}`, "success");
+
+      if (resp.resumo.linkSimulado) {
+        navigator.clipboard.writeText(resp.resumo.linkSimulado).catch(() => {});
+        alert(`Venda Registrada com sucesso! 💎\n\nComo você selecionou "Link de Pagamento", o link de pagamento foi gerado e copiado para a sua área de transferência!\n\nLink: ${resp.resumo.linkSimulado}\n\nEnvie este link para sua cliente efetuar o pagamento.`);
+      }
     } catch (error) {
       console.error(error);
       this.toast("Erro ao registrar a venda: " + error.message, "error");
@@ -1309,6 +1417,350 @@ const app = {
       if (btnConfirmar) {
         btnConfirmar.disabled = false;
         btnConfirmar.innerHTML = '<i class="fa-solid fa-check"></i> Confirmar Venda';
+      }
+    }
+  },
+
+  salvarVendaOffline: function(payload) {
+    if (!this.state.usuarioLogado) return;
+    const key = `conectajoias_offline_vendas_${this.state.usuarioLogado.id}`;
+    const fila = JSON.parse(localStorage.getItem(key) || "[]");
+    fila.push(payload);
+    localStorage.setItem(key, JSON.stringify(fila));
+  },
+
+  sincronizarVendasOffline: async function() {
+    if (!navigator.onLine || !this.state.usuarioLogado || !this.state.token) return;
+    const key = `conectajoias_offline_vendas_${this.state.usuarioLogado.id}`;
+    const fila = JSON.parse(localStorage.getItem(key) || "[]");
+    if (fila.length === 0) return;
+
+    this.toast(`Sincronizando ${fila.length} venda(s) salvas offline...`, "info");
+    const falhas = [];
+
+    for (const venda of fila) {
+      try {
+        await this.requisitarAPI("/vendas-revendedora", "POST", venda);
+      } catch (err) {
+        console.error("Falha ao sincronizar venda offline:", err);
+        falhas.push(venda);
+      }
+    }
+
+    if (falhas.length > 0) {
+      localStorage.setItem(key, JSON.stringify(falhas));
+      this.toast(`Algumas vendas offline não puderam ser sincronizadas. Tentaremos novamente depois.`, "warning");
+    } else {
+      localStorage.removeItem(key);
+      this.toast(`Todas as vendas offline foram sincronizadas com sucesso!`, "success");
+      this.renderizarMinhaMaleta();
+    }
+  },
+
+  adicionarAoCarrinho: function() {
+    const select = document.getElementById("venda-rev-produto");
+    const qtdInput = document.getElementById("venda-rev-qtd");
+    if (!select || !qtdInput) return;
+
+    const produtoVariacaoId = select.value;
+    const quantidade = parseInt(qtdInput.value) || 0;
+
+    if (!produtoVariacaoId) {
+      this.toast("Por favor, selecione uma peça para adicionar à sacola.", "warning");
+      return;
+    }
+    if (quantidade < 1) {
+      this.toast("A quantidade deve ser pelo menos 1.", "warning");
+      return;
+    }
+
+    // Busca dados da peça na maleta
+    const rev = this.state.revendedoras.find(r => r.id === this.state.usuarioLogado.id);
+    const item = rev?.consignado?.find(c => c.produtoVariacaoId === produtoVariacaoId || c.produtoId === produtoVariacaoId);
+    if (!item) {
+      this.toast("Peça não encontrada na maleta.", "error");
+      return;
+    }
+
+    // Calcula quantidade total já adicionada ao carrinho para esta variação
+    const qtdJaNoCarrinho = this.state.carrinho
+      .filter(x => x.produtoVariacaoId === produtoVariacaoId)
+      .reduce((acc, curr) => acc + curr.quantidade, 0);
+
+    const estoqueDisponivel = item.quantidadeConsignada - qtdJaNoCarrinho;
+    if (quantidade > estoqueDisponivel) {
+      this.toast(`Estoque insuficiente na maleta! Disponível: ${estoqueDisponivel} pçs (Já tem ${qtdJaNoCarrinho} pçs na sacola).`, "warning");
+      return;
+    }
+
+    // Desconto
+    let desconto = 0;
+    let motivoDesconto = "";
+    const hasDiscount = document.getElementById("venda-rev-has-discount");
+    const discountVal = document.getElementById("venda-rev-desconto");
+    const discountReason = document.getElementById("venda-rev-desconto-motivo");
+    if (hasDiscount && hasDiscount.checked) {
+      desconto = parseFloat(discountVal ? discountVal.value : 0) || 0;
+      motivoDesconto = (discountReason ? discountReason.value : "").trim();
+    }
+
+    this.state.carrinho.push({
+      produtoVariacaoId,
+      nome: item.nome,
+      codigo: item.codigo,
+      tamanho: item.tamanho,
+      banho: item.banho,
+      quantidade,
+      precoVenda: item.precoVenda,
+      desconto,
+      motivoDesconto,
+      produtoId: item.produtoId
+    });
+
+    this.atualizarBotaoSacolaFlutuante();
+    document.getElementById("modal-venda-rev").classList.remove("active");
+    this.toast(`Adicionado à sacola: ${quantidade}x ${item.nome}`, "success");
+  },
+
+  atualizarBotaoSacolaFlutuante: function() {
+    const btn = document.getElementById("btn-sacola-flutuante");
+    const badge = document.getElementById("badge-sacola-qtd");
+    if (!btn || !badge) return;
+
+    const totalItens = this.state.carrinho.reduce((acc, curr) => acc + curr.quantidade, 0);
+    if (totalItens > 0) {
+      btn.style.display = "flex";
+      badge.textContent = totalItens;
+    } else {
+      btn.style.display = "none";
+    }
+  },
+
+  abrirModalCarrinho: function() {
+    const modal = document.getElementById("modal-carrinho-vendas");
+    if (!modal) return;
+
+    modal.classList.add("active");
+    
+    // Popula select de clientes
+    const selectCliente = document.getElementById("carrinho-cliente");
+    if (selectCliente) {
+      selectCliente.innerHTML = "<option value=''>— Cliente Avulso (Sem cadastro) —</option>";
+      if (Array.isArray(this.state.clientes)) {
+        this.state.clientes.forEach(cli => {
+          const opt = document.createElement("option");
+          opt.value = cli.id;
+          opt.textContent = `${cli.nome} (${cli.whatsapp})`;
+          selectCliente.appendChild(opt);
+        });
+      }
+    }
+
+    this.renderizarItensCarrinho();
+  },
+
+  fecharModalCarrinho: function() {
+    const modal = document.getElementById("modal-carrinho-vendas");
+    if (modal) modal.classList.remove("active");
+  },
+
+  renderizarItensCarrinho: function() {
+    const tbody = document.getElementById("tbody-carrinho-itens");
+    if (!tbody) return;
+    tbody.innerHTML = "";
+
+    let totalBruto = 0;
+    let totalDesconto = 0;
+
+    this.state.carrinho.forEach((item, index) => {
+      const bruto = item.precoVenda * item.quantidade;
+      const desc = item.desconto;
+      const liq = bruto - desc;
+      
+      totalBruto += bruto;
+      totalDesconto += desc;
+
+      const tr = document.createElement("tr");
+      const descVariacao = `${item.tamanho ? `Aro ${item.tamanho}` : ''}${item.tamanho && item.banho ? ' - ' : ''}${item.banho ? item.banho : ''}`;
+      tr.innerHTML = `
+        <td>
+          <div style="display: flex; flex-direction: column;">
+            <span style="font-weight: 600;">${item.nome}</span>
+            <span style="font-size: 0.72rem; color: var(--text-secondary);">${item.codigo} ${descVariacao ? `(${descVariacao})` : ''}</span>
+          </div>
+        </td>
+        <td style="font-weight: 600;">${item.quantidade}</td>
+        <td>R$ ${item.precoVenda.toFixed(2).replace(".", ",")}</td>
+        <td style="color: #ef9a9a;">R$ ${desc.toFixed(2).replace(".", ",")}</td>
+        <td style="font-weight: 600; color: var(--gold-primary);">R$ ${liq.toFixed(2).replace(".", ",")}</td>
+        <td style="text-align: center;">
+          <button onclick="app.removerDoCarrinho(${index})" style="background: transparent; border: none; color: #ef5350; cursor: pointer; font-size: 1rem;">
+            <i class="fa-solid fa-trash-can"></i>
+          </button>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+
+    const totalLiquido = totalBruto - totalDesconto;
+    const comissaoEstimada = totalLiquido * ((this.state.usuarioLogado?.comissao || 30) / 100);
+
+    document.getElementById("carrinho-total-bruto").textContent = `R$ ${totalBruto.toFixed(2).replace(".", ",")}`;
+    document.getElementById("carrinho-total-desconto").textContent = `- R$ ${totalDesconto.toFixed(2).replace(".", ",")}`;
+    document.getElementById("carrinho-total-liquido").textContent = `R$ ${totalLiquido.toFixed(2).replace(".", ",")}`;
+    document.getElementById("carrinho-total-comissao").textContent = `R$ ${comissaoEstimada.toFixed(2).replace(".", ",")}`;
+  },
+
+  removerDoCarrinho: function(index) {
+    this.state.carrinho.splice(index, 1);
+    this.renderizarItensCarrinho();
+    this.atualizarBotaoSacolaFlutuante();
+    if (this.state.carrinho.length === 0) {
+      this.fecharModalCarrinho();
+    }
+  },
+
+  limparCarrinho: function() {
+    this.state.carrinho = [];
+    this.atualizarBotaoSacolaFlutuante();
+    this.fecharModalCarrinho();
+    this.toast("Sacola de vendas esvaziada.", "info");
+  },
+
+  finalizarCarrinho: async function() {
+    if (this.state.carrinho.length === 0) return;
+    const selectCliente = document.getElementById("carrinho-cliente");
+    const selectPagamento = document.getElementById("carrinho-pagamento");
+    const clienteId = selectCliente ? selectCliente.value : "";
+    const formaPagamento = selectPagamento ? selectPagamento.value : "Dinheiro";
+
+    const btn = document.getElementById("btn-finalizar-carrinho");
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Finalizando...';
+    }
+
+    const offlineMode = this.state.token && this.state.token.startsWith("mock_");
+    const rev = this.state.revendedoras.find(r => r.id === this.state.usuarioLogado.id);
+
+    try {
+      this.toast(`Processando ${this.state.carrinho.length} item(ns)...`, "info");
+      let vendasEfetuadas = 0;
+
+      for (const item of this.state.carrinho) {
+        if (offlineMode) {
+          // Lógica de Venda Offline Simulada
+          const idx = rev.consignado.findIndex(c => c.produtoVariacaoId === item.produtoVariacaoId || c.produtoId === item.produtoVariacaoId);
+          if (idx !== -1) {
+            const maletaItem = rev.consignado[idx];
+            const novaQtd = Math.max(0, maletaItem.quantidadeConsignada - item.quantidade);
+            if (novaQtd === 0) {
+              rev.consignado.splice(idx, 1);
+            } else {
+              maletaItem.quantidadeConsignada = novaQtd;
+            }
+          }
+
+          const totalBruto = item.precoVenda * item.quantidade;
+          const totalLiquido = totalBruto - item.desconto;
+          const comissaoValor = totalLiquido * ((this.state.usuarioLogado.comissao || 30) / 100);
+
+          const novaVenda = {
+            id: "mock_venda_" + Date.now() + "_" + Math.random().toString(36).substr(2, 4),
+            data: new Date().toISOString(),
+            usuarioId: this.state.usuarioLogado.id,
+            produtoId: item.produtoId || item.produtoVariacaoId,
+            produtoVariacaoId: item.produtoVariacaoId,
+            nomeProduto: item.nome,
+            codigoProduto: item.codigo,
+            quantidade: item.quantidade,
+            precoVenda: item.precoVenda - (item.desconto / item.quantidade),
+            comissaoValor: comissaoValor,
+            desconto: item.desconto / item.quantidade,
+            motivoDesconto: item.motivoDesconto,
+            formaPagamento: formaPagamento,
+            clienteId: clienteId || null
+          };
+
+          this.state.vendasSessao.unshift(novaVenda);
+          if (!this.state.vendasPendentes) this.state.vendasPendentes = [];
+          this.state.vendasPendentes.unshift(novaVenda);
+
+          // Salva estado local no LocalStorage
+          const localVendasKey = `conectajoias_vendas_${this.state.usuarioLogado.id}`;
+          const vendasLocais = JSON.parse(localStorage.getItem(localVendasKey) || "[]");
+          vendasLocais.unshift(novaVenda);
+          localStorage.setItem(localVendasKey, JSON.stringify(vendasLocais));
+          vendasEfetuadas++;
+        } else {
+          // Lógica Real (API / Sincronizador Offline se desconectar)
+          const payloadVenda = {
+            produtoVariacaoId: item.produtoVariacaoId,
+            quantidade: item.quantidade,
+            desconto: item.desconto,
+            motivoDesconto: item.motivoDesconto,
+            formaPagamento: formaPagamento,
+            clienteId: clienteId || null
+          };
+
+          if (!navigator.onLine) {
+            this.salvarVendaOffline(payloadVenda);
+            // Simula redução de estoque na maleta local
+            const idx = rev.consignado.findIndex(c => c.produtoVariacaoId === item.produtoVariacaoId || c.produtoId === item.produtoVariacaoId);
+            if (idx !== -1) {
+              const maletaItem = rev.consignado[idx];
+              const novaQtd = Math.max(0, maletaItem.quantidadeConsignada - item.quantidade);
+              if (novaQtd === 0) rev.consignado.splice(idx, 1);
+              else maletaItem.quantidadeConsignada = novaQtd;
+            }
+            vendasEfetuadas++;
+          } else {
+            try {
+              const resp = await this.requisitarAPI("/vendas-revendedora", "POST", payloadVenda);
+              this.state.vendasSessao.unshift(resp.venda);
+              if (!this.state.vendasPendentes) this.state.vendasPendentes = [];
+              this.state.vendasPendentes.unshift(resp.venda);
+
+              // Atualiza maleta local com o valor da API
+              const idx = rev.consignado.findIndex(c => c.produtoVariacaoId === item.produtoVariacaoId || c.produtoId === item.produtoVariacaoId);
+              if (idx !== -1) {
+                rev.consignado[idx].quantidadeDisponivel = resp.resumo.qtdRestanteNaMaleta;
+                rev.consignado[idx].quantidadeConsignada = resp.resumo.qtdRestanteNaMaleta;
+              }
+              vendasEfetuadas++;
+            } catch (err) {
+              console.warn("Falha ao registrar item de carrinho via API. Enfileirando offline por resiliência:", err.message);
+              this.salvarVendaOffline(payloadVenda);
+              const idx = rev.consignado.findIndex(c => c.produtoVariacaoId === item.produtoVariacaoId || c.produtoId === item.produtoVariacaoId);
+              if (idx !== -1) {
+                const maletaItem = rev.consignado[idx];
+                const novaQtd = Math.max(0, maletaItem.quantidadeConsignada - item.quantidade);
+                if (novaQtd === 0) rev.consignado.splice(idx, 1);
+                else maletaItem.quantidadeConsignada = novaQtd;
+              }
+              vendasEfetuadas++;
+            }
+          }
+        }
+      }
+
+      if (offlineMode) {
+        this.salvarDadosNoLocalStorage();
+      }
+
+      this.state.carrinho = [];
+      this.atualizarBotaoSacolaFlutuante();
+      this.fecharModalCarrinho();
+      this.renderizarMinhaMaleta();
+      this.toast(`Sucesso! ${vendasEfetuadas} venda(s) processada(s) com sucesso.`, "success");
+
+    } catch (error) {
+      console.error(error);
+      this.toast("Erro ao finalizar a sacola: " + error.message, "error");
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-bag-shopping"></i> Finalizar Venda';
       }
     }
   },
@@ -1330,7 +1782,7 @@ const app = {
       const bgCardSalvo = localStorage.getItem("conectajoias_bg_card");
       const apiUrlSalva = localStorage.getItem("conectajoias_api_url");
 
-      this.state.usandoFicticio = ficticioSalvo ? JSON.parse(ficticioSalvo) : true;
+      this.state.usandoFicticio = ficticioSalvo ? JSON.parse(ficticioSalvo) : false;
       this.state.colunasEstoque = colunasSalvas ? JSON.parse(colunasSalvas) : ["Código", "Nome do Produto", "Categoria", "Estoque Central", "Custo Bruto", "Custo Banho", "Custo Oper.", "Markup", "Preço Venda"];
       this.state.limiarEstoqueCritico = limiarSalvo ? parseInt(limiarSalvo) : 3;
       this.state.nomeEmpresa = nomeEmpresaSalvo ? nomeEmpresaSalvo : "Conecta Joias";
@@ -1402,88 +1854,11 @@ const app = {
 
   // 4. Cadastro de Mock de dados para demonstração sem placeholders vazios
   obterProdutosMock: function() {
-    return [
-      {
-        id: "prod_1",
-        codigo: "BR-010",
-        nome: "Brinco Gota Fusion Cravejado",
-        categoria: "Brincos",
-        quantidade: 15,
-        custoBruto: 12.50,
-        custoBanho: 8.00,
-        custoLiquido: 3.50,
-        markup: 3.2
-      },
-      {
-        id: "prod_2",
-        codigo: "CO-055",
-        nome: "Colar Riviera Ametista Luxo",
-        categoria: "Colares",
-        quantidade: 2, // Alerta de estoque baixo
-        custoBruto: 28.00,
-        custoBanho: 15.00,
-        custoLiquido: 6.00,
-        markup: 3.0
-      },
-      {
-        id: "prod_3",
-        codigo: "AN-004",
-        nome: "Anel Solitário Ouro Cravejado",
-        categoria: "Anéis",
-        quantidade: 12,
-        custoBruto: 9.00,
-        custoBanho: 6.50,
-        custoLiquido: 2.50,
-        markup: 3.5
-      },
-      {
-        id: "prod_4",
-        codigo: "PU-080",
-        nome: "Pulseira Elo Português 18k",
-        categoria: "Pulseiras",
-        quantidade: 8,
-        custoBruto: 18.00,
-        custoBanho: 11.00,
-        custoLiquido: 4.50,
-        markup: 3.0
-      }
-    ];
+    return [];
   },
 
   obterRevendedorasMock: function() {
-    return [
-      {
-        id: "rev_1",
-        nome: "Patrícia Medeiros",
-        whatsapp: "(11) 98765-4321",
-        comissao: 30,
-        pin: "1234",
-        consignado: [
-          {
-            produtoId: "prod_1",
-            codigo: "BR-010",
-            nome: "Brinco Gota Fusion Cravejado",
-            quantidadeConsignada: 5,
-            precoVenda: 76.80 // (12.5+8+3.5) * 3.2 = 24 * 3.2
-          },
-          {
-            produtoId: "prod_3",
-            codigo: "AN-004",
-            nome: "Anel Solitário Ouro Cravejado",
-            quantidadeConsignada: 3,
-            precoVenda: 63.00 // (9+6.5+2.5) * 3.5 = 18 * 3.5
-          }
-        ]
-      },
-      {
-        id: "rev_2",
-        nome: "Juliana Frota",
-        whatsapp: "(11) 99888-7777",
-        comissao: 35,
-        pin: "5678",
-        consignado: []
-      }
-    ];
+    return [];
   },
 
   // Inicializa imagens padrões elegantes no feed do Instagram se estiver vazio
@@ -1693,9 +2068,27 @@ const app = {
     if (cancelBtn) cancelBtn.addEventListener("click", fechar);
   },
 
+  // Controle de Sidebar Responsiva Mobile
+  toggleSidebarMobile: function() {
+    const sidebar = document.querySelector('.sidebar');
+    const overlay = document.getElementById('sidebar-overlay');
+    if (sidebar) sidebar.classList.toggle('active');
+    if (overlay) overlay.classList.toggle('active');
+    document.body.classList.toggle('sidebar-open');
+  },
+
+  fecharSidebarMobile: function() {
+    const sidebar = document.querySelector('.sidebar');
+    const overlay = document.getElementById('sidebar-overlay');
+    if (sidebar) sidebar.classList.remove('active');
+    if (overlay) overlay.classList.remove('active');
+    document.body.classList.remove('sidebar-open');
+  },
+
   // Navegação SPA
   navegarParaAba: function(tabId) {
     this.state.abaAtiva = tabId;
+    this.fecharSidebarMobile();
     this.renderizarAbas();
     
     // Recarrega dados visuais
@@ -1842,13 +2235,16 @@ const app = {
       `;
     } else {
       this.state.revendedoras.forEach(rev => {
-        let qtdConsignada = 0;
-        let valorConsignado = 0;
+        let qtdConsignadaRealtime = 0;
+        let valorConsignadoRealtime = 0;
 
         if (rev.consignado) {
           rev.consignado.forEach(item => {
-            qtdConsignada += Number(item.quantidadeConsignada || 0);
-            valorConsignado += Number(item.precoVenda || 0) * Number(item.quantidadeConsignada || 0);
+            const qCons = Number(item.quantidadeConsignada || 0);
+            const qDisp = item.quantidadeDisponivel !== undefined ? Number(item.quantidadeDisponivel) : Math.max(0, qCons - Number(item.quantidadeVendidaApp || 0));
+            const pVenda = Number(item.precoVenda || 0);
+            qtdConsignadaRealtime += qDisp;
+            valorConsignadoRealtime += pVenda * qDisp;
           });
         }
 
@@ -1861,8 +2257,8 @@ const app = {
 
         tr.innerHTML = `
           <td><strong>${rev.nome}</strong></td>
-          <td>${qtdConsignada} pçs</td>
-          <td style="color: var(--gold-primary); font-weight: 600;">R$ ${valorConsignado.toFixed(2).replace(".", ",")}</td>
+          <td>${qtdConsignadaRealtime} pçs</td>
+          <td style="color: var(--gold-primary); font-weight: 600;">R$ ${valorConsignadoRealtime.toFixed(2).replace(".", ",")}</td>
         `;
         tableResumoRevBody.appendChild(tr);
       });
@@ -2011,14 +2407,16 @@ const app = {
     
     const itens = [];
     document.querySelectorAll("#table-preencher-acerto tbody tr").forEach(tr => {
-      const codigo = tr.cells[0]?.innerText;
-      const nome = tr.cells[1]?.querySelector(".prod-name-cell")?.innerText || tr.cells[1]?.innerText;
-      if (!codigo || !nome) return;
+      const cellProd = tr.cells[0];
+      if (!cellProd) return;
 
-      const prodId = tr.querySelector(".input-acerto-venda")?.getAttribute("data-prod-id");
-      const inpVenda = tr.querySelector(".input-acerto-venda");
-      const inpDev = tr.querySelector(".input-acerto-devolucao");
-      const inpPerd = tr.querySelector(".input-acerto-perda");
+      const codigo = cellProd.querySelector("strong")?.innerText || cellProd.innerText.split("\n")[0] || "";
+      const nome = cellProd.querySelector("span")?.innerText || cellProd.innerText.split("\n")[1] || "Produto";
+      const precoUnit = parseFloat(tr.cells[1]?.innerText.replace("R$", "").replace(".", "").replace(",", ".").trim()) || 0;
+
+      const inpVenda = tr.querySelector(".input-acerto-vendido") || tr.querySelector(".input-acerto-venda");
+      const inpDev = tr.querySelector(".input-acerto-devolvido") || tr.querySelector(".input-acerto-devolucao");
+      const inpPerd = tr.querySelector(".input-acerto-perdido") || tr.querySelector(".input-acerto-perda");
       const inpDef = tr.querySelector(".input-acerto-defeito");
 
       const qtdVenda = parseInt(inpVenda?.value) || 0;
@@ -2026,9 +2424,7 @@ const app = {
       const qtdPerd = parseInt(inpPerd?.value) || 0;
       const qtdDef = parseInt(inpDef?.value) || 0;
 
-      const precoUnit = parseFloat(tr.cells[2]?.innerText.replace("R$", "").replace(".", "").replace(",", ".").trim()) || 0;
-
-      if (qtdVenda > 0 || qtdDev > 0 || qtdPerd > 0 || qtdDef > 0) {
+      if (codigo && (qtdVenda > 0 || qtdDev > 0 || qtdPerd > 0 || qtdDef > 0)) {
         itens.push({
           codigo,
           nome,
@@ -2043,11 +2439,17 @@ const app = {
     });
 
     const totalLevadas = document.getElementById("acerto-total-peças-levadas")?.innerText || "0 pçs";
+    const totalVendidaPcs = itens.reduce((acc, i) => acc + i.qtdVenda, 0);
     const totalFatBruto = document.getElementById("acerto-total-faturamento-bruto")?.innerText || "R$ 0,00";
     const comissaoPercent = document.getElementById("acerto-comissao-percent")?.innerText || "30";
     const comissaoValor = document.getElementById("acerto-comissao-valor")?.innerText || "R$ 0,00";
-    const descontoPerdas = document.getElementById("acerto-desconto-perdas")?.innerText || "R$ 0,00";
+    const descontoPerdasRaw = document.getElementById("acerto-desconto-perdas")?.innerText || "R$ 0,00";
+    const descontoPerdasText = descontoPerdasRaw.replace(/^-\s*/, "").trim();
     const totalReceber = document.getElementById("acerto-total-liquido-receber")?.innerText || "R$ 0,00";
+    
+    const totalDinheiroText = document.getElementById("acerto-total-dinheiro")?.innerText || "R$ 0,00";
+    const totalPixText = document.getElementById("acerto-total-pix")?.innerText || "R$ 0,00";
+    const totalCartaoText = document.getElementById("acerto-total-cartao")?.innerText || "R$ 0,00";
 
     const dataAtual = new Date().toLocaleDateString('pt-BR');
     
@@ -2101,11 +2503,21 @@ const app = {
         </tbody>
       </table>
 
-      <div style="display: flex; justify-content: flex-end; margin-bottom: 3rem; color: black;">
-        <table style="width: 300px; font-size: 0.9rem; line-height: 1.6; border-collapse: collapse;">
+      <div style="display: flex; justify-content: space-between; margin-bottom: 3rem; color: black; font-size: 0.9rem; line-height: 1.6;">
+        <div style="width: 45%; border: 1px solid #ddd; padding: 12px; border-radius: 6px;">
+          <h4 style="margin: 0 0 8px 0; font-size: 0.95rem; border-bottom: 1px solid #eee; padding-bottom: 4px;">Divisão por Meio de Pagamento</h4>
+          <div>💵 Dinheiro: <strong>${totalDinheiroText}</strong></div>
+          <div>📲 Pix: <strong>${totalPixText}</strong></div>
+          <div>💳 Cartão: <strong>${totalCartaoText}</strong></div>
+        </div>
+        <table style="width: 45%; font-size: 0.9rem; line-height: 1.6; border-collapse: collapse;">
           <tr>
-            <td style="padding: 4px 0;">Peças Levadas:</td>
+            <td style="padding: 4px 0;">Peças Levadas Inicialmente:</td>
             <td style="text-align: right; padding: 4px 0;"><strong>${totalLevadas}</strong></td>
+          </tr>
+          <tr>
+            <td style="padding: 4px 0;">Peças Vendidas:</td>
+            <td style="text-align: right; padding: 4px 0;"><strong>${totalVendidaPcs} pçs</strong></td>
           </tr>
           <tr>
             <td style="padding: 4px 0;">Faturamento Bruto:</td>
@@ -2117,10 +2529,10 @@ const app = {
           </tr>
           <tr style="color: #c62828;">
             <td style="padding: 4px 0;">Desconto Perdas:</td>
-            <td style="text-align: right; padding: 4px 0;">- ${descontoPerdas}</td>
+            <td style="text-align: right; padding: 4px 0;">- ${descontoPerdasText}</td>
           </tr>
-          <tr style="border-top: 1px solid #000; font-size: 1.05rem; font-weight: bold;">
-            <td style="padding-top: 0.5rem;">Líquido a Pagar:</td>
+          <tr style="border-top: 2px solid #000; font-size: 1.05rem; font-weight: bold;">
+            <td style="padding-top: 0.5rem;">Valor Final Acerto:</td>
             <td style="padding-top: 0.5rem; text-align: right;">${totalReceber}</td>
           </tr>
         </table>
@@ -2910,20 +3322,29 @@ const app = {
       }
 
       // Atualiza indicadores internos
-      let qtdConsignada = 0;
-      let valorConsignado = 0;
+      let qtdConsignadaInicial = 0;
+      let qtdAtualRealtime = 0;
+      let valorConsignadoInicial = 0;
+      let valorConsignadoAtual = 0;
 
       revSelecionada.consignado.forEach(item => {
-        qtdConsignada += Number(item.quantidadeConsignada || 0);
-        valorConsignado += Number(item.precoVenda || 0) * Number(item.quantidadeConsignada || 0);
+        const qCons = Number(item.quantidadeConsignada || 0);
+        const qDisp = item.quantidadeDisponivel !== undefined ? Number(item.quantidadeDisponivel) : Math.max(0, qCons - Number(item.quantidadeVendidaApp || 0));
+        const pVenda = Number(item.precoVenda || 0);
+
+        qtdConsignadaInicial += qCons;
+        qtdAtualRealtime += qDisp;
+        valorConsignadoInicial += pVenda * qCons;
+        valorConsignadoAtual += pVenda * qDisp;
       });
 
-      const comissaoRev = valorConsignado * (Number(revSelecionada.comissao || 30) / 100);
-      const liquidoConectaJoias = valorConsignado - comissaoRev;
+      const comissaoRev = valorConsignadoAtual * (Number(revSelecionada.comissao || 30) / 100);
+      const liquidoConectaJoias = valorConsignadoAtual - comissaoRev;
 
-      document.getElementById("detalhe-qtd-consignada").innerText = `${qtdConsignada} pçs`;
-      document.getElementById("detalhe-valor-consignado").innerText = `R$ ${valorConsignado.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
-      document.getElementById("detalhe-liquido-projetado").innerText = `R$ ${liquidoConectaJoias.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+      if (document.getElementById("detalhe-qtd-consignada")) document.getElementById("detalhe-qtd-consignada").innerText = `${qtdConsignadaInicial} pçs`;
+      if (document.getElementById("detalhe-qtd-atual")) document.getElementById("detalhe-qtd-atual").innerText = `${qtdAtualRealtime} pçs`;
+      if (document.getElementById("detalhe-valor-consignado")) document.getElementById("detalhe-valor-consignado").innerText = `R$ ${valorConsignadoAtual.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+      if (document.getElementById("detalhe-liquido-projetado")) document.getElementById("detalhe-liquido-projetado").innerText = `R$ ${liquidoConectaJoias.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
 
       // Preenche a tabela de peças na maleta
       const tableItensBody = document.querySelector("#table-itens-consignados tbody");
@@ -3192,25 +3613,39 @@ const app = {
     const rev = this.state.revendedoras.find(r => r.id === this.state.revendedoraSelecionadaId);
     if (rev) {
       if (await this.confirmar(`Deseja realmente excluir a revendedora ${rev.nome}? As peças atualmente com ela retornarão automaticamente ao Estoque Central.`)) {
-        // Devolve peças consignadas ao estoque central antes de deletar
-        rev.consignado.forEach(item => {
-          const prod = this.state.produtos.find(p => p.id === item.produtoId);
-          if (prod) {
-            prod.quantidade = Number(prod.quantidade || 0) + Number(item.quantidadeConsignada || 0);
-            // Atualiza _valoresDinamicos para refletir na tabela de estoque imediatamente
-            if (prod._valoresDinamicos) {
-              prod._valoresDinamicos["Estoque Central"] = prod.quantidade;
-            }
+        try {
+          if (this.state.token && !this.state.token.startsWith("mock_")) {
+            await this.requisitarAPI(`/revendedoras/${rev.id}`, "DELETE");
           }
-        });
 
-        this.state.revendedoras = this.state.revendedoras.filter(r => r.id !== rev.id);
-        this.state.revendedoraSelecionadaId = this.state.revendedoras.length > 0 ? this.state.revendedoras[0].id : null;
-        
-        this.salvarDadosNoLocalStorage();
-        this.renderizarRevendedoras();
-        this.renderizarEstoque();
-        this.renderizarDashboard();
+          // Devolve peças consignadas ao estoque central localmente para reatividade imediata
+          if (rev.consignado && Array.isArray(rev.consignado)) {
+            rev.consignado.forEach(item => {
+              const prod = this.state.produtos.find(p => p.id === item.produtoId);
+              if (prod) {
+                prod.quantidade = Number(prod.quantidade || 0) + Number(item.quantidadeConsignada || item.quantidadeDisponivel || 0);
+                if (prod._valoresDinamicos) {
+                  prod._valoresDinamicos["Estoque Central"] = prod.quantidade;
+                }
+              }
+            });
+          }
+
+          this.state.revendedoras = this.state.revendedoras.filter(r => r.id !== rev.id);
+          this.state.revendedoraSelecionadaId = this.state.revendedoras.length > 0 ? this.state.revendedoras[0].id : null;
+          
+          this.salvarDadosNoLocalStorage();
+          await this.carregarProdutosDaAPI();
+          await this.carregarRevendedorasDaAPI();
+          this.renderizarRevendedoras();
+          this.renderizarEstoque();
+          this.renderizarDashboard();
+
+          this.toast(`Revendedora ${rev.nome} excluída com sucesso e peças retornadas ao Estoque Central!`, "success");
+        } catch (err) {
+          console.error("Erro ao excluir revendedora:", err);
+          this.toast("Erro ao excluir revendedora: " + err.message, "error");
+        }
       }
     }
   },
@@ -3866,12 +4301,15 @@ const app = {
       comissaoApagarParaRev = 0;
     }
 
+    const reterEstoque = Boolean(document.getElementById("acerto-manter-pecas-maleta")?.checked);
+
     try {
-      // Sincroniza fechamento de acerto com a Azure
+      // Sincroniza fechamento de acerto com a API
       if (this.state.token && !this.state.token.startsWith('mock_')) {
         await this.requisitarAPI("/acertos", "POST", {
           usuarioId: rev.id,
-          itensAcerto: postItens
+          itensAcerto: postItens,
+          manterPecasMaleta: reterEstoque
         });
       }
 
@@ -3933,8 +4371,25 @@ ${dinheiroAReceberDaRev >= comissaoApagarParaRev
         window.open(whatsLink, '_blank');
       }
 
-      // 2. Limpa a maleta de consignado da revendedora no estado (pois concluiu o acerto)
-      rev.consignado = [];
+      // Atualiza o estado local do consignado da revendedora baseado na retenção
+      if (reterEstoque) {
+        const novoConsignado = [];
+        postItens.forEach(pi => {
+          if (pi.qtdDevolvida > 0) {
+            novoConsignado.push({
+              produtoId: pi.produtoId,
+              codigo: pi.codigo,
+              nome: pi.nome,
+              precoVenda: pi.precoVenda,
+              quantidadeConsignada: pi.qtdDevolvida,
+              quantidadeDisponivel: pi.qtdDevolvida
+            });
+          }
+        });
+        rev.consignado = novoConsignado;
+      } else {
+        rev.consignado = [];
+      }
 
       // Salva tudo
       this.salvarDadosNoLocalStorage();
@@ -4390,36 +4845,56 @@ ${dinheiroAReceberDaRev >= comissaoApagarParaRev
     }
 
     if(ctxRev) {
-      const revLabels = [];
-      const revData = [];
-      this.state.revendedoras.forEach(r => {
-        let faturamentoBruto = 0;
-        if(r.consignado) {
-           r.consignado.forEach(c => {
-             faturamentoBruto += Number(c.precoVenda || 0) * Number(c.quantidadeConsignada || 0);
-           });
+      const rankingRev = this.state.revendedoras.map(r => {
+        let volumeVendas = r.totalPecasVendidasGeral !== undefined ? Number(r.totalPecasVendidasGeral) : 0;
+        let faturamentoTotal = r.faturamentoTotalGeral !== undefined ? Number(r.faturamentoTotalGeral) : 0;
+
+        if (volumeVendas === 0 && r.vendas && Array.isArray(r.vendas)) {
+          r.vendas.forEach(v => {
+            volumeVendas += Number(v.quantidade || 1);
+            faturamentoTotal += Number(v.precoVenda || 0) * Number(v.quantidade || 1);
+          });
         }
-        revLabels.push(r.nome.split(" ")[0]);
-        revData.push(faturamentoBruto);
-      });
+        if (r.historico && Array.isArray(r.historico)) {
+          r.historico.forEach(h => {
+            if (r.totalPecasVendidasGeral === undefined) volumeVendas += Number(h.totalVendida || 0);
+            if (r.faturamentoTotalGeral === undefined) faturamentoTotal += Number(h.faturamentoBruto || 0);
+          });
+        }
+        return { nome: r.nome ? r.nome.split(" ")[0] : "Revendedora", volumeVendas, faturamentoTotal };
+      }).sort((a, b) => b.faturamentoTotal - a.faturamentoTotal || b.volumeVendas - a.volumeVendas);
 
       window.chartRevendedoras = new Chart(ctxRev, {
         type: 'bar',
         data: {
-          labels: revLabels,
+          labels: rankingRev.map(r => r.nome),
           datasets: [{
-            label: 'Faturamento Bruto (R$)',
-            data: revData,
+            label: 'Faturamento Total Gerado (R$)',
+            data: rankingRev.map(r => r.faturamentoTotal),
             backgroundColor: '#d4af37',
             borderRadius: 4
           }]
         },
         options: { 
           scales: { 
-            y: { ticks: { color: '#e0e0e0' }, grid: { color: 'rgba(255,255,255,0.1)' } },
+            y: { ticks: { color: '#e0e0e0', callback: value => `R$ ${value}` }, grid: { color: 'rgba(255,255,255,0.1)' } },
             x: { ticks: { color: '#e0e0e0' }, grid: { display: false } }
           },
-          plugins: { legend: { display: false } }
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  const idx = context.dataIndex;
+                  const item = rankingRev[idx];
+                  return [
+                    ` Faturamento: R$ ${item.faturamentoTotal.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`,
+                    ` Peças Vendidas: ${item.volumeVendas} pçs`
+                  ];
+                }
+              }
+            }
+          }
         }
       });
     }
@@ -5070,6 +5545,14 @@ ${dinheiroAReceberDaRev >= comissaoApagarParaRev
         }
         this.state.clientes.push(novaCliente);
         this.toast("Cliente cadastrada com sucesso!", "success");
+
+        const nomePrimeiro = nome.split(" ")[0];
+        if (confirm(`Deseja enviar uma mensagem de boas-vindas para a cliente ${nomePrimeiro} via WhatsApp agora?`)) {
+          const msgCliente = `Olá, ${nomePrimeiro}! ✨\nSeja muito bem-vinda à nossa loja! É um grande prazer ter você como nossa cliente. Registramos o seu cadastro em nosso sistema de Semijoias e você receberá em primeira mão nossas coleções exclusivas, ofertas e cupons de presente. Qualquer dúvida ou pedido, estamos sempre à disposição! 💖`;
+          const phoneClean = whatsapp.replace(/\D/g, "");
+          const waUrl = `https://api.whatsapp.com/send?phone=55${phoneClean}&text=${encodeURIComponent(msgCliente)}`;
+          window.open(waUrl, "_blank");
+        }
       }
 
       document.getElementById("modal-cliente").classList.remove("active");
@@ -5237,12 +5720,15 @@ ${dinheiroAReceberDaRev >= comissaoApagarParaRev
             acoes = `<span style="font-size: 0.8rem; color: var(--text-muted);"><i class="fa-solid fa-circle-check"></i> Pago</span>`;
           }
 
+          const clienteNomeExibido = l.cliente ? l.cliente.nome : (l.clienteNome || "Cliente Avulso");
+          const formaPagamentoExibida = l.formaEnvio || l.forma || "PIX";
+
           return `
             <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
               <td style="padding: 12px; font-size: 0.8rem;">${new Date(l.createdAt).toLocaleDateString('pt-BR')}</td>
-              <td style="padding: 12px; font-weight: bold;">${l.clienteNome}</td>
+              <td style="padding: 12px; font-weight: bold;">${clienteNomeExibido}</td>
               <td style="padding: 12px; font-weight: bold;">R$ ${Number(l.valor).toFixed(2).replace(".", ",")}</td>
-              <td style="padding: 12px; font-size: 0.85rem; color: var(--gold-light);">${l.forma}</td>
+              <td style="padding: 12px; font-size: 0.85rem; color: var(--gold-light);">${formaPagamentoExibida}</td>
               <td style="padding: 12px; color: ${statusCor}; font-weight: 600;">${statusTxt}</td>
               <td style="padding: 12px; display: flex; gap: 0.5rem;">${acoes}</td>
             </tr>
@@ -5298,6 +5784,87 @@ ${dinheiroAReceberDaRev >= comissaoApagarParaRev
       this.carregarLinksPagamento();
     } catch (e) {
       this.toast("Erro ao gerar link de pagamento: " + e.message, "error");
+    }
+  },
+
+  toggleTipoClienteLink: function(tipo) {
+    const boxCadastrado = document.getElementById("link-cliente-cadastrado-box");
+    const boxAvulso = document.getElementById("link-cliente-avulso-box");
+    if (tipo === 'cadastrado') {
+      if (boxCadastrado) boxCadastrado.style.display = 'block';
+      if (boxAvulso) boxAvulso.style.display = 'none';
+      const nomeInput = document.getElementById("link-cliente-nome-avulso");
+      const whatsappInput = document.getElementById("link-cliente-whatsapp-avulso");
+      if (nomeInput) nomeInput.value = '';
+      if (whatsappInput) whatsappInput.value = '';
+    } else {
+      if (boxCadastrado) boxCadastrado.style.display = 'none';
+      if (boxAvulso) boxAvulso.style.display = 'block';
+      const select = document.getElementById("link-cliente-id");
+      if (select) select.value = '';
+    }
+  },
+
+  adicionarProdutoLink: function() {
+    const maleta = this.state.consignado || [];
+    if (maleta.length === 0) {
+      this.toast("Sua maleta de consignados está vazia.", "warning");
+      return;
+    }
+
+    let opcoes = maleta.map((item, index) => `${index + 1}. ${item.nome} (${item.codigo}) - R$ ${Number(item.precoVenda).toFixed(2)}`).join("\n");
+    let escolha = prompt(`Selecione o produto da sua maleta a adicionar ao link:\n\n${opcoes}\n\nDigite o número correspondente:`);
+    if (!escolha) return;
+
+    const idx = parseInt(escolha) - 1;
+    if (isNaN(idx) || idx < 0 || idx >= maleta.length) {
+      this.toast("Opção inválida.", "warning");
+      return;
+    }
+
+    const produtoSelecionado = maleta[idx];
+    const qtdStr = prompt(`Quantidade de peças para "${produtoSelecionado.nome}" (Máx: ${produtoSelecionado.quantidadeConsignada}):`, "1");
+    if (!qtdStr) return;
+
+    const qtd = parseInt(qtdStr);
+    if (isNaN(qtd) || qtd <= 0 || qtd > produtoSelecionado.quantidadeConsignada) {
+      this.toast("Quantidade inválida ou excede a maleta.", "warning");
+      return;
+    }
+
+    if (!this.state.produtosLinkTemporarios) {
+      this.state.produtosLinkTemporarios = [];
+    }
+
+    this.state.produtosLinkTemporarios.push({
+      id: produtoSelecionado.produtoId,
+      nome: produtoSelecionado.nome,
+      codigo: produtoSelecionado.codigo,
+      preco: Number(produtoSelecionado.precoVenda),
+      quantidade: qtd
+    });
+
+    this.toast(`Adicionado: ${qtd}x ${produtoSelecionado.nome}`, "success");
+    this.usarSubtotalProdutosNoLink();
+  },
+
+  usarSubtotalProdutosNoLink: function() {
+    const itens = this.state.produtosLinkTemporarios || [];
+    if (itens.length === 0) {
+      this.toast("Nenhum produto adicionado para subtotal.", "warning");
+      return;
+    }
+
+    const subtotal = itens.reduce((acc, item) => acc + (item.preco * item.quantidade), 0);
+    const inputValor = document.getElementById("link-valor");
+    if (inputValor) {
+      inputValor.value = subtotal.toFixed(2);
+    }
+    
+    const inputDesc = document.getElementById("link-descricao");
+    if (inputDesc) {
+      const listaDesc = itens.map(item => `${item.quantidade}x ${item.nome}`).join(", ");
+      inputDesc.value = `Cobrança de: ${listaDesc}`;
     }
   },
 
@@ -5775,6 +6342,85 @@ ${dinheiroAReceberDaRev >= comissaoApagarParaRev
     this._atualizarSinoBadge();
     this._renderizarListaNotificacoes();
     this.toast('Todas as notificações foram marcadas como lidas.', 'success');
+  },
+
+  moverWidget: function(direcao, widgetId) {
+    const grid = document.getElementById("maleta-metrics-grid");
+    if (!grid) return;
+
+    const cards = Array.from(grid.children);
+    const ordem = cards.map(c => c.getAttribute("data-widget"));
+    const index = ordem.indexOf(widgetId);
+    if (index === -1) return;
+
+    let targetIndex = index;
+    if (direcao === "left" && index > 0) {
+      targetIndex = index - 1;
+    } else if (direcao === "right" && index < ordem.length - 1) {
+      targetIndex = index + 1;
+    }
+
+    if (targetIndex !== index) {
+      const temp = ordem[index];
+      ordem[index] = ordem[targetIndex];
+      ordem[targetIndex] = temp;
+
+      localStorage.setItem("conectajoias_widgets_ordem", JSON.stringify(ordem));
+      this.aplicarOrdemWidgets();
+    }
+  },
+
+  aplicarOrdemWidgets: function() {
+    const grid = document.getElementById("maleta-metrics-grid");
+    if (!grid) return;
+
+    const ordemSalva = localStorage.getItem("conectajoias_widgets_ordem");
+    if (!ordemSalva) return;
+
+    try {
+      const ordem = JSON.parse(ordemSalva);
+      if (!Array.isArray(ordem) || ordem.length === 0) return;
+
+      const cardsMap = {};
+      Array.from(grid.children).forEach(card => {
+        const key = card.getAttribute("data-widget");
+        if (key) cardsMap[key] = card;
+      });
+
+      ordem.forEach(key => {
+        const card = cardsMap[key];
+        if (card) {
+          grid.appendChild(card);
+        }
+      });
+      
+      Object.keys(cardsMap).forEach(key => {
+        if (!ordem.includes(key)) {
+          grid.appendChild(cardsMap[key]);
+        }
+      });
+    } catch (e) {
+      console.error("Erro ao ordenar widgets:", e);
+    }
+  },
+
+  toggleModoEdicaoWidgets: function() {
+    const grid = document.getElementById("maleta-metrics-grid");
+    const btn = document.getElementById("btn-edit-rev-widgets");
+    if (!grid || !btn) return;
+
+    const isEditing = grid.classList.toggle("edit-mode");
+    if (isEditing) {
+      btn.classList.add("active");
+      btn.innerHTML = '<i class="fa-solid fa-check"></i>';
+      btn.title = "Concluir Personalização";
+      this.toast("Modo de personalização ativado! Use as setas dos cards para ordenar.", "info");
+    } else {
+      btn.classList.remove("active");
+      btn.innerHTML = '<i class="fa-solid fa-pen"></i>';
+      btn.title = "Personalizar Painel";
+      this.toast("Personalização do painel salva com sucesso! ✨", "success");
+    }
   }
 
 };
@@ -5805,8 +6451,8 @@ function aplicarTemaLoja(tema) {
   const defaultBgPrimary = isLight ? '#f5f5f5' : '#0a0a0a';
   const defaultBgCard = isLight ? '#ffffff' : '#121212';
 
-  const bgPrimary = tema.bgPrimary && tema.bgPrimary !== '#0a0a0a' ? tema.bgPrimary : defaultBgPrimary;
-  const bgCard = tema.bgCard && tema.bgCard !== '#121212' ? tema.bgCard : defaultBgCard;
+  const bgPrimary = tema.bgPrimary ? tema.bgPrimary : defaultBgPrimary;
+  const bgCard = tema.bgCard ? tema.bgCard : defaultBgCard;
   const bgAbsolute = alterarBrilhoHex(bgPrimary, -10);
 
   document.documentElement.style.setProperty('--bg-primary', bgPrimary);

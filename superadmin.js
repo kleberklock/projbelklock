@@ -29,7 +29,7 @@ const app = {
     bgPrimary: "#0a0a0a",
     bgCard: "#121212",
     revendedoraSelecionadaId: null,
-    usandoFicticio: true,
+    usandoFicticio: false,
     dreImposto: 0.0,
     dreDespesaFixa: 0.0,
     dreCmvEstimado: 33.0,
@@ -350,11 +350,11 @@ const app = {
     localStorage.clear();
     sessionStorage.clear();
     document.documentElement.removeAttribute('style');
-    window.location.href = "index.html";
+    window.location.href = "login.html";
   },
 
   exibirInterfaceLogin: function() {
-    window.location.href = "index.html";
+    window.location.href = "login.html";
   },
 
   exibirInterfacePosLogin: function() {
@@ -1095,7 +1095,7 @@ const app = {
       const bgCardSalvo = localStorage.getItem("conectajoias_bg_card");
       const apiUrlSalva = localStorage.getItem("conectajoias_api_url");
 
-      this.state.usandoFicticio = ficticioSalvo ? JSON.parse(ficticioSalvo) : true;
+      this.state.usandoFicticio = ficticioSalvo ? JSON.parse(ficticioSalvo) : false;
       this.state.colunasEstoque = colunasSalvas ? JSON.parse(colunasSalvas) : ["Código", "Nome do Produto", "Categoria", "Estoque Central", "Custo Bruto", "Custo Banho", "Custo Oper.", "Markup", "Preço Venda"];
       this.state.limiarEstoqueCritico = limiarSalvo ? parseInt(limiarSalvo) : 3;
       this.state.nomeEmpresa = nomeEmpresaSalvo ? nomeEmpresaSalvo : "Conecta Joias";
@@ -1177,88 +1177,11 @@ const app = {
 
   // 4. Cadastro de Mock de dados para demonstração sem placeholders vazios
   obterProdutosMock: function() {
-    return [
-      {
-        id: "prod_1",
-        codigo: "BR-010",
-        nome: "Brinco Gota Fusion Cravejado",
-        categoria: "Brincos",
-        quantidade: 15,
-        custoBruto: 12.50,
-        custoBanho: 8.00,
-        custoLiquido: 3.50,
-        markup: 3.2
-      },
-      {
-        id: "prod_2",
-        codigo: "CO-055",
-        nome: "Colar Riviera Ametista Luxo",
-        categoria: "Colares",
-        quantidade: 2, // Alerta de estoque baixo
-        custoBruto: 28.00,
-        custoBanho: 15.00,
-        custoLiquido: 6.00,
-        markup: 3.0
-      },
-      {
-        id: "prod_3",
-        codigo: "AN-004",
-        nome: "Anel Solitário Ouro Cravejado",
-        categoria: "Anéis",
-        quantidade: 12,
-        custoBruto: 9.00,
-        custoBanho: 6.50,
-        custoLiquido: 2.50,
-        markup: 3.5
-      },
-      {
-        id: "prod_4",
-        codigo: "PU-080",
-        nome: "Pulseira Elo Português 18k",
-        categoria: "Pulseiras",
-        quantidade: 8,
-        custoBruto: 18.00,
-        custoBanho: 11.00,
-        custoLiquido: 4.50,
-        markup: 3.0
-      }
-    ];
+    return [];
   },
 
   obterRevendedorasMock: function() {
-    return [
-      {
-        id: "rev_1",
-        nome: "Patrícia Medeiros",
-        whatsapp: "(11) 98765-4321",
-        comissao: 30,
-        pin: "1234",
-        consignado: [
-          {
-            produtoId: "prod_1",
-            codigo: "BR-010",
-            nome: "Brinco Gota Fusion Cravejado",
-            quantidadeConsignada: 5,
-            precoVenda: 76.80 // (12.5+8+3.5) * 3.2 = 24 * 3.2
-          },
-          {
-            produtoId: "prod_3",
-            codigo: "AN-004",
-            nome: "Anel Solitário Ouro Cravejado",
-            quantidadeConsignada: 3,
-            precoVenda: 63.00 // (9+6.5+2.5) * 3.5 = 18 * 3.5
-          }
-        ]
-      },
-      {
-        id: "rev_2",
-        nome: "Juliana Frota",
-        whatsapp: "(11) 99888-7777",
-        comissao: 35,
-        pin: "5678",
-        consignado: []
-      }
-    ];
+    return [];
   },
 
   // Inicializa imagens padrões elegantes no feed do Instagram se estiver vazio
@@ -1365,6 +1288,45 @@ const app = {
     // Salvar Produto
     document.getElementById("btn-salvar-produto").addEventListener("click", () => this.salvarNovoProduto());
 
+    // Upload automático de imagem do produto ao selecionar arquivo
+    const inputFotoFile = document.getElementById("prod-foto-file");
+    if (inputFotoFile) {
+      inputFotoFile.addEventListener("change", async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const formData = new FormData();
+        formData.append("imagem", file);
+
+        try {
+          const previewImg = document.getElementById("prod-foto-preview");
+          const previewContainer = document.getElementById("prod-foto-preview-container");
+          if (previewContainer) previewContainer.style.display = "block";
+          if (previewImg) {
+            previewImg.src = "assets/logo.svg"; 
+            previewImg.style.opacity = "0.5";
+          }
+
+          const response = await fetch(`${this.state.apiUrl}/uploads`, {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${this.state.token}`
+            },
+            body: formData
+          });
+
+          if (!response.ok) throw new Error("Erro ao realizar upload de imagem.");
+          const resData = await response.json();
+
+          document.getElementById("prod-foto-url").value = resData.url;
+          this.atualizarPreviewFotoProduto();
+        } catch (err) {
+          console.error(err);
+          this.toast("Falha ao fazer upload da imagem: " + err.message, "error");
+        }
+      });
+    }
+
     // Salvar Revendedora
     document.getElementById("btn-salvar-revendedora").addEventListener("click", () => this.salvarNovaRevendedora());
 
@@ -1402,10 +1364,23 @@ const app = {
     document.getElementById("btn-excluir-todos-produtos").addEventListener("click", () => this.excluirTodosOsProdutos());
 
 
-    // Upload do Instagram Feed
-    document.getElementById("zone-upload-feed").addEventListener("click", () => document.getElementById("input-upload-feed").click());
-    document.getElementById("input-upload-feed").addEventListener("change", (e) => this.processarUploadFeed(e));
-    document.getElementById("btn-clear-feed").addEventListener("click", () => this.reiniciarFeedPadrao());
+    // Upload do Instagram Feed (Tratamento defensivo contra elementos nulos)
+    const zoneUploadFeed = document.getElementById("zone-upload-feed");
+    const inputUploadFeed = document.getElementById("input-upload-feed");
+    const btnClearFeed = document.getElementById("btn-clear-feed");
+
+    if (zoneUploadFeed) {
+      zoneUploadFeed.addEventListener("click", () => {
+        const input = document.getElementById("input-upload-feed");
+        if (input) input.click();
+      });
+    }
+    if (inputUploadFeed) {
+      inputUploadFeed.addEventListener("change", (e) => this.processarUploadFeed(e));
+    }
+    if (btnClearFeed) {
+      btnClearFeed.addEventListener("click", () => this.reiniciarFeedPadrao());
+    }
 
     // WhatsApp Mask
     const revWhatsApp = document.getElementById("rev-whatsapp");
@@ -1521,10 +1496,28 @@ const app = {
     if (cancelBtn) cancelBtn.addEventListener("click", fechar);
   },
 
+  // Controle de Sidebar Responsiva Mobile
+  toggleSidebarMobile: function() {
+    const sidebar = document.querySelector('.sidebar');
+    const overlay = document.getElementById('sidebar-overlay');
+    if (sidebar) sidebar.classList.toggle('active');
+    if (overlay) overlay.classList.toggle('active');
+    document.body.classList.toggle('sidebar-open');
+  },
+
+  fecharSidebarMobile: function() {
+    const sidebar = document.querySelector('.sidebar');
+    const overlay = document.getElementById('sidebar-overlay');
+    if (sidebar) sidebar.classList.remove('active');
+    if (overlay) overlay.classList.remove('active');
+    document.body.classList.remove('sidebar-open');
+  },
+
   // Navegação SPA
   navegacaoListenersConfigurada: false,
   navegarParaAba: function(tabId) {
     this.state.abaAtiva = tabId;
+    this.fecharSidebarMobile();
     this.renderizarAbas();
     
     // Recarrega dados visuais
@@ -1624,6 +1617,9 @@ const app = {
     document.getElementById("val-capital-consignado").innerText = `R$ ${capitalPecasConsignado.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
     document.getElementById("val-retorno-estimado").innerText = `R$ ${retornoVendaProjetada.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
 
+    // Reaplica a ordem dos widgets no DOM da Administradora
+    this.aplicarOrdemWidgets();
+
     // 2. Alertas de estoque crítico (Qtd <= limiarEstoqueCritico)
     const tableAlertasBody = document.querySelector("#table-alertas tbody");
     tableAlertasBody.innerHTML = "";
@@ -1683,13 +1679,16 @@ const app = {
       `;
     } else {
       this.state.revendedoras.forEach(rev => {
-        let qtdConsignada = 0;
-        let valorConsignado = 0;
+        let qtdConsignadaRealtime = 0;
+        let valorConsignadoRealtime = 0;
 
         if (rev.consignado) {
           rev.consignado.forEach(item => {
-            qtdConsignada += Number(item.quantidadeConsignada || 0);
-            valorConsignado += Number(item.precoVenda || 0) * Number(item.quantidadeConsignada || 0);
+            const qCons = Number(item.quantidadeConsignada || 0);
+            const qDisp = item.quantidadeDisponivel !== undefined ? Number(item.quantidadeDisponivel) : Math.max(0, qCons - Number(item.quantidadeVendidaApp || 0));
+            const pVenda = Number(item.precoVenda || 0);
+            qtdConsignadaRealtime += qDisp;
+            valorConsignadoRealtime += pVenda * qDisp;
           });
         }
 
@@ -1702,8 +1701,8 @@ const app = {
 
         tr.innerHTML = `
           <td><strong>${rev.nome}</strong></td>
-          <td>${qtdConsignada} pçs</td>
-          <td style="color: var(--gold-primary); font-weight: 600;">R$ ${valorConsignado.toFixed(2).replace(".", ",")}</td>
+          <td>${qtdConsignadaRealtime} pçs</td>
+          <td style="color: var(--gold-primary); font-weight: 600;">R$ ${valorConsignadoRealtime.toFixed(2).replace(".", ",")}</td>
         `;
         tableResumoRevBody.appendChild(tr);
       });
@@ -1918,14 +1917,16 @@ const app = {
     
     const itens = [];
     document.querySelectorAll("#table-preencher-acerto tbody tr").forEach(tr => {
-      const codigo = tr.cells[0]?.innerText;
-      const nome = tr.cells[1]?.querySelector(".prod-name-cell")?.innerText || tr.cells[1]?.innerText;
-      if (!codigo || !nome) return;
+      const cellProd = tr.cells[0];
+      if (!cellProd) return;
 
-      const prodId = tr.querySelector(".input-acerto-venda")?.getAttribute("data-prod-id");
-      const inpVenda = tr.querySelector(".input-acerto-venda");
-      const inpDev = tr.querySelector(".input-acerto-devolucao");
-      const inpPerd = tr.querySelector(".input-acerto-perda");
+      const codigo = cellProd.querySelector("strong")?.innerText || cellProd.innerText.split("\n")[0] || "";
+      const nome = cellProd.querySelector("span")?.innerText || cellProd.innerText.split("\n")[1] || "Produto";
+      const precoUnit = parseFloat(tr.cells[1]?.innerText.replace("R$", "").replace(".", "").replace(",", ".").trim()) || 0;
+
+      const inpVenda = tr.querySelector(".input-acerto-vendido") || tr.querySelector(".input-acerto-venda");
+      const inpDev = tr.querySelector(".input-acerto-devolvido") || tr.querySelector(".input-acerto-devolucao");
+      const inpPerd = tr.querySelector(".input-acerto-perdido") || tr.querySelector(".input-acerto-perda");
       const inpDef = tr.querySelector(".input-acerto-defeito");
 
       const qtdVenda = parseInt(inpVenda?.value) || 0;
@@ -1933,9 +1934,7 @@ const app = {
       const qtdPerd = parseInt(inpPerd?.value) || 0;
       const qtdDef = parseInt(inpDef?.value) || 0;
 
-      const precoUnit = parseFloat(tr.cells[2]?.innerText.replace("R$", "").replace(".", "").replace(",", ".").trim()) || 0;
-
-      if (qtdVenda > 0 || qtdDev > 0 || qtdPerd > 0 || qtdDef > 0) {
+      if (codigo && (qtdVenda > 0 || qtdDev > 0 || qtdPerd > 0 || qtdDef > 0)) {
         itens.push({
           codigo,
           nome,
@@ -1950,11 +1949,16 @@ const app = {
     });
 
     const totalLevadas = document.getElementById("acerto-total-peças-levadas")?.innerText || "0 pçs";
+    const totalVendidaPcs = itens.reduce((acc, i) => acc + i.qtdVenda, 0);
     const totalFatBruto = document.getElementById("acerto-total-faturamento-bruto")?.innerText || "R$ 0,00";
     const comissaoPercent = document.getElementById("acerto-comissao-percent")?.innerText || "30";
     const comissaoValor = document.getElementById("acerto-comissao-valor")?.innerText || "R$ 0,00";
-    const descontoPerdas = document.getElementById("acerto-desconto-perdas")?.innerText || "R$ 0,00";
+    const descontoPerdasRaw = document.getElementById("acerto-desconto-perdas")?.innerText || "R$ 0,00";
+    const descontoPerdasText = descontoPerdasRaw.replace(/^-\s*/, "").trim();
     const totalReceber = document.getElementById("acerto-total-liquido-receber")?.innerText || "R$ 0,00";
+    
+    const totalDinheiroText = document.getElementById("acerto-vendas-dinheiro")?.innerText || "R$ 0,00";
+    const totalLinkText = document.getElementById("acerto-vendas-link")?.innerText || "R$ 0,00";
 
     const dataAtual = new Date().toLocaleDateString('pt-BR');
     
@@ -2008,11 +2012,20 @@ const app = {
         </tbody>
       </table>
 
-      <div style="display: flex; justify-content: flex-end; margin-bottom: 3rem; color: black;">
-        <table style="width: 300px; font-size: 0.9rem; line-height: 1.6; border-collapse: collapse;">
+      <div style="display: flex; justify-content: space-between; margin-bottom: 3rem; color: black; font-size: 0.9rem; line-height: 1.6;">
+        <div style="width: 45%; border: 1px solid #ddd; padding: 12px; border-radius: 6px;">
+          <h4 style="margin: 0 0 8px 0; font-size: 0.95rem; border-bottom: 1px solid #eee; padding-bottom: 4px;">Divisão por Meio de Pagamento</h4>
+          <div>💵 Dinheiro: <strong>${totalDinheiroText}</strong></div>
+          <div>💳 Link/Pix/Cartão: <strong>${totalLinkText}</strong></div>
+        </div>
+        <table style="width: 45%; font-size: 0.9rem; line-height: 1.6; border-collapse: collapse;">
           <tr>
-            <td style="padding: 4px 0;">Peças Levadas:</td>
+            <td style="padding: 4px 0;">Peças Levadas Inicialmente:</td>
             <td style="text-align: right; padding: 4px 0;"><strong>${totalLevadas}</strong></td>
+          </tr>
+          <tr>
+            <td style="padding: 4px 0;">Peças Vendidas:</td>
+            <td style="text-align: right; padding: 4px 0;"><strong>${totalVendidaPcs} pçs</strong></td>
           </tr>
           <tr>
             <td style="padding: 4px 0;">Faturamento Bruto:</td>
@@ -2024,10 +2037,10 @@ const app = {
           </tr>
           <tr style="color: #c62828;">
             <td style="padding: 4px 0;">Desconto Perdas:</td>
-            <td style="text-align: right; padding: 4px 0;">- ${descontoPerdas}</td>
+            <td style="text-align: right; padding: 4px 0;">- ${descontoPerdasText}</td>
           </tr>
-          <tr style="border-top: 1px solid #000; font-size: 1.05rem; font-weight: bold;">
-            <td style="padding-top: 0.5rem;">Líquido a Pagar:</td>
+          <tr style="border-top: 2px solid #000; font-size: 1.05rem; font-weight: bold;">
+            <td style="padding-top: 0.5rem;">Valor Final Acerto:</td>
             <td style="padding-top: 0.5rem; text-align: right;">${totalReceber}</td>
           </tr>
         </table>
@@ -2171,6 +2184,17 @@ const app = {
               <button class="btn-qty" onclick="app.alterarQtdEstoque('${p.id}', 1)"><i class="fa-solid fa-plus"></i></button>
             </div>
           `;
+        } else if (colLower.includes("nome") || colLower.includes("produto")) {
+          if (p.fotoUrl) {
+            td.innerHTML = `
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <img src="${p.fotoUrl}" style="width: 30px; height: 30px; border-radius: 50%; object-fit: cover; border: 1px solid rgba(212,175,55,0.2);">
+                <span>${valor || p.nome || ""}</span>
+              </div>
+            `;
+          } else {
+            td.innerText = valor || p.nome || "";
+          }
         } else if (colLower.includes("código") || colLower.includes("codigo") || colLower.includes("ref") || colLower.includes("id")) {
           td.innerHTML = `<strong>${valor || p.codigo}</strong>`;
         } else {
@@ -2614,20 +2638,29 @@ const app = {
       document.getElementById("detalhe-pin-revendedora").innerText = revSelecionada.pin || "N/A";
 
       // Atualiza indicadores internos
-      let qtdConsignada = 0;
-      let valorConsignado = 0;
+      let qtdConsignadaInicial = 0;
+      let qtdAtualRealtime = 0;
+      let valorConsignadoInicial = 0;
+      let valorConsignadoAtual = 0;
 
       revSelecionada.consignado.forEach(item => {
-        qtdConsignada += Number(item.quantidadeConsignada || 0);
-        valorConsignado += Number(item.precoVenda || 0) * Number(item.quantidadeConsignada || 0);
+        const qCons = Number(item.quantidadeConsignada || 0);
+        const qDisp = item.quantidadeDisponivel !== undefined ? Number(item.quantidadeDisponivel) : Math.max(0, qCons - Number(item.quantidadeVendidaApp || 0));
+        const pVenda = Number(item.precoVenda || 0);
+
+        qtdConsignadaInicial += qCons;
+        qtdAtualRealtime += qDisp;
+        valorConsignadoInicial += pVenda * qCons;
+        valorConsignadoAtual += pVenda * qDisp;
       });
 
-      const comissaoRev = valorConsignado * (Number(revSelecionada.comissao || 30) / 100);
-      const liquidoConectaJoias = valorConsignado - comissaoRev;
+      const comissaoRev = valorConsignadoAtual * (Number(revSelecionada.comissao || 30) / 100);
+      const liquidoConectaJoias = valorConsignadoAtual - comissaoRev;
 
-      document.getElementById("detalhe-qtd-consignada").innerText = `${qtdConsignada} pçs`;
-      document.getElementById("detalhe-valor-consignado").innerText = `R$ ${valorConsignado.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
-      document.getElementById("detalhe-liquido-projetado").innerText = `R$ ${liquidoConectaJoias.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+      if (document.getElementById("detalhe-qtd-consignada")) document.getElementById("detalhe-qtd-consignada").innerText = `${qtdConsignadaInicial} pçs`;
+      if (document.getElementById("detalhe-qtd-atual")) document.getElementById("detalhe-qtd-atual").innerText = `${qtdAtualRealtime} pçs`;
+      if (document.getElementById("detalhe-valor-consignado")) document.getElementById("detalhe-valor-consignado").innerText = `R$ ${valorConsignadoAtual.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+      if (document.getElementById("detalhe-liquido-projetado")) document.getElementById("detalhe-liquido-projetado").innerText = `R$ ${liquidoConectaJoias.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
 
       // Preenche a tabela de peças na maleta
       const tableItensBody = document.querySelector("#table-itens-consignados tbody");
@@ -2651,6 +2684,11 @@ const app = {
             <td>${item.quantidadeConsignada} unidades</td>
             <td>R$ ${Number(item.precoVenda).toFixed(2).replace(".", ",")}</td>
             <td style="color: var(--gold-primary); font-weight: 600;">R$ ${subtotal.toFixed(2).replace(".", ",")}</td>
+            <td>
+              <button class="btn-qty" style="color: var(--gold-light); border-color: rgba(212,175,55,0.2);" onclick="app.devolverEstoqueConsignado('${item.id}', ${item.quantidadeConsignada})" title="Devolver ao Estoque Central">
+                <i class="fa-solid fa-arrow-rotate-left"></i> Devolver
+              </button>
+            </td>
           `;
           tableItensBody.appendChild(tr);
         });
@@ -3043,6 +3081,12 @@ const app = {
       return;
     }
 
+    const regexSenha = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%&*(),.?":{}|<>]).{8,}$/;
+    if (senhaInput && !regexSenha.test(senhaInput)) {
+      this.toast("A senha deve conter pelo menos 8 caracteres, incluindo pelo menos uma letra maiúscula, uma letra minúscula, um número e um caractere especial (!@#$%&*(),.?\":{}|<>).", "warning");
+      return;
+    }
+
     // Novos campos adicionados
     const tipoComissao = document.getElementById("rev-tipo-comissao").value;
     const metaUnicaValor = parseFloat(document.getElementById("rev-meta-valor").value) || 0;
@@ -3167,6 +3211,13 @@ const app = {
       } else {
         const pinCriado = this.state.revendedoras.find(r => r.id === this.state.revendedoraSelecionadaId).pin;
         alert(`Revendedora cadastrada com sucesso!\n\n🔑 PIN de Acesso: ${pinCriado}\n🔒 Senha: ${senhaInput}\n\nInforme esses dados para a revendedora acessar o aplicativo.`);
+        
+        if (confirm("Deseja enviar as credenciais de acesso para a revendedora via WhatsApp agora?")) {
+          const msgTexto = `Olá ${nome}, seja muito bem-vinda à nossa equipe! ✨ Seu cadastro de Consultora foi realizado com sucesso. Aqui estão suas credenciais para entrar no portal:\n\n🔑 Login (PIN): ${pinCriado}\n🔒 Senha Temporária: ${senhaInput}\n\n🔗 Link do portal: ${window.location.origin}/manager.html\n\nQualquer dúvida, estamos à disposição!`;
+          const phoneClean = whatsapp.replace(/\D/g, "");
+          const waUrl = `https://api.whatsapp.com/send?phone=55${phoneClean}&text=${encodeURIComponent(msgTexto)}`;
+          window.open(waUrl, "_blank");
+        }
       }
     } catch (error) {
       console.error(error);
@@ -3490,6 +3541,7 @@ const app = {
 
     // Carrega vendas pendentes
     const vendasPendentes = await this.buscarVendasPendentesAcerto(rev.id);
+    this.state.vendasPendentesAcerto = vendasPendentes;
     const mapaVendas = new Map();
     vendasPendentes.forEach(v => {
       mapaVendas.set(v.produtoId, (mapaVendas.get(v.produtoId) || 0) + v.quantidade);
@@ -3501,7 +3553,8 @@ const app = {
       const tr = document.createElement("tr");
       tr.id = `acerto-row-${item.produtoId}`;
       
-      const qtdVendidaSugerida = Math.min(mapaVendas.get(item.produtoId) || 0, item.quantidadeConsignada);
+      const qtdVendidaApp = mapaVendas.get(item.produtoId) || 0;
+      const qtdVendidaSugerida = Math.min(qtdVendidaApp, item.quantidadeConsignada);
       const qtdDevolvidaSugerida = item.quantidadeConsignada - qtdVendidaSugerida;
 
       tr.innerHTML = `
@@ -3523,12 +3576,13 @@ const app = {
             <button type="button" class="btn-input-adjust" onclick="app.ajustarQtdAcerto(this, -1, 'vendido', ${item.quantidadeConsignada})" style="background: transparent; border: none; color: #888; cursor: pointer; padding: 4px 6px; font-size: 0.75rem;"><i class="fa-solid fa-minus"></i></button>
             <input type="number" class="input-acerto-vendido"
                    data-prod-id="${item.produtoId}"
-                   value="${qtdVendidaSugerida}" min="0" max="${item.quantidadeConsignada}"
+                   data-app-vendas="${qtdVendidaApp}"
+                   value="${qtdVendidaSugerida}" min="${qtdVendidaApp}" max="${item.quantidadeConsignada}"
                    oninput="app.sincronizarAcertoQuantidades(this, 'vendido')"
                    style="width: 32px; text-align: center; font-weight: 700; border: none; background: transparent; color: var(--text-primary); font-size: 0.85rem; outline: none; padding: 0;">
             <button type="button" class="btn-input-adjust" onclick="app.ajustarQtdAcerto(this, 1, 'vendido', ${item.quantidadeConsignada})" style="background: transparent; border: none; color: #888; cursor: pointer; padding: 4px 6px; font-size: 0.75rem;"><i class="fa-solid fa-plus"></i></button>
           </div>
-          ${qtdVendidaSugerida > 0 ? `<div style="font-size: 0.65rem; color: #81c784; text-align: center; margin-top: 4px;"><i class="fa-solid fa-check"></i> ${qtdVendidaSugerida} no app</div>` : ''}
+          ${qtdVendidaApp > 0 ? `<div style="font-size: 0.65rem; color: #81c784; text-align: center; margin-top: 4px;"><i class="fa-solid fa-check"></i> ${qtdVendidaApp} no app</div>` : ''}
         </td>
         <td>
           <div style="text-align: center;">
@@ -3638,14 +3692,16 @@ const app = {
     const inputPerdido = document.querySelector(`.input-acerto-perdido[data-prod-id="${prodId}"]`);
     const inputDefeito = document.querySelector(`.input-acerto-defeito[data-prod-id="${prodId}"]`);
     if (inputVendido && inputDevolvido) {
+      const qtdApp = parseInt(inputVendido.getAttribute("data-app-vendas")) || 0;
       if (acao === 'venda') {
         inputVendido.value = max;
         inputDevolvido.value = 0;
         if (inputPerdido) inputPerdido.value = 0;
         if (inputDefeito) inputDefeito.value = 0;
       } else {
-        inputVendido.value = 0;
-        inputDevolvido.value = max;
+        const valVenda = Math.min(qtdApp, max);
+        inputVendido.value = valVenda;
+        inputDevolvido.value = max - valVenda;
         if (inputPerdido) inputPerdido.value = 0;
         if (inputDefeito) inputDefeito.value = 0;
       }
@@ -3666,14 +3722,16 @@ const app = {
       const inputPerdido = document.querySelector(`.input-acerto-perdido[data-prod-id="${prodId}"]`);
       const inputDefeito = document.querySelector(`.input-acerto-defeito[data-prod-id="${prodId}"]`);
       if (inputVendido && inputDevolvido) {
+        const qtdApp = parseInt(inputVendido.getAttribute("data-app-vendas")) || 0;
         if (acao === 'vender_tudo') {
           inputVendido.value = max;
           inputDevolvido.value = 0;
           if (inputPerdido) inputPerdido.value = 0;
           if (inputDefeito) inputDefeito.value = 0;
         } else {
-          inputVendido.value = 0;
-          inputDevolvido.value = max;
+          const valVenda = Math.min(qtdApp, max);
+          inputVendido.value = valVenda;
+          inputDevolvido.value = max - valVenda;
           if (inputPerdido) inputPerdido.value = 0;
           if (inputDefeito) inputDefeito.value = 0;
         }
@@ -3699,18 +3757,21 @@ const app = {
     const inpPerd = document.querySelector(`.input-acerto-perdido[data-prod-id="${prodId}"]`);
     const inpDef  = document.querySelector(`.input-acerto-defeito[data-prod-id="${prodId}"]`);
     
+    const qtdApp = parseInt(inpVend ? (inpVend.getAttribute("data-app-vendas") || 0) : 0) || 0;
     let v   = parseInt(inpVend ? inpVend.value : 0) || 0;
     let d   = parseInt(inpDev  ? inpDev.value  : 0) || 0;
     let p   = parseInt(inpPerd ? inpPerd.value : 0) || 0;
     let def = parseInt(inpDef  ? inpDef.value  : 0) || 0;
 
+    if (v < qtdApp) v = qtdApp;
+
     // A prioridade de ajuste automático vai para a devolução.
-    if (acao === 'vendido') { v = Math.min(Math.max(valor, 0), maxVal); d = Math.max(0, maxVal - (v + p + def)); }
+    if (acao === 'vendido') { v = Math.min(Math.max(valor, qtdApp), maxVal); d = Math.max(0, maxVal - (v + p + def)); }
     else if (acao === 'perdido') { p = Math.min(Math.max(valor, 0), maxVal); d = Math.max(0, maxVal - (v + p + def)); }
     else if (acao === 'defeito') { def = Math.min(Math.max(valor, 0), maxVal); d = Math.max(0, maxVal - (v + p + def)); }
     else if (acao === 'devolvido') { 
       d = Math.min(Math.max(valor, 0), maxVal);
-      if (v + d + p + def > maxVal) v = Math.max(0, maxVal - (d + p + def));
+      if (v + d + p + def > maxVal) v = Math.max(qtdApp, maxVal - (d + p + def));
     }
 
     // Evita valores negativos
@@ -3909,32 +3970,32 @@ const app = {
 
     const comissaoFinal = Math.max(0, comissaoBruta - valorPerdas);
     
-    // Calcula vendas link vs dinheiro para a revendedora selecionada
+    // Calcula vendas link/pix/cartão (Manager) vs dinheiro (com a revendedora)
     let vendasLink = 0;
     let vendasDinheiro = 0;
     
-    if (this.state.vendasSessao && Array.isArray(this.state.vendasSessao)) {
-      const vendasDaRev = this.state.vendasSessao.filter(v => v.usuarioId === rev.id);
-      vendasDaRev.forEach(v => {
-        if (v.canalPagamento === "LINK_PAGO_ADMIN") {
-          vendasLink += Number(v.precoVenda) * Number(v.quantidade || 1);
-        } else {
-          vendasDinheiro += Number(v.precoVenda) * Number(v.quantidade || 1);
-        }
-      });
-    }
-    
-    // Se nao houver vendas cadastradas na sessao para aquela revendedora (fallback)
-    if (vendasLink === 0 && vendasDinheiro === 0) {
-      vendasLink = faturamentoBruto * 0.7; // 70% simulado via link
-      vendasDinheiro = faturamentoBruto * 0.3; // 30% em maos
-    }
+    const vendasReais = this.state.vendasPendentesAcerto || [];
+    vendasReais.forEach(v => {
+      const valorVenda = Number(v.precoVenda) * Number(v.quantidade || 1);
+      const forma = (v.formaPagamento || "").toLowerCase();
+      
+      if (v.canalPagamento === "LINK_PAGO_ADMIN" || forma.includes("pix") || forma.includes("cartao") || forma.includes("cartão") || forma.includes("debito") || forma.includes("débito") || forma.includes("credito") || forma.includes("crédito")) {
+        vendasLink += valorVenda;
+      } else {
+        vendasDinheiro += valorVenda;
+      }
+    });
 
-    // Ajusta proporcoes baseando-se no faturamentoBruto conferido no acerto
     if (faturamentoBruto > 0) {
-      const proporcaoLink = vendasLink / (vendasLink + vendasDinheiro || 1);
-      vendasLink = faturamentoBruto * proporcaoLink;
-      vendasDinheiro = faturamentoBruto * (1 - proporcaoLink);
+      const totalVendasReais = vendasLink + vendasDinheiro;
+      if (totalVendasReais > 0) {
+        const proporcaoLink = vendasLink / totalVendasReais;
+        vendasLink = faturamentoBruto * proporcaoLink;
+        vendasDinheiro = faturamentoBruto * (1 - proporcaoLink);
+      } else {
+        vendasDinheiro = faturamentoBruto;
+        vendasLink = 0;
+      }
     } else {
       vendasLink = 0;
       vendasDinheiro = 0;
@@ -4101,42 +4162,64 @@ const app = {
     const selectForma = document.getElementById("acerto-forma-pagamento");
     const formaPagamento = selectForma ? selectForma.value : "Pix";
 
-    // Calcula vendas link vs dinheiro
+    // Calcula vendas link/pix/cartão (Manager) vs dinheiro (com a revendedora)
     let vendasLink = 0;
     let vendasDinheiro = 0;
-    if (this.state.vendasSessao && Array.isArray(this.state.vendasSessao)) {
-      const vendasDaRev = this.state.vendasSessao.filter(v => v.usuarioId === rev.id);
-      vendasDaRev.forEach(v => {
-        if (v.canalPagamento === "LINK_PAGO_ADMIN") {
-          vendasLink += Number(v.precoVenda) * Number(v.quantidade || 1);
-        } else {
-          vendasDinheiro += Number(v.precoVenda) * Number(v.quantidade || 1);
-        }
-      });
-    }
-    if (vendasLink === 0 && vendasDinheiro === 0) {
-      vendasLink = faturamentoBruto * 0.7;
-      vendasDinheiro = faturamentoBruto * 0.3;
-    }
+    
+    const vendasReais = this.state.vendasPendentesAcerto || [];
+    vendasReais.forEach(v => {
+      const valorVenda = Number(v.precoVenda) * Number(v.quantidade || 1);
+      const forma = (v.formaPagamento || "").toLowerCase();
+      
+      if (v.canalPagamento === "LINK_PAGO_ADMIN" || forma.includes("pix") || forma.includes("cartao") || forma.includes("cartão") || forma.includes("debito") || forma.includes("débito") || forma.includes("credito") || forma.includes("crédito")) {
+        vendasLink += valorVenda;
+      } else {
+        vendasDinheiro += valorVenda;
+      }
+    });
+
     if (faturamentoBruto > 0) {
-      const proporcaoLink = vendasLink / (vendasLink + vendasDinheiro || 1);
-      vendasLink = faturamentoBruto * proporcaoLink;
-      vendasDinheiro = faturamentoBruto * (1 - proporcaoLink);
+      const totalVendasReais = vendasLink + vendasDinheiro;
+      if (totalVendasReais > 0) {
+        const proporcaoLink = vendasLink / totalVendasReais;
+        vendasLink = faturamentoBruto * proporcaoLink;
+        vendasDinheiro = faturamentoBruto * (1 - proporcaoLink);
+      } else {
+        vendasDinheiro = faturamentoBruto;
+        vendasLink = 0;
+      }
     } else {
       vendasLink = 0;
       vendasDinheiro = 0;
     }
     const saldoFinal = valorComissao - vendasDinheiro;
 
+    const detalhesItens = itensAcerto.map(item => ({
+      produtoId: item.produtoId,
+      codigo: item.codigo,
+      nome: item.nome,
+      precoVenda: Number(item.precoVenda),
+      quantidadeConsignada: item.quantidadeConsignada,
+      quantidadeVendida: item.quantidadeVendida,
+      quantidadeDevolvida: item.quantidadeDevolvida,
+      quantidadePerdida: item.quantidadePerdida || 0,
+      quantidadeDefeito: item.quantidadeDefeito || 0
+    }));
+
+    const reterEstoque = Boolean(document.getElementById("acerto-manter-pecas-maleta")?.checked);
+
     try {
-      // Sincroniza fechamento de acerto com a Azure
+      let resp = null;
+      // Sincroniza fechamento de acerto com a API
       if (this.state.token && !this.state.token.startsWith("mock_")) {
-        await this.requisitarAPI("/acertos", "POST", {
+        resp = await this.requisitarAPI("/acertos", "POST", {
           usuarioId: rev.id,
           itensAcerto: postItens,
           formaPagamento: formaPagamento,
           totalRetidoRevendedora: vendasDinheiro,
-          totalRecebidoAdmin: vendasLink
+          totalRecebidoAdmin: vendasLink,
+          detalhesItens: detalhesItens,
+          manterPecasMaleta: reterEstoque
         });
       }
 
@@ -4156,7 +4239,8 @@ const app = {
         formaPagamento: formaPagamento,
         totalRetidoRevendedora: vendasDinheiro,
         totalRecebidoAdmin: vendasLink,
-        saldoFinalAcerto: saldoFinal
+        saldoFinalAcerto: saldoFinal,
+        detalhesItens: detalhesItens
       });
 
       // Se deve abrir WhatsApp, gera e redireciona
@@ -4173,12 +4257,33 @@ const app = {
           .replace("{valor_comissao}", valorComissao.toFixed(2).replace(".", ","))
           .replace("{valor_liquido}", valorLiquido.toFixed(2).replace(".", ","));
 
+        if (resp && resp.acerto && resp.acerto.id) {
+          mensagemTemplate += `\n\n🔗 *Visualizar Recibo e PDF:* ${window.location.origin}/recibo.html?id=${resp.acerto.id}`;
+        }
+
         const whatsLink = `https://api.whatsapp.com/send?phone=55${rev.whatsapp.replace(/\D/g, '')}&text=${encodeURIComponent(mensagemTemplate)}`;
         window.open(whatsLink, "_blank");
       }
 
-      // 2. Limpa a maleta de consignado da revendedora no estado (pois concluiu o acerto)
-      rev.consignado = [];
+      // Atualiza o estado local do consignado da revendedora baseado na retenção
+      if (reterEstoque) {
+        const novoConsignado = [];
+        postItens.forEach(pi => {
+          if (pi.qtdDevolvida > 0) {
+            novoConsignado.push({
+              produtoId: pi.produtoId,
+              codigo: pi.codigo,
+              nome: pi.nome,
+              precoVenda: pi.precoVenda,
+              quantidadeConsignada: pi.qtdDevolvida,
+              quantidadeDisponivel: pi.qtdDevolvida
+            });
+          }
+        });
+        rev.consignado = novoConsignado;
+      } else {
+        rev.consignado = [];
+      }
 
       // Salva tudo
       this.salvarDadosNoLocalStorage();
@@ -4691,26 +4796,32 @@ const app = {
     }
 
     if(ctxRev) {
-      const revLabels = [];
-      const revData = [];
-      this.state.revendedoras.forEach(r => {
-        let faturamentoBruto = 0;
-        if(r.consignado) {
-           r.consignado.forEach(c => {
-             faturamentoBruto += Number(c.precoVenda || 0) * Number(c.quantidadeConsignada || 0);
-           });
+      const rankingRev = this.state.revendedoras.map(r => {
+        let volumeVendas = r.totalPecasVendidasGeral !== undefined ? Number(r.totalPecasVendidasGeral) : 0;
+        let faturamentoTotal = r.faturamentoTotalGeral !== undefined ? Number(r.faturamentoTotalGeral) : 0;
+
+        if (volumeVendas === 0 && r.vendas && Array.isArray(r.vendas)) {
+          r.vendas.forEach(v => {
+            volumeVendas += Number(v.quantidade || 1);
+            faturamentoTotal += Number(v.precoVenda || 0) * Number(v.quantidade || 1);
+          });
         }
-        revLabels.push(r.nome.split(" ")[0]);
-        revData.push(faturamentoBruto);
-      });
+        if (r.historico && Array.isArray(r.historico)) {
+          r.historico.forEach(h => {
+            if (r.totalPecasVendidasGeral === undefined) volumeVendas += Number(h.totalVendida || 0);
+            if (r.faturamentoTotalGeral === undefined) faturamentoTotal += Number(h.faturamentoBruto || 0);
+          });
+        }
+        return { nome: r.nome ? r.nome.split(" ")[0] : "Revendedora", volumeVendas, faturamentoTotal };
+      }).sort((a, b) => b.faturamentoTotal - a.faturamentoTotal || b.volumeVendas - a.volumeVendas);
 
       window.chartRevendedoras = new Chart(ctxRev, {
         type: 'bar',
         data: {
-          labels: revLabels,
+          labels: rankingRev.map(r => r.nome),
           datasets: [{
-            label: 'Faturamento Bruto (R$)',
-            data: revData,
+            label: 'Faturamento Total Gerado (R$)',
+            data: rankingRev.map(r => r.faturamentoTotal),
             backgroundColor: '#d4af37',
             borderRadius: 4
           }]
@@ -4733,8 +4844,12 @@ const app = {
             tooltip: {
               callbacks: {
                 label: function(context) {
-                  let value = context.raw;
-                  return ` Faturamento: R$ ${value.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+                  const idx = context.dataIndex;
+                  const item = rankingRev[idx];
+                  return [
+                    ` Faturamento: R$ ${item.faturamentoTotal.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`,
+                    ` Peças Vendidas: ${item.volumeVendas} pçs`
+                  ];
                 }
               }
             }
@@ -4879,7 +4994,9 @@ const app = {
           vendedor: v.usuario ? v.usuario.nome : 'Revendedora',
           contato: v.cliente && v.cliente.whatsapp ? v.cliente.whatsapp : '—',
           cliente: v.cliente ? v.cliente.nome : 'Cliente Avulso',
-          usuarioId: v.usuarioId
+          usuarioId: v.usuarioId,
+          desconto: v.desconto || 0,
+          motivoDesconto: v.motivoDesconto || ''
         });
       });
       
@@ -5030,7 +5147,10 @@ const app = {
           <td><strong>${v.nomeProduto}</strong><br><span style="font-size:0.78rem;color:var(--text-secondary);">${v.codigoProduto}</span></td>
           <td>${v.quantidade} pçs</td>
           <td>R$ ${v.precoVenda.toFixed(2).replace(".", ",")}</td>
-          <td style="color: var(--gold-primary); font-weight: 700;">R$ ${v.total.toFixed(2).replace(".", ",")}</td>
+          <td style="color: var(--gold-primary); font-weight: 700;">
+            R$ ${v.total.toFixed(2).replace(".", ",")}
+            ${v.desconto > 0 ? `<br><small style="color: var(--danger); font-weight: 400;">(Desc: R$ ${v.desconto.toFixed(2).replace(".", ",")}${v.motivoDesconto ? ` - ${v.motivoDesconto}` : ''})</small>` : ''}
+          </td>
           <td style="color: #81c784; font-weight: 700;">${comissaoOuLucro}</td>
           <td>${clienteInfo}</td>
           <td>
@@ -5271,9 +5391,14 @@ const app = {
         if (partes.length === 3) aniversarioStr = `${partes[2]}/${partes[1]}/${partes[0]}`;
         else aniversarioStr = c.dataNascimento;
       }
+      const nomeRevendedora = c.usuario ? c.usuario.nome : null;
+      const clienteNomeHTML = nomeRevendedora 
+        ? `<strong>${c.nome}</strong><br><small style="color: var(--gold-primary);">Cliente de: ${nomeRevendedora}</small>`
+        : `<strong>${c.nome}</strong>`;
+        
       const tr = document.createElement("tr");
       tr.innerHTML = `
-        <td><strong>${c.nome}</strong></td>
+        <td>${clienteNomeHTML}</td>
         <td>
           <a href="https://api.whatsapp.com/send?phone=55${(c.whatsapp || "").replace(/\D/g, '')}" target="_blank" style="color: #81c784; text-decoration: none;">
             <i class="fa-brands fa-whatsapp"></i> ${c.whatsapp || "—"}
@@ -5444,6 +5569,14 @@ const app = {
         }
         this.state.clientes.push(novaCliente);
         this.toast("Cliente cadastrada com sucesso!", "success");
+
+        const nomePrimeiro = nome.split(" ")[0];
+        if (confirm(`Deseja enviar uma mensagem de boas-vindas para a cliente ${nomePrimeiro} via WhatsApp agora?`)) {
+          const msgCliente = `Olá, ${nomePrimeiro}! ✨\nSeja muito bem-vinda à nossa loja! É um grande prazer ter você como nossa cliente. Registramos o seu cadastro em nosso sistema de Semijoias e você receberá em primeira mão nossas coleções exclusivas, ofertas e cupons de presente. Qualquer dúvida ou pedido, estamos sempre à disposição! 💖`;
+          const phoneClean = whatsapp.replace(/\D/g, "");
+          const waUrl = `https://api.whatsapp.com/send?phone=55${phoneClean}&text=${encodeURIComponent(msgCliente)}`;
+          window.open(waUrl, "_blank");
+        }
       }
 
       document.getElementById("modal-cliente").classList.remove("active");
@@ -5543,8 +5676,53 @@ const app = {
     // Executa uma busca inicial imediata
     this.buscarNotificacoes();
     
-    // Define polling a cada 30 segundos
+    const offlineMode = this.state.token && this.state.token.startsWith("mock_");
+
+    if (!offlineMode && window.EventSource) {
+      try {
+        if (this.state.sseSource) {
+          this.state.sseSource.close();
+        }
+
+        const url = `${this.apiUrl}/realtime/notificacoes?token=${encodeURIComponent(this.state.token)}`;
+        this.state.sseSource = new EventSource(url);
+
+        this.state.sseSource.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            if (data.tipo === 'notificacao') {
+              const notif = data.data;
+              
+              if (!this.state.notificacoes.some(n => n.id === notif.id)) {
+                this.state.notificacoes.unshift(notif);
+                this.atualizarBadgeSino();
+                this.toast(notif.mensagem, "success");
+                
+                try {
+                  const audio = new Audio("https://assets.mixkit.co/active_storage/sfx/2869/2869-200.wav");
+                  audio.volume = 0.4;
+                  audio.play();
+                } catch (soundErr) {}
+              }
+            }
+          } catch (err) {
+            console.error("Erro ao processar dados da notificação SSE:", err);
+          }
+        };
+
+        this.state.sseSource.onerror = (err) => {
+          console.warn("Conexão SSE com instabilidade. O navegador tentará reconectar. Fallback de polling ativo.", err);
+        };
+      } catch (err) {
+        console.error("Falha ao configurar EventSource:", err);
+      }
+    }
+
+    // Define polling a cada 30 segundos como redundância ou para modo offline/mock
     this.state.pollingNotificacoesInterval = setInterval(() => {
+      if (this.state.sseSource && this.state.sseSource.readyState === EventSource.OPEN) {
+        return;
+      }
       this.buscarNotificacoes();
     }, 30000);
   },
@@ -5634,15 +5812,28 @@ const app = {
       if (n.detalhes) {
         try {
           const det = typeof n.detalhes === 'string' ? JSON.parse(n.detalhes) : n.detalhes;
-          if (det && det.itens && Array.isArray(det.itens)) {
-            detalhesHtml = `
-              <div style="font-size: 0.78rem; color: var(--text-secondary); margin-top: 0.4rem; padding-top: 0.4rem; border-top: 1px dashed rgba(212, 175, 55, 0.2);">
-                <strong style="color: var(--text-primary);">Peças vendidas:</strong>
-                <ul style="margin: 0.2rem 0 0 1rem; padding: 0; list-style-type: disc;">
-                  ${det.itens.map(it => `<li>${it.quantidade}x ${it.codigo || it.produtoId} (${it.nome})</li>`).join("")}
-                </ul>
-              </div>
-            `;
+          if (det) {
+            if (det.itens && Array.isArray(det.itens)) {
+              detalhesHtml = `
+                <div style="font-size: 0.78rem; color: var(--text-secondary); margin-top: 0.4rem; padding-top: 0.4rem; border-top: 1px dashed rgba(212, 175, 55, 0.2);">
+                  <strong style="color: var(--text-primary);">Peças vendidas:</strong>
+                  <ul style="margin: 0.2rem 0 0 1rem; padding: 0; list-style-type: disc;">
+                    ${det.itens.map(it => `<li>${it.quantidade}x ${it.codigo || it.produtoId} (${it.nome})</li>`).join("")}
+                  </ul>
+                </div>
+              `;
+            } else if (det.produtoNome || det.produtoCodigo) {
+              detalhesHtml = `
+                <div style="font-size: 0.78rem; color: var(--text-secondary); margin-top: 0.4rem; padding-top: 0.4rem; border-top: 1px dashed rgba(212, 175, 55, 0.2); display: flex; flex-direction: column; gap: 0.2rem;">
+                  <div><strong style="color: var(--text-primary);">Produto:</strong> ${det.produtoNome} (Código: ${det.produtoCodigo || '—'})</div>
+                  <div><strong style="color: var(--text-primary);">Qtd Vendida:</strong> ${det.quantidade} pçs</div>
+                  <div><strong style="color: var(--text-primary);">Preço Unitário:</strong> R$ ${(det.precoVenda || 0).toFixed(2).replace('.', ',')}</div>
+                  <div><strong style="color: var(--text-primary);">Valor Total:</strong> R$ ${(det.valorTotal || 0).toFixed(2).replace('.', ',')}</div>
+                  <div><strong style="color: var(--text-primary);">Comissão Revendedora:</strong> R$ ${(det.comissaoValor || 0).toFixed(2).replace('.', ',')}</div>
+                  <div><strong style="color: var(--text-primary);">Revendedora:</strong> ${det.revendedoraNome || '—'}</div>
+                </div>
+              `;
+            }
           }
         } catch (e) {
           // ignora erro se não for JSON
@@ -6555,6 +6746,137 @@ const app = {
       this.wizardStep--;
       this.atualizarPassoWizard();
     }
+  },
+
+  devolverEstoqueConsignado: async function(consignadoId, qtdMaxima) {
+    const qtdStr = prompt(`Digite a quantidade de peças que deseja devolver ao estoque central (Máximo: ${qtdMaxima}):`, qtdMaxima);
+    if (qtdStr === null) return; 
+    
+    const qtd = parseInt(qtdStr);
+    if (isNaN(qtd) || qtd <= 0 || qtd > qtdMaxima) {
+      this.toast(`Por favor, insira uma quantidade válida entre 1 e ${qtdMaxima}.`, "warning");
+      return;
+    }
+
+    try {
+      if (this.state.token && !this.state.token.startsWith("mock_")) {
+        await this.requisitarAPI("/consignacoes/devolver", "POST", {
+          consignadoId: consignadoId,
+          quantidadeDevolver: qtd
+        });
+      } else {
+        const rev = this.state.revendedoras.find(r => r.id === this.state.revendedoraSelecionadaId);
+        if (rev && rev.consignado) {
+          const item = rev.consignado.find(c => c.id === consignadoId);
+          if (item) {
+            item.quantidadeConsignada -= qtd;
+            const prod = this.state.produtos.find(p => p.id === item.produtoId);
+            if (prod) {
+              prod.quantidade += qtd;
+              if (prod._valoresDinamicos) {
+                prod._valoresDinamicos["Estoque Central"] = prod.quantidade;
+              }
+            }
+            if (item.quantidadeConsignada <= 0) {
+              rev.consignado = rev.consignado.filter(c => c.id !== consignadoId);
+            }
+          }
+        }
+      }
+
+      this.toast("Peças devolvidas ao estoque central com sucesso!", "success");
+      
+      if (this.state.token && !this.state.token.startsWith("mock_")) {
+        await this.carregarDadosIniciais();
+      } else {
+        this.salvarDadosNoLocalStorage();
+      }
+      this.renderizarRevendedoras();
+      this.renderizarEstoque();
+      this.renderizarDashboard();
+    } catch (err) {
+      console.error(err);
+      this.toast("Erro ao processar devolução: " + err.message, "error");
+    }
+  },
+
+  moverWidget: function(direcao, widgetId) {
+    const grid = document.getElementById("admin-metrics-grid");
+    if (!grid) return;
+
+    const cards = Array.from(grid.children);
+    const ordem = cards.map(c => c.getAttribute("data-widget"));
+    const index = ordem.indexOf(widgetId);
+    if (index === -1) return;
+
+    let targetIndex = index;
+    if (direcao === "left" && index > 0) {
+      targetIndex = index - 1;
+    } else if (direcao === "right" && index < ordem.length - 1) {
+      targetIndex = index + 1;
+    }
+
+    if (targetIndex !== index) {
+      const temp = ordem[index];
+      ordem[index] = ordem[targetIndex];
+      ordem[targetIndex] = temp;
+
+      localStorage.setItem("conectajoias_admin_widgets_ordem", JSON.stringify(ordem));
+      this.aplicarOrdemWidgets();
+    }
+  },
+
+  aplicarOrdemWidgets: function() {
+    const grid = document.getElementById("admin-metrics-grid");
+    if (!grid) return;
+
+    const ordemSalva = localStorage.getItem("conectajoias_admin_widgets_ordem");
+    if (!ordemSalva) return;
+
+    try {
+      const ordem = JSON.parse(ordemSalva);
+      if (!Array.isArray(ordem) || ordem.length === 0) return;
+
+      const cardsMap = {};
+      Array.from(grid.children).forEach(card => {
+        const key = card.getAttribute("data-widget");
+        if (key) cardsMap[key] = card;
+      });
+
+      ordem.forEach(key => {
+        const card = cardsMap[key];
+        if (card) {
+          grid.appendChild(card);
+        }
+      });
+      
+      Object.keys(cardsMap).forEach(key => {
+        if (!ordem.includes(key)) {
+          grid.appendChild(cardsMap[key]);
+        }
+      });
+    } catch (e) {
+      console.error("Erro ao ordenar widgets:", e);
+    }
+  },
+
+  toggleModoEdicaoWidgets: function() {
+    const grid = document.getElementById("admin-metrics-grid");
+    const btn = document.getElementById("btn-edit-admin-widgets");
+    if (!grid || !btn) return;
+
+    const isEditing = grid.classList.toggle("edit-mode");
+    if (isEditing) {
+      btn.classList.add("active");
+      btn.innerHTML = '<i class="fa-solid fa-check"></i>';
+      btn.title = "Concluir Personalização";
+      this.toast("Modo de personalização ativado! Use as setas dos cards para ordenar.", "info");
+    } else {
+      btn.classList.remove("active");
+      btn.innerHTML = '<i class="fa-solid fa-pen"></i>';
+      btn.title = "Personalizar Painel";
+      this.toast("Personalização do painel salva com sucesso! ✨", "success");
+    }
   }
 
 };
@@ -6584,8 +6906,8 @@ function aplicarTemaLoja(tema) {
   const defaultBgPrimary = isLight ? '#f5f5f5' : '#0a0a0a';
   const defaultBgCard = isLight ? '#ffffff' : '#121212';
 
-  const bgPrimary = tema.bgPrimary && tema.bgPrimary !== '#0a0a0a' ? tema.bgPrimary : defaultBgPrimary;
-  const bgCard = tema.bgCard && tema.bgCard !== '#121212' ? tema.bgCard : defaultBgCard;
+  const bgPrimary = tema.bgPrimary ? tema.bgPrimary : defaultBgPrimary;
+  const bgCard = tema.bgCard ? tema.bgCard : defaultBgCard;
   const bgAbsolute = alterarBrilhoHex(bgPrimary, -10);
 
   document.documentElement.style.setProperty('--bg-primary', bgPrimary);

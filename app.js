@@ -27,7 +27,7 @@ const app = {
     bgPrimary: "#0a0a0a",
     bgCard: "#121212",
     revendedoraSelecionadaId: null,
-    usandoFicticio: true,
+    usandoFicticio: false,
     colunasEstoque: ["Código", "Nome do Produto", "Categoria", "Estoque Central", "Custo Bruto", "Custo Banho", "Custo Oper.", "Markup", "Preço Venda"],
     vendasSessao: [], // Vendas registradas pela revendedora nesta sessão
     ordenacao: {
@@ -494,32 +494,36 @@ const app = {
     this.registrarEventosUI();
     this.inicializarFeedPadrao();
     
-    // Carrega a configuração da marca e tema do backend
-    await this.carregarConfiguracaoAPI();
+    // Aplica o perfil e exibe a aba correta imediatamente (Frame 1) sem piscar a tela
+    this.aplicarRestricoesPerfil();
+    this.renderizarAbas();
 
-    // Dispara carregamento assíncrono dos dados da API
-    await this.carregarProdutosDaAPI();
+    const isManager = ['Manager', 'SuperAdmin', 'ADMIN_LOJA', 'SUPER_ADMIN', 'admin'].includes(this.state.usuarioLogado ? this.state.usuarioLogado.role : '');
     
-    if (['Manager', 'SuperAdmin', 'ADMIN_LOJA', 'SUPER_ADMIN', 'admin'].includes(this.state.usuarioLogado.role)) {
+    if (isManager) {
+      await this.carregarConfiguracaoAPI();
+      await this.carregarProdutosDaAPI();
       await this.carregarRevendedorasDaAPI();
       await this.carregarClientesDaAPI();
       await this.carregarVendasConsolidadas();
-      this.renderizarAbas();
       this.renderizarEstoque();
       this.renderizarRevendedoras();
       this.renderizarDashboard();
       this.renderizarMarketing();
       this.renderizarClientes();
     } else {
-      // Revendedora: carrega maleta e navega direto para Minha Maleta
-      await this.carregarMaletaPropriaDaAPI();
-      await this.carregarVendasRevendedora();
-      this.aplicarRestricoesPerfil();
-      this.renderizarAbas();
+      // Perfil Revendedora: Carregamento hiper-otimizado em PARALELO (Promise.all)
+      await Promise.all([
+        this.carregarConfiguracaoAPI(),
+        this.carregarMaletaPropriaDaAPI(),
+        this.carregarVendasRevendedora()
+      ]);
+
       this.renderizarMinhaMaleta();
-      // Atualiza boas-vindas com nome
       const el = document.getElementById("maleta-boas-vindas");
-      if (el) el.innerText = `Olá, ${this.state.usuarioLogado.nome.split(' ')[0]}! 💎`;
+      if (el && this.state.usuarioLogado && this.state.usuarioLogado.nome) {
+        el.innerText = `Olá, ${this.state.usuarioLogado.nome.split(' ')[0]}! 💎`;
+      }
     }
     
     console.log("Conecta Joias inicializado com sucesso!");
@@ -990,7 +994,7 @@ const app = {
       const bgCardSalvo = localStorage.getItem("conectajoias_bg_card");
       const apiUrlSalva = localStorage.getItem("conectajoias_api_url");
 
-      this.state.usandoFicticio = ficticioSalvo ? JSON.parse(ficticioSalvo) : true;
+      this.state.usandoFicticio = ficticioSalvo ? JSON.parse(ficticioSalvo) : false;
       this.state.colunasEstoque = colunasSalvas ? JSON.parse(colunasSalvas) : ["Código", "Nome do Produto", "Categoria", "Estoque Central", "Custo Bruto", "Custo Banho", "Custo Oper.", "Markup", "Preço Venda"];
       this.state.limiarEstoqueCritico = limiarSalvo ? parseInt(limiarSalvo) : 3;
       this.state.nomeEmpresa = nomeEmpresaSalvo ? nomeEmpresaSalvo : "Conecta Joias";
@@ -1054,88 +1058,11 @@ const app = {
 
   // 4. Cadastro de Mock de dados para demonstração sem placeholders vazios
   obterProdutosMock: function() {
-    return [
-      {
-        id: "prod_1",
-        codigo: "BR-010",
-        nome: "Brinco Gota Fusion Cravejado",
-        categoria: "Brincos",
-        quantidade: 15,
-        custoBruto: 12.50,
-        custoBanho: 8.00,
-        custoLiquido: 3.50,
-        markup: 3.2
-      },
-      {
-        id: "prod_2",
-        codigo: "CO-055",
-        nome: "Colar Riviera Ametista Luxo",
-        categoria: "Colares",
-        quantidade: 2, // Alerta de estoque baixo
-        custoBruto: 28.00,
-        custoBanho: 15.00,
-        custoLiquido: 6.00,
-        markup: 3.0
-      },
-      {
-        id: "prod_3",
-        codigo: "AN-004",
-        nome: "Anel Solitário Ouro Cravejado",
-        categoria: "Anéis",
-        quantidade: 12,
-        custoBruto: 9.00,
-        custoBanho: 6.50,
-        custoLiquido: 2.50,
-        markup: 3.5
-      },
-      {
-        id: "prod_4",
-        codigo: "PU-080",
-        nome: "Pulseira Elo Português 18k",
-        categoria: "Pulseiras",
-        quantidade: 8,
-        custoBruto: 18.00,
-        custoBanho: 11.00,
-        custoLiquido: 4.50,
-        markup: 3.0
-      }
-    ];
+    return [];
   },
 
   obterRevendedorasMock: function() {
-    return [
-      {
-        id: "rev_1",
-        nome: "Patrícia Medeiros",
-        whatsapp: "(11) 98765-4321",
-        comissao: 30,
-        pin: "1234",
-        consignado: [
-          {
-            produtoId: "prod_1",
-            codigo: "BR-010",
-            nome: "Brinco Gota Fusion Cravejado",
-            quantidadeConsignada: 5,
-            precoVenda: 76.80 // (12.5+8+3.5) * 3.2 = 24 * 3.2
-          },
-          {
-            produtoId: "prod_3",
-            codigo: "AN-004",
-            nome: "Anel Solitário Ouro Cravejado",
-            quantidadeConsignada: 3,
-            precoVenda: 63.00 // (9+6.5+2.5) * 3.5 = 18 * 3.5
-          }
-        ]
-      },
-      {
-        id: "rev_2",
-        nome: "Juliana Frota",
-        whatsapp: "(11) 99888-7777",
-        comissao: 35,
-        pin: "5678",
-        consignado: []
-      }
-    ];
+    return [];
   },
 
   // Inicializa imagens padrões elegantes no feed do Instagram se estiver vazio
@@ -1231,10 +1158,23 @@ const app = {
     document.getElementById("btn-excluir-todos-produtos").addEventListener("click", () => this.excluirTodosOsProdutos());
 
 
-    // Upload do Instagram Feed
-    document.getElementById("zone-upload-feed").addEventListener("click", () => document.getElementById("input-upload-feed").click());
-    document.getElementById("input-upload-feed").addEventListener("change", (e) => this.processarUploadFeed(e));
-    document.getElementById("btn-clear-feed").addEventListener("click", () => this.reiniciarFeedPadrao());
+    // Upload do Instagram Feed (Tratamento defensivo contra elementos nulos)
+    const zoneUploadFeed = document.getElementById("zone-upload-feed");
+    const inputUploadFeed = document.getElementById("input-upload-feed");
+    const btnClearFeed = document.getElementById("btn-clear-feed");
+
+    if (zoneUploadFeed) {
+      zoneUploadFeed.addEventListener("click", () => {
+        const input = document.getElementById("input-upload-feed");
+        if (input) input.click();
+      });
+    }
+    if (inputUploadFeed) {
+      inputUploadFeed.addEventListener("change", (e) => this.processarUploadFeed(e));
+    }
+    if (btnClearFeed) {
+      btnClearFeed.addEventListener("click", () => this.reiniciarFeedPadrao());
+    }
 
     // WhatsApp Mask
     const revWhatsApp = document.getElementById("rev-whatsapp");

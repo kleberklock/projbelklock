@@ -12,7 +12,7 @@ start "Conecta Joias Frontend" cmd /c "npx http-server -p 8080 -c-1"
 
 echo [3/3] Aguardando inicializacao e abrindo o sistema no navegador...
 timeout /t 3 /nobreak >nul
-start http://localhost:8080/apresentacao.html
+start http://localhost:8080/
 
 echo.
 echo ==========================================================
